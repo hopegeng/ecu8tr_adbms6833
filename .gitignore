@@ -1,0 +1,15 @@
+.vscode
+build/
+Debug/
+**/Doxygen/html/
+.metadata/
+*.bin
+firmware/
+__pycache__
+bms.egg-info
+canlib-1.15.483-py2.py3-none-any.whl
+*.pyc
+*.csv
+*.bat
+*.bak
+env/

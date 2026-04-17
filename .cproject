@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?fileVersion 4.0.0?><cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
+	<storageModule moduleId="org.eclipse.cdt.core.settings">
+		<cconfiguration id="com.tasking.config.ctc.abs.debug.857613705">
+			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="com.tasking.config.ctc.abs.debug.857613705" moduleId="org.eclipse.cdt.core.settings" name="Debug">
+				<externalSettings/>
+				<extensions>
+					<extension id="com.tasking.managedbuilder.TASKING_IHEX" point="org.eclipse.cdt.core.BinaryParser"/>
+					<extension id="com.tasking.managedbuilder.TASKING_ELF" point="org.eclipse.cdt.core.BinaryParser"/>
+					<extension id="com.tasking.managedbuilder.TASKING_SRECORD" point="org.eclipse.cdt.core.BinaryParser"/>
+					<extension id="com.tasking.managedbuilder.TskRegexErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+				</extensions>
+			</storageModule>
+			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+				<configuration artifactExtension="elf" artifactName="Ecu8TR_freeRTOS" buildArtefactType="com.tasking.ctc.buildArtefactType.elf" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=com.tasking.ctc.buildArtefactType.elf" cleanCommand="&quot;${PRODDIR}/bin/rm&quot; -rf" description="" id="com.tasking.config.ctc.abs.debug.857613705" name="Debug" parent="com.tasking.config.ctc.abs.debug">
+					<folderInfo id="com.tasking.config.ctc.abs.debug.857613705." name="/" resourcePath="">
+						<toolChain id="com.tasking.ctc.abs.debug.845893008" name="TASKING VX-toolset for TriCore" superClass="com.tasking.ctc.abs.debug">
+							<option id="com.tasking.ctc.pluginVersion.2127741968" name="Plugin version" superClass="com.tasking.ctc.pluginVersion" value="1.238.0.0" valueType="string"/>
+							<option id="com.tasking.ctc.prodDir.1364333727" name="Product directory:" superClass="com.tasking.ctc.prodDir" value="${eclipse_home}/.." valueType="string"/>
+							<option id="com.tasking.ctc.cpu.448187792" name="Processor:" superClass="com.tasking.ctc.cpu" value="tc39xb" valueType="string"/>
+							<option id="com.tasking.ctc.coreSelection.810799638" name="Use core:" superClass="com.tasking.ctc.coreSelection" value="tc0" valueType="string"/>
+							<targetPlatform archList="all" binaryParser="com.tasking.managedbuilder.TASKING_ELF;com.tasking.managedbuilder.TASKING_SRECORD;com.tasking.managedbuilder.TASKING_IHEX" id="com.tasking.ctc.platform.abs.debug.1931091682" name="Debug" osList="" superClass="com.tasking.ctc.platform.abs.debug"/>
+							<builder buildPath="${workspace_loc:/Ecu8TR_freeRTOS}/Debug" id="com.tasking.ctc.builder.abs.debug.727100704" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="TASKING TriCore Makefile generator" parallelBuildOn="true" parallelizationNumber="optimal" superClass="com.tasking.ctc.builder.abs.debug"/>
+							<tool id="com.tasking.ctc.cc.abs.debug.1297685684" name="C/C++ Compiler" superClass="com.tasking.ctc.cc.abs.debug">
+								<option id="com.tasking.ctc.cc.pr36858.243757769" name="workaround for PR36858" superClass="com.tasking.ctc.cc.pr36858" value="true" valueType="string"/>
+								<option id="com.tasking.ctc.cc.additionalOptions.2049161198" name="Additional options:" superClass="com.tasking.ctc.cc.additionalOptions" value="-f &quot;../Tricore_IncludePathList.opt&quot;" valueType="string"/>
+								<option id="com.tasking.ctc.cc.noTaskingSfr.1911223522" name="Automatic inclusion of '.sfr' file" superClass="com.tasking.ctc.cc.noTaskingSfr" value="false" valueType="boolean"/>
+								<option id="com.tasking.ctc.cc.integerEnumeration.213425661" name="Always use 32-bit integers for enumeration" superClass="com.tasking.ctc.cc.integerEnumeration" value="true" valueType="boolean"/>
+								<option id="com.tasking.ctc.cc.definedSymbols.1234492838" name="Defined symbols" superClass="com.tasking.ctc.cc.definedSymbols" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="__BEVOP__=1"/>
+									<listOptionValue builtIn="false" value="__BEVOP=1"/>
+									<listOptionValue builtIn="false" value="__INT_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__INTPTR_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__LFRACT_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__LLONG_BIT__=64"/>
+									<listOptionValue builtIn="false" value="__LONG_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__FRACT_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__CHAR_BIT__=8"/>
+									<listOptionValue builtIn="false" value="__SACCUM_BIT__=64"/>
+									<listOptionValue builtIn="false" value="__SFRACT_BIT__=16"/>
+									<listOptionValue builtIn="false" value="__SIZE_BIT_-=32"/>
+									<listOptionValue builtIn="false" value="__WCHAR_BIT__=16"/>
+									<listOptionValue builtIn="false" value="__SIZE_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__SHORT_BIT__=16"/>
+								</option>
+								<inputType id="com.tasking.ctc.cppInputType.574812185" name="C++" superClass="com.tasking.ctc.cppInputType"/>
+								<inputType id="com.tasking.ctc.cpp.cInputType.827299783" name="C" superClass="com.tasking.ctc.cpp.cInputType"/>
+								<inputType id="com.tasking.ctc.cc.msInputType.1616069030" name="MS" superClass="com.tasking.ctc.cc.msInputType"/>
+							</tool>
+							<tool id="com.tasking.ctc.as.abs.debug.1199345084" name="Assembler" superClass="com.tasking.ctc.as.abs.debug">
+								<inputType id="com.tasking.ctc.asmInputType.567984079" name="ASM" superClass="com.tasking.ctc.asmInputType"/>
+							</tool>
+							<tool id="com.tasking.ctc.lk.abs.debug.1159577829" name="Linker" superClass="com.tasking.ctc.lk.abs.debug">
+								<option id="com.tasking.ctc.lk.lslFile.420862244" name="Linker script file:" superClass="com.tasking.ctc.lk.lslFile" value="../Lcf_Tasking_Tricore_Tc.lsl" valueType="string"/>
+								<option id="com.tasking.ctc.lk.outputFormat.ihex.1821401585" name="Generate Intel Hex format file" superClass="com.tasking.ctc.lk.outputFormat.ihex" value="true" valueType="boolean"/>
+								<option id="com.tasking.ctc.lk.mapFile.mapFile.655376174" name="Generate map file (.map)" superClass="com.tasking.ctc.lk.mapFile.mapFile" value="true" valueType="boolean"/>
+								<option id="com.tasking.ctc.lk.outputFormat.bin.1476367136" name="Generate binary file" superClass="com.tasking.ctc.lk.outputFormat.bin" value="true" valueType="boolean"/>
+								<option id="com.tasking.ctc.lk.definedSymbols.945827172" name="Defined symbols" superClass="com.tasking.ctc.lk.definedSymbols" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="__BEVOP=1"/>
+									<listOptionValue builtIn="false" value="__INT_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__INTPTR_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__LFRACT_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__LLONG_BIT__=64"/>
+									<listOptionValue builtIn="false" value="__LONG_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__FRACT_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__CHAR_BIT__=8"/>
+									<listOptionValue builtIn="false" value="__SACCUM_BIT__=64"/>
+									<listOptionValue builtIn="false" value="__SFRACT_BIT__=16"/>
+									<listOptionValue builtIn="false" value="__WCHAR_BIT__=16"/>
+									<listOptionValue builtIn="false" value="__SIZE_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__SHORT_BIT__=16"/>
+								</option>
+								<inputType id="com.tasking.ctc.lkObjInputType.1305008425" name="OBJ" superClass="com.tasking.ctc.lkObjInputType"/>
+								<inputType id="com.tasking.ctc.lkLibInputType.1873275866" name="LIB" superClass="com.tasking.ctc.lkLibInputType"/>
+							</tool>
+						</toolChain>
+					</folderInfo>
+					<sourceEntries>
+						<entry excluding="bsp/qspi/src/qspimstr.c|bsp/qspi/src/qspi0mstr.c|bsp/machine/src/bspsys.c|bsp/qspi/src/qspimcal.c|bsp/qspi/src/qspi2mstr.c|bsp/qspi/src/qspi3mstr.c|Libraries/Infra/Ssw/TC39B/Tricore/excluded|Libraries/lwip-2.0.3_old|OS/FreeRTOS/portable/MemMang/heap_3.c|OS/FreeRTOS/portable/MemMang/heap_5.c|Libraries/iLLD/TC37A/Tricore/Gtm/Tom|OS/FreeRTOS-Plus-TCP/tools|Libraries/Infra/Ssw/TC39B/Tricore/Ifx_Ssw_Tc4.c|OS/FreeRTOS-Plus-TCP/docs|OS/FreeRTOS-Plus-TCP/source/portable/NetworkInterface_orig_excluded|OS/FreeRTOS-Plus-TCP/test|OS/FreeRTOS-Plus-TCP/source/portable/NetworkInterface|OS/FreeRTOS/portable/MemMang/heap_2.c|OS/FreeRTOS/portable/MemMang/heap_4.c|OS/FreeRTOS-Plus-TCP/source/portable/BufferManagement/BufferAllocation_2.c|Libraries/iLLD/TC37A/Tricore/Gtm/Atom|bsp/eth/src/excluded|Libraries/Infra/Ssw/TC39B/Tricore/Ifx_Ssw_Tc3.c|Libraries/Infra/Ssw/TC39B/Tricore/Ifx_Ssw_Tc5.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+					</sourceEntries>
+				</configuration>
+			</storageModule>
+			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+			<storageModule addStartupFiles="false" moduleId="com.tasking.processor"/>
+			<storageModule moduleId="com.tasking.flash.settings"/>
+			<storageModule moduleId="com.tasking.toolInfo">
+				<toolInfo>TASKING VX-toolset for TriCore: control program v6.3r1 Build 24110649</toolInfo>
+				<toolInfo>TASKING VX-toolset for TriCore: object linker v6.3r1 Build 24110649</toolInfo>
+				<toolInfo>TASKING VX-toolset for TriCore: C compiler v6.3r1 Build 24110649</toolInfo>
+				<toolInfo>TASKING VX-toolset for TriCore: assembler v6.3r1 Build 24110649</toolInfo>
+				<toolInfo>TASKING program builder v6.3r1 Build 19041558</toolInfo>
+			</storageModule>
+		</cconfiguration>
+		<cconfiguration id="com.tasking.config.ctc.abs.release.1986222950">
+			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="com.tasking.config.ctc.abs.release.1986222950" moduleId="org.eclipse.cdt.core.settings" name="Release">
+				<externalSettings/>
+				<extensions>
+					<extension id="com.tasking.managedbuilder.TASKING_IHEX" point="org.eclipse.cdt.core.BinaryParser"/>
+					<extension id="com.tasking.managedbuilder.TASKING_ELF" point="org.eclipse.cdt.core.BinaryParser"/>
+					<extension id="com.tasking.managedbuilder.TASKING_SRECORD" point="org.eclipse.cdt.core.BinaryParser"/>
+					<extension id="com.tasking.managedbuilder.TskRegexErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+				</extensions>
+			</storageModule>
+			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+				<configuration artifactExtension="elf" artifactName="Ecu8TR_freeRTOS" buildArtefactType="com.tasking.ctc.buildArtefactType.elf" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=com.tasking.ctc.buildArtefactType.elf" cleanCommand="&quot;${PRODDIR}/bin/rm&quot; -rf" description="" id="com.tasking.config.ctc.abs.release.1986222950" name="Release" parent="com.tasking.config.ctc.abs.release">
+					<folderInfo id="com.tasking.config.ctc.abs.release.1986222950." name="/" resourcePath="">
+						<toolChain id="com.tasking.ctc.abs.release.852970905" name="TASKING VX-toolset for TriCore" superClass="com.tasking.ctc.abs.release">
+							<option id="com.tasking.ctc.pluginVersion.1716581964" name="Plugin version" superClass="com.tasking.ctc.pluginVersion" value="1.238.0.0" valueType="string"/>
+							<option id="com.tasking.ctc.prodDir.879144213" name="Product directory:" superClass="com.tasking.ctc.prodDir" value="${eclipse_home}/.." valueType="string"/>
+							<option id="com.tasking.ctc.cpu.2081045031" name="Processor:" superClass="com.tasking.ctc.cpu" value="tc39xb" valueType="string"/>
+							<option id="com.tasking.ctc.coreSelection.1114467132" name="Use core:" superClass="com.tasking.ctc.coreSelection" value="tc0" valueType="string"/>
+							<targetPlatform archList="all" binaryParser="com.tasking.managedbuilder.TASKING_ELF;com.tasking.managedbuilder.TASKING_SRECORD;com.tasking.managedbuilder.TASKING_IHEX" id="com.tasking.ctc.platform.abs.release.537879125" name="Release" osList="" superClass="com.tasking.ctc.platform.abs.release"/>
+							<builder buildPath="${workspace_loc:/Ecu8TR_freeRTOS}/Release" id="com.tasking.ctc.builder.abs.debug.244430147" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="TASKING TriCore Makefile generator" parallelBuildOn="true" parallelizationNumber="optimal" superClass="com.tasking.ctc.builder.abs.debug"/>
+							<tool id="com.tasking.ctc.cc.abs.release.2016476677" name="C/C++ Compiler" superClass="com.tasking.ctc.cc.abs.release">
+								<option id="com.tasking.ctc.cc.pr36858.1968817681" name="workaround for PR36858" superClass="com.tasking.ctc.cc.pr36858" value="true" valueType="string"/>
+								<option id="com.tasking.ctc.cc.definedSymbols.1525550897" name="Defined symbols" superClass="com.tasking.ctc.cc.definedSymbols" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="__BEVOP__=1"/>
+									<listOptionValue builtIn="false" value="__BEVOP=1"/>
+									<listOptionValue builtIn="false" value="__EXACT8__=8"/>
+									<listOptionValue builtIn="false" value="__EXACT16__=16"/>
+									<listOptionValue builtIn="false" value="__EXACT32__=32"/>
+									<listOptionValue builtIn="false" value="__EXACT64__=64"/>
+									<listOptionValue builtIn="false" value="__INT_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__INTPTR_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__LFRACT_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__LLONG_BIT__=64"/>
+									<listOptionValue builtIn="false" value="__LONG_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__FRACT_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__CHAR_BIT__=8"/>
+									<listOptionValue builtIn="false" value="__SACCUM_BIT__=64"/>
+									<listOptionValue builtIn="false" value="__SFRACT_BIT__=16"/>
+									<listOptionValue builtIn="false" value="__SIZE_BIT_-=32"/>
+									<listOptionValue builtIn="false" value="__WCHAR_BIT__=16"/>
+									<listOptionValue builtIn="false" value="__SIZE_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__SHORT_BIT__=16"/>
+								</option>
+								<inputType id="com.tasking.ctc.cppInputType.1335221792" name="C++" superClass="com.tasking.ctc.cppInputType"/>
+								<inputType id="com.tasking.ctc.cpp.cInputType.1468542126" name="C" superClass="com.tasking.ctc.cpp.cInputType"/>
+								<inputType id="com.tasking.ctc.cc.msInputType.557566926" name="MS" superClass="com.tasking.ctc.cc.msInputType"/>
+							</tool>
+							<tool id="com.tasking.ctc.as.abs.release.1790415160" name="Assembler" superClass="com.tasking.ctc.as.abs.release">
+								<inputType id="com.tasking.ctc.asmInputType.1468327209" name="ASM" superClass="com.tasking.ctc.asmInputType"/>
+							</tool>
+							<tool id="com.tasking.ctc.lk.abs.release.571135134" name="Linker" superClass="com.tasking.ctc.lk.abs.release">
+								<option id="com.tasking.ctc.lk.lslFile.2066768302" name="Linker script file:" superClass="com.tasking.ctc.lk.lslFile" value="" valueType="string"/>
+								<option id="com.tasking.ctc.lk.definedSymbols.1484232509" name="Defined symbols" superClass="com.tasking.ctc.lk.definedSymbols" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="__BEVOP__=1"/>
+									<listOptionValue builtIn="false" value="__BEVOP=1"/>
+									<listOptionValue builtIn="false" value="__EXACT8__=8"/>
+									<listOptionValue builtIn="false" value="__EXACT16__=16"/>
+									<listOptionValue builtIn="false" value="__EXACT32__=32"/>
+									<listOptionValue builtIn="false" value="__EXACT64__=64"/>
+									<listOptionValue builtIn="false" value="__INT_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__INTPTR_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__LFRACT_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__LLONG_BIT__=64"/>
+									<listOptionValue builtIn="false" value="__LONG_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__FRACT_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__CHAR_BIT__=8"/>
+									<listOptionValue builtIn="false" value="__SACCUM_BIT__=64"/>
+									<listOptionValue builtIn="false" value="__SFRACT_BIT__=16"/>
+									<listOptionValue builtIn="false" value="__SIZE_BIT_-=32"/>
+									<listOptionValue builtIn="false" value="__WCHAR_BIT__=16"/>
+									<listOptionValue builtIn="false" value="__SIZE_BIT__=32"/>
+									<listOptionValue builtIn="false" value="__SHORT_BIT__=16"/>
+								</option>
+								<inputType id="com.tasking.ctc.lkObjInputType.345940024" name="OBJ" superClass="com.tasking.ctc.lkObjInputType"/>
+								<inputType id="com.tasking.ctc.lkLibInputType.1436427885" name="LIB" superClass="com.tasking.ctc.lkLibInputType"/>
+							</tool>
+						</toolChain>
+					</folderInfo>
+					<sourceEntries>
+						<entry excluding="bsp/machine/src/bspsys.c|Libraries/Infra/Ssw/TC39B/Tricore/excluded|Libraries/lwip-2.0.3_old|OS/FreeRTOS/portable/MemMang/heap_3.c|OS/FreeRTOS/portable/MemMang/heap_5.c|Libraries/iLLD/TC37A/Tricore/Gtm/Tom|OS/FreeRTOS-Plus-TCP/tools|Libraries/Infra/Ssw/TC39B/Tricore/Ifx_Ssw_Tc4.c|OS/FreeRTOS-Plus-TCP/docs|OS/FreeRTOS-Plus-TCP/source/portable/NetworkInterface_orig_excluded|OS/FreeRTOS-Plus-TCP/test|OS/FreeRTOS-Plus-TCP/source/portable/NetworkInterface|OS/FreeRTOS/portable/MemMang/heap_2.c|OS/FreeRTOS/portable/MemMang/heap_4.c|OS/FreeRTOS-Plus-TCP/source/portable/BufferManagement/BufferAllocation_2.c|Libraries/iLLD/TC37A/Tricore/Gtm/Atom|bsp/eth/src/excluded|Libraries/Infra/Ssw/TC39B/Tricore/Ifx_Ssw_Tc3.c|Libraries/Infra/Ssw/TC39B/Tricore/Ifx_Ssw_Tc5.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+					</sourceEntries>
+				</configuration>
+			</storageModule>
+			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+			<storageModule addStartupFiles="false" moduleId="com.tasking.processor"/>
+			<storageModule moduleId="com.tasking.flash.settings"/>
+		</cconfiguration>
+	</storageModule>
+	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+		<project id="Ecu8TR_freeRTOS.com.tasking.ctc.target.abs.605865535" name="TASKING TriCore Application" projectType="com.tasking.ctc.target.abs"/>
+	</storageModule>
+	<storageModule moduleId="scannerConfiguration">
+		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		<scannerConfigBuildInfo instanceId="com.tasking.config.ctc.abs.debug.857613705;com.tasking.config.ctc.abs.debug.857613705.">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="com.tasking.ctc.TskTriCoreScannerInfo"/>
+		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="com.tasking.config.ctc.abs.release.1986222950;com.tasking.config.ctc.abs.release.1986222950.">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="com.tasking.ctc.TskTriCoreScannerInfo"/>
+		</scannerConfigBuildInfo>
+	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
+	<storageModule moduleId="org.eclipse.cdt.core.language.mapping">
+		<project-mappings>
+			<content-type-mapping configuration="" content-type="org.eclipse.cdt.core.cHeader" language="com.tasking.ctc.clanguage"/>
+			<content-type-mapping configuration="" content-type="org.eclipse.cdt.core.cSource" language="com.tasking.ctc.clanguage"/>
+			<content-type-mapping configuration="" content-type="org.eclipse.cdt.core.cxxHeader" language="com.tasking.ctc.cpplanguage"/>
+			<content-type-mapping configuration="" content-type="org.eclipse.cdt.core.cxxSource" language="com.tasking.ctc.cpplanguage"/>
+		</project-mappings>
+	</storageModule>
+	<storageModule moduleId="refreshScope" versionNumber="2">
+		<configuration configurationName="Debug">
+			<resource resourceType="PROJECT" workspacePath="/Ecu8TR_freeRTOS"/>
+		</configuration>
+		<configuration configurationName="Release">
+			<resource resourceType="PROJECT" workspacePath="/Ecu8TR_freeRTOS"/>
+		</configuration>
+	</storageModule>
+</cproject>
