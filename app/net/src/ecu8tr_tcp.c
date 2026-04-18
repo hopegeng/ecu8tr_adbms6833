@@ -26,10 +26,7 @@
 #include "tools.h"
 #include "eeprom.h"
 #include "ecu8tr_cmd.h"
-#include "tle9012.h"
-#include "isouart.h"
 #include "ecu8tr_version.h"
-#include "isouart.h"
 #include "board.h"
 #include "qspi0mstr_illd.h"
 #include "adbms6830.h"
@@ -55,8 +52,6 @@ typedef enum
 } ECU8TR_CMD_RET_e;
 
 extern uint8_t network_def_config[5][8];
-
-extern boolean isouart_setNetwork( ISOUART_NetArch_t network );
 
 __private1 ECU8TR_CMD_t ecu8tr_cmd = {0};
 static struct tcp_pcb *pcb_cmd_server = NULL;
@@ -330,10 +325,7 @@ static err_t ecu8tr_dataAccept( void *arg, struct tcp_pcb *new_pcb, err_t err )
 
     pcb_data_client = new_pcb;
 
-    if( tle9012_state == ECU8TR_TLE9012_WAKEUP_DONE )
-    {
-    	tle9012_state = ECU8TR_TLE9012_DATA_STREAMING;
-    }
+
 
     return ERR_OK;
 }
@@ -531,199 +523,10 @@ static void process_tcp_request( struct tcp_pcb *tpcb, uint8 *p_data, uint16 dat
 
 			break;
 
-		case CMD_TLE9012_SLEEP:
-			//Here we don't do anything, because if the data is streaming,then we have to wait it to exit from the streaming state7
-//			int pos;
-
-			if (tle9012_state == ECU8TR_TLE9012_IDLE)
-			{
-				ret = ECU8TR_CMD_SUCCESS;
-				sprintf( buffer+8, "The TLE9012 nodes are already in sleep mode\r\n$$" );
-
-				ret_len = build_cmd_return( CMD_TLE9012_WAKEUP, ret, buffer );
-				tcp_write( tpcb, buffer, ret_len, 1 );
-				tcp_output( tpcb );
-			}
-			else
-			{
-				tle9012_state = ECU8TR_TLE9012_SLEEP;
-			}
-
-			break;
-
-
-		case CMD_TLE9012_WAKEUP:
-		{
-			int pos;
-
-			if( tle9012_wakeup_result != TRUE )
-			{
-				tle9012_state = ECU8TR_TLE9012_WAKEUP;
-				while( (tle9012_state != ECU8TR_TLE9012_WAKEUP_DONE) && (tle9012_state != ECU8TR_TLE9012_IDLE) && (tle9012_state == ECU8TR_TLE9012_WAKEUP))
-				{
-					vTaskDelay(pdMS_TO_TICKS(5) );
-				}
-				if( TRUE == tle9012_wakeup_result )
-				{
-					tle9012_is_sleep = FALSE;
-					pos = sprintf( buffer+8, "The tle9012 was put in the operation mode successfully\r\n" );
-					sprintf( buffer + pos+8, "Total %d tle9012 nodes found on the network with ring structure = %s\r\n$$", tle9012_getNodeNr(), (isouart_getRing())?"Yes" : "No" );
-					ret = ECU8TR_CMD_SUCCESS;
-					if( pcb_data_client != NULL )
-					{
-						tle9012_state = ECU8TR_TLE9012_DATA_STREAMING;
-					}
-				}
-				else
-				{
-					sprintf( buffer+8, "Failed to put the tle9012 into the operation mode\r\n$$" );
-					ret = ECU8TR_CMD_FAILURE;
-				}
-			}
-			else if (TRUE == tle9012_isWakeup())// Need to read ID from chip to verify that it is in wakeup and that comms have not failed
-			{
-				pos = sprintf( buffer+8, "The tle9012 is already in operation mode \r\n" );
-				sprintf( buffer + pos+8, "Total %d tle9012 nodes found on the network with ring structure = %s\r\n$$", tle9012_getNodeNr(), (isouart_getRing())?"Yes" : "No" );
-				ret = ECU8TR_CMD_SUCCESS;
-			}
-			else // comms have failed
-			{
-				pos = sprintf( buffer+8, "isoUart communication has failed \r\n" );
-				sprintf( buffer+ pos+8, "Attempting to put the tle9012 into the operation mode\r\n$$" );
-				ret = ECU8TR_CMD_FAILURE;
-				tle9012_wakeup_result = FALSE;
-				tle9012_state = ECU8TR_TLE9012_WAKEUP;
-			}
-			ret_len = build_cmd_return( CMD_TLE9012_WAKEUP, ret, buffer );
-			tcp_write( tpcb, buffer, ret_len, 1 );
-			tcp_output( tpcb );
-			break;
-		}
-#if 0
-		case CMD_TLE9012_READ_REG:
-		{
-			int dev, reg;
-			boolean parse_result;
-
-
-			PRINTF( "tle9012_read_reg:%s\r\n", ecu8tr_cmd.cmd_body );
-			parse_result = parse_tle9012_read_params( ecu8tr_cmd.cmd_body, &dev, &reg );
-			PRINTF( "tle9012_read_reg: %d, 0x%x\r\n", dev, reg );
-			if( parse_result == FALSE )
-			{
-				sprintf( buffer, "Failed to parse the parameters %s\r\n$$", ecu8tr_cmd.cmd_body );
-				tcp_write( tpcb, buffer, strlen(buffer), 1 );
-				tcp_output( tpcb );
-			}
-			ret = tle9012_rdReg( dev, reg, (uint8*)buffer );
-			sprintf( buffer+ret, "\r\n$$" );
-			tcp_write( tpcb, buffer, ret+4, 1 );
-			tcp_output( tpcb );
-		}
-			break;
-
-		case CMD_TLE9012_WRITE_REG:
-		{
-			int dev, reg, val;
-			boolean parse_result;
-
-			PRINTF( "tle9012_write_reg:%s\r\n", ecu8tr_cmd.cmd_body );
-			parse_result = parse_tle9012_write_params( ecu8tr_cmd.cmd_body, &dev, &reg , &val );
-			if( parse_result == FALSE )
-			{
-				sprintf( buffer, "Failed to parse the parameters %s\r\n$$", ecu8tr_cmd.cmd_body );
-				tcp_write( tpcb, buffer, strlen(buffer), 1 );
-				tcp_output( tpcb );
-			}
-			ret = tle9012_wrReg( dev, reg, val, (uint8*)buffer );
-			if( buffer[0] == ISOUART_COMM_SUCCESS )
-			{
-				sprintf( buffer, "Write successfully\r\n$$" );
-			}
-			else
-			{
-				sprintf( buffer, "Write failed\r\n$$" );
-			}
-			tcp_write( tpcb, buffer, strlen(buffer), 1 );
-			tcp_output( tpcb );
-
-		}
-			break;
-#endif
-
-		case CMD_TLE9012_SET_NETWORK:
-		{
-			boolean parse_result;
-			int network;
-
-			sprintf( buffer+8, "Failed to set the network\r\n$$" );
-			ret = ECU8TR_CMD_FAILURE;
-
-			parse_result = parse_tle9012_network_params( ecu8tr_cmd.cmd_body, &network );
-			if( parse_result == TRUE )
-			{
-				if( isouart_setNetwork( network ) == TRUE )
-				{
-					tle9012_state = ECU8TR_TLE9012_IDLE;
-					sprintf( buffer+8, "Network set successfully\r\n$$" );
-					ret = ECU8TR_CMD_SUCCESS;
-
-				}
-			}
-			ret_len = build_cmd_return( CMD_TLE9012_SET_NETWORK, ret, buffer );
-			tcp_write( tpcb, buffer, ret_len, 1 );
-			tcp_output( tpcb );
-		}
-			break;
 
 		case CMD_ECU8TR_VERSION:
 			sprintf( buffer+8, "v%d.%d.%d\r\n$$", ECU8TR_MAJOR, ECU8TR_MINIOR, ECU8TR_PATCH );
 			ret_len = build_cmd_return( CMD_ECU8TR_VERSION, ECU8TR_CMD_SUCCESS, buffer );
-			tcp_write( tpcb, buffer, ret_len, 1 );
-			tcp_output( tpcb );
-			break;
-
-		case CMD_TLE9012_GET_NETWORK:
-			sprintf( buffer+8, (isouart_get_network())? "HighSide\r\n$$" : "LowSide\r\n$$" );
-			ret_len = build_cmd_return( CMD_TLE9012_GET_NETWORK, ECU8TR_CMD_SUCCESS, buffer );
-			tcp_write( tpcb, buffer, ret_len, 1 );
-			tcp_output( tpcb );
-			break;
-
-		case CMD_TLE9012_RUNNING_MODE:
-			sprintf( buffer+8, "%s\r\n$$", (tle9012_is_sleep==FALSE)? "Wakeup" : "Sleep" );
-			ret_len = build_cmd_return( CMD_TLE9012_RUNNING_MODE, ECU8TR_CMD_SUCCESS, buffer );
-			tcp_write( tpcb, buffer, ret_len, 1 );
-			tcp_output( tpcb );
-			break;
-
-		case CMD_TLE9012_SET_BITWIDTH:
-		{
-			boolean parse_result;
-			int bitWidth;
-
-			sprintf( buffer+8, "Failed to set the TLE9012 bit width\r\n$$" );
-			ret = ECU8TR_CMD_FAILURE;
-
-			parse_result = parse_tle9012_bitwidth_params( ecu8tr_cmd.cmd_body, &bitWidth );
-			if( parse_result == TRUE )
-			{
-				if( tle9012_setBitWidth( bitWidth ) == TRUE )
-				{
-					//tle9012_state = ECU8TR_TLE9012_IDLE;
-					sprintf( buffer+8, "TLE9012 bit width set successfully\r\n$$" );
-					ret = ECU8TR_CMD_SUCCESS;
-				}
-			}
-			ret_len = build_cmd_return( CMD_TLE9012_SET_BITWIDTH, ret, buffer );
-			tcp_write( tpcb, buffer, ret_len, 1 );
-			tcp_output( tpcb );
-		}
-			break;
-
-		case CMD_TLE9012_GET_BITWIDTH:
-			sprintf( buffer+8, (tle9012_getBitWidth()==TLE9012_BITWIDTH_16)? "Bit Width 16bit\r\n$$" : "Bit Width 10bit\r\n$$" );//1 = 10 bits, 0 = 16 bits
-			ret_len = build_cmd_return( CMD_TLE9012_GET_BITWIDTH, ECU8TR_CMD_SUCCESS, buffer );
 			tcp_write( tpcb, buffer, ret_len, 1 );
 			tcp_output( tpcb );
 			break;

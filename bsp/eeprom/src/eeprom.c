@@ -15,7 +15,6 @@
 #include "shell.h"
 #include "eeprom.h"
 #include "tools.h"
-#include "tle9012.h"
 
 #define FLASH_MODULE                0                           /* Macro to select the flash (PMU) module           */
 #define DATA_FLASH_0                IfxFlash_FlashType_D0       /* Define the Data Flash Bank to be used            */
@@ -175,8 +174,6 @@ boolean eeprom_read_config( void )
 		network_def_config[1][6] = p_network[8+6];		//TLE9012 ADC resolution
 	}
 
-	isouart_apply_network( (ISOUART_NetArch_t)network_def_config[1][5] );
-	tle9012_appyBitWidth( (TLE9012_BITWIDTH_t)network_def_config[1][6] );
 
 	return TRUE;
 }
@@ -240,28 +237,3 @@ boolean eeprom_set_gateway( const char *ip_str )
 
 
 
-boolean eeprom_set_isouartNetwork( ISOUART_NetArch_t network )
-{
-	if( network >= ISOUART_NET_NONE )
-	{
-		return FALSE;
-	}
-
-	network_def_config[1][5] = (uint8)network;
-	update_network_2_flash();
-
-	return TRUE;
-}
-
-/* By default it is 16bit resolution, because
- * network_def_config[1][6] = 0: 16 bit
- * network_def_config[1][6] = 1: 10 bit
- */
-boolean eeprom_set_tle9012_resolution( TLE9012_BITWIDTH_t bitWidth )
-{
-
-	network_def_config[1][6] = (uint8)bitWidth;
-	update_network_2_flash();
-
-	return TRUE;
-}

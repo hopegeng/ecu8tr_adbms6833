@@ -785,6 +785,7 @@ uint8_t adbms6830_ReadCVA(void)
 	if (false == adbms6830_read(ADBMS6830_RDCVA_REG, data, 6))
 	{
 		dbgPRINT("Error in reading RDCVA");
+		__debug();
 	}
 	else
 	{

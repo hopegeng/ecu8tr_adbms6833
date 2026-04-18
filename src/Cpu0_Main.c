@@ -47,7 +47,6 @@
 #include "board.h"
 #include "led.h"
 #include "can.h"
-#include "isouart.h"
 #include "ecu8tr_net.h"
 #include "qspi0mstr_illd.h"
 //#include "qspi0mstr.h"
@@ -94,7 +93,6 @@ void core0_main(void)
 	start_led();
 
 	start_network();
-	isouart_init();
 	qspi0mstr_Init_iLLD();
 
 	adbmsCommon_init();

@@ -49,8 +49,6 @@
 #include <IfxGeth_Eth.h>
 
 #include "ecu8tr_version.h"
-#include "isouart.h"
-#include "tle9012.h"
 #include "shell.h"
 #include "eeprom.h"
 #include "board.h"
@@ -82,8 +80,6 @@
 #define COMMAND_SHOW_NETWORK		"show_network"
 #define COMMAND_SHOW_LINK			"show_link"
 #define COMMAND_SHOW_VERSION		"show_version"
-#define COMMAND_SHOW_ISOUART		"show_isouart"
-#define COMMAND_SHOW_BITWIDTH		"show_bitwidth"
 #define COMMAND_RESET				"reset"
 
 
@@ -95,9 +91,7 @@
 #define COMMAND_SHOW_NETWORK_HELP_TEXT	"   : Show network configuration"
 #define COMMAND_SHOW_LINK_HELP_TEXT		"   : Show PHY link speed & duplex"
 #define COMMAND_SHOW_VERSION_HELP_TEXT	"   : Show the firmware version"
-#define COMMAND_SHOW_ISOUART_HELP_TEXT	"   : Show the ISOUART network"
 #define COMMAND_RESET_TEXT				"   : reset the box"
-#define COMMAND_SHOW_BITWIDTH_HELP_TEXT	"   : Show the tle9012 ADC bit width"
 
 /*********************************************************************************************************************/
 /*------------------------------------------------External Function Prototypes------------------------------------------------*/
@@ -120,8 +114,6 @@ boolean show_link(pchar args, void *data, IfxStdIf_DPipe *io);
 boolean shell_show_version(pchar args, void *data, IfxStdIf_DPipe *io);
 boolean shell_reset_board(pchar args, void *data, IfxStdIf_DPipe *io);
 boolean set_dhcp(pchar args, void *data, IfxStdIf_DPipe *io);
-boolean shell_show_isouart(pchar args, void *data, IfxStdIf_DPipe *io);
-boolean shell_show_bitwidth(pchar args, void *data, IfxStdIf_DPipe *io);
 
 
 /*********************************************************************************************************************/
@@ -154,8 +146,6 @@ const Ifx_Shell_Command g_shellCommands[] =
 	{COMMAND_SHOW_NETWORK, 	COMMAND_SHOW_NETWORK_HELP_TEXT,  	&g_shellInterface, &show_network },
 	{COMMAND_SHOW_LINK, 	COMMAND_SHOW_LINK_HELP_TEXT,  		&g_shellInterface, &show_link },
 	{COMMAND_SHOW_VERSION, 	COMMAND_SHOW_VERSION_HELP_TEXT,  	&g_shellInterface, &shell_show_version },
-	{COMMAND_SHOW_ISOUART, 	COMMAND_SHOW_ISOUART_HELP_TEXT,  	&g_shellInterface, &shell_show_isouart },
-	{COMMAND_SHOW_BITWIDTH,	COMMAND_SHOW_BITWIDTH_HELP_TEXT,  	&g_shellInterface, &shell_show_bitwidth },
     {COMMAND_RESET,   		COMMAND_RESET_TEXT,    				&g_shellInterface, &shell_reset_board },
 
     IFX_SHELL_COMMAND_LIST_END
@@ -211,34 +201,6 @@ void printInfo(IfxStdIf_DPipe *io)
 
 }
 
-
-boolean shell_show_isouart(pchar args, void *data, IfxStdIf_DPipe *io)
-{
-	ISOUART_NetArch_t isouart_get_network( void );
-	char buffer[16];
-
-	IfxStdIf_DPipe_print( io, ENDLINE );
-	sprintf( buffer, "%s\r\n", isouart_get_network()? "HighSide" : "LowSide" );
-	IfxStdIf_DPipe_print( io, buffer );
-	IfxStdIf_DPipe_print( io, ENDLINE );
-
-	return TRUE;
-
-}
-
-boolean shell_show_bitwidth(pchar args, void *data, IfxStdIf_DPipe *io)
-{
-	TLE9012_BITWIDTH_t tle9012_getBitWidth( void );
-	char buffer[16];
-
-	IfxStdIf_DPipe_print( io, ENDLINE );
-	sprintf( buffer, "%s\r\n", (tle9012_getBitWidth()==TLE9012_BITWIDTH_16)? "16bit" : "10bit" );
-	IfxStdIf_DPipe_print( io, buffer );
-	IfxStdIf_DPipe_print( io, ENDLINE );
-
-	return TRUE;
-
-}
 
 
 boolean shell_reset_board(pchar args, void *data, IfxStdIf_DPipe *io)
