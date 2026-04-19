@@ -17,10 +17,10 @@ void Bmu_CellDb_Init(void)
 
     for (i = 0u; i < BMU_TOTAL_CELLS; i++)
     {
-        g_bmuCellDb.cells[i].cell_voltage_raw_0p1mV = 0u;
-        g_bmuCellDb.cells[i].cell_temp_raw_0p01C = 0;
-        g_bmuCellDb.cells[i].gpio_voltage_raw_0p1mV = 0u;
-        g_bmuCellDb.cells[i].balancing = false;
+        g_bmuCellDb.cells[i].dbc_cell_sig.cell_voltage_raw_0p1mV = 0u;
+        g_bmuCellDb.cells[i].dbc_cell_sig.cell_temp_raw_0p01C = 0;
+        g_bmuCellDb.cells[i].dbc_cell_sig.gpio_voltage_raw_0p1mV = 0u;
+        g_bmuCellDb.cells[i].dbc_cell_sig.balancing = false;
         g_bmuCellDb.cells[i].valid = false;
         g_bmuCellDb.cells[i].stale = true;
         g_bmuCellDb.cells[i].sample_timestamp_ms = 0u;
@@ -46,10 +46,10 @@ Bmu_ReturnType Bmu_CellDb_UpdateMeasurement(uint8_t csc_index,
 
     idx = Bmu_MakeGlobalCellIndex0(csc_index, cell_on_csc);
 
-    g_bmuCellDb.cells[idx].cell_voltage_raw_0p1mV = cell_voltage_raw_0p1mV;
-    g_bmuCellDb.cells[idx].cell_temp_raw_0p01C = cell_temp_raw_0p01C;
-    g_bmuCellDb.cells[idx].gpio_voltage_raw_0p1mV = gpio_voltage_raw_0p1mV;
-    g_bmuCellDb.cells[idx].balancing = balancing;
+    g_bmuCellDb.cells[idx].dbc_cell_sig.cell_voltage_raw_0p1mV = cell_voltage_raw_0p1mV;
+    g_bmuCellDb.cells[idx].dbc_cell_sig.cell_temp_raw_0p01C = cell_temp_raw_0p01C;
+    g_bmuCellDb.cells[idx].dbc_cell_sig.gpio_voltage_raw_0p1mV = gpio_voltage_raw_0p1mV;
+    g_bmuCellDb.cells[idx].dbc_cell_sig.balancing = balancing;
     g_bmuCellDb.cells[idx].valid = true;
     g_bmuCellDb.cells[idx].stale = false;
     g_bmuCellDb.cells[idx].sample_timestamp_ms = now_ms;

@@ -34,10 +34,10 @@ static void Bmu_CellCan_PackPayload(const Bmu_CellRecordType *rec, CanIf_MsgType
     }
     else
     {
-        v_raw = rec->cell_voltage_raw_0p1mV;
-        g_raw = rec->gpio_voltage_raw_0p1mV;
-        t_raw_u16 = (uint16_t)rec->cell_temp_raw_0p01C;
-        bal = rec->balancing;
+        v_raw = rec->dbc_cell_sig.cell_voltage_raw_0p1mV;
+        g_raw = rec->dbc_cell_sig.gpio_voltage_raw_0p1mV;
+        t_raw_u16 = (uint16_t)rec->dbc_cell_sig.cell_temp_raw_0p01C;
+        bal = rec->dbc_cell_sig.balancing;
     }
 
     msg->data[0] = (uint8_t)(v_raw & 0xFFu);

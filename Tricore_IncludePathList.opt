@@ -66,7 +66,6 @@
 
 
 "-I../bsp/eth/inc/"
-"-I../bsp/shell/inc/"
 "-I../bsp/eeprom/inc/"
 "-I../bsp/board/inc/"
 "-I../bsp/can/inc/"
@@ -86,7 +85,14 @@
 "-I../src/app/dbc/"
 "-I../src/drivers/can/"
 "-I../src/drivers/gpio/"
+"-I../src/drivers/qspi/"
+"-I../src/drivers/eth/inc/"
 
 "-I../src/"
+"-I../src/app/core"
+"-I../src/app/shell/inc/"
+"-I../src/app/led/inc/"
+"-I../src/app/eeprom/inc/"
+
 "-I../src/middleware/can/"
 

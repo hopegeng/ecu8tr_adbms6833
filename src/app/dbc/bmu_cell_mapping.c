@@ -7,6 +7,7 @@
 
 
 #include "bmu_cell_mapping.h"
+#include "dbc_cell_message.h"
 
 void Bmu_CellMapping_InitDefault(void)
 {
@@ -53,10 +54,10 @@ uint8_t Bmu_GlobalToCellOnCsc(uint16_t global_cell_0based)
 
 uint32_t Bmu_CellMessageIdFromGlobal1(uint16_t global_cell_1based)
 {
-    return (BMU_CANID_C001_CELLMESSAGE + (uint32_t)(global_cell_1based - 1u));
+    return (DBC_CELLMESSAGE_FIRST_ID + (uint32_t)(global_cell_1based - 1u));
 }
 
 uint32_t Bmu_CellMessageIdFromGlobal0(uint16_t global_cell_0based)
 {
-    return (BMU_CANID_C001_CELLMESSAGE + (uint32_t)global_cell_0based);
+    return (DBC_CELLMESSAGE_FIRST_ID + (uint32_t)global_cell_0based);
 }

@@ -23,7 +23,15 @@
 #include "bmu_cell_scheduler.h"
 #include "bmu_csc_acq.h"
 #include "gpio_drv.h"
-
+#include "shell.h"
+#include "GETH_OS.h"
+#include "eeprom.h"
+#include "led.h"
+#include "ecu8tr_net.h"
+#include "qspi0mstr_illd.h"
+//#include "qspi0mstr.h"
+#include "adbms6830.h"
+#include "adbmsCommon.h"
 
 #define BMU_TASK_10MS_PERIOD_TICKS      pdMS_TO_TICKS(10u)
 #define BMU_TASK_20MS_PERIOD_TICKS      pdMS_TO_TICKS(20u)
@@ -32,6 +40,9 @@
 #ifndef pdTICKS_TO_MS
     #define pdTICKS_TO_MS( xTimeInTicks )    ( ( TickType_t ) ( ( ( uint64_t ) ( xTimeInTicks ) * ( uint64_t ) 1000U ) / ( uint64_t ) configTICK_RATE_HZ ) )
 #endif
+
+__private0 ADBMS6830_FUELCELL_INFO_t adbms6830Info = {0};
+__private0 ADBMS6830_SM_FAULT_t adbms6830Faults;
 
 static void Bmu_Task_10ms_FreeRTOS(void *pvParameters)
 {
@@ -75,6 +86,13 @@ static void Bmu_Task_100ms_FreeRTOS(void *pvParameters)
 void Bmu_Init(void)
 {
 	gpioDrv_initGPIO();
+	eeprom_read_config();
+	start_led();
+
+	start_network();
+	qspi0mstr_Init_iLLD();
+
+	adbmsCommon_init();
 
     CanIf_Init();
     Bmu_CellMapping_InitDefault();

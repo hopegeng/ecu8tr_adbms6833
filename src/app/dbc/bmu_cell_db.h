@@ -15,13 +15,11 @@
 #include <stdbool.h>
 #include "bmu_cfg.h"
 #include "bmu_types.h"
+#include "dbc_cell_message.h"
 
 typedef struct
 {
-    uint16_t cell_voltage_raw_0p1mV;   /* DBC raw */
-    int16_t  cell_temp_raw_0p01C;      /* DBC raw */
-    uint16_t gpio_voltage_raw_0p1mV;   /* DBC raw */
-    bool     balancing;
+    Dbc_CellMessageSignalsType dbc_cell_sig;
 
     bool     valid;
     bool     stale;

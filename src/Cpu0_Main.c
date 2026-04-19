@@ -41,19 +41,12 @@
 #include <FreeRTOS.h>
 #include <task.h>
 
-#include "shell.h"
 #include "GETH_OS.h"
-#include "eeprom.h"
-#include "led.h"
 #include "ecu8tr_net.h"
-#include "qspi0mstr_illd.h"
-//#include "qspi0mstr.h"
-#include "adbms6830.h"
-#include "adbmsCommon.h"
+
 
 IFX_ALIGN(4) IfxCpu_syncEvent g_cpuSyncEvent = 0;
-__private0 ADBMS6830_FUELCELL_INFO_t adbms6830Info = {0};
-__private0 ADBMS6830_SM_FAULT_t adbms6830Faults;
+
 
 void core0_main(void)
 {
@@ -84,14 +77,6 @@ void core0_main(void)
 #endif
 
 
-	eeprom_read_config();
-
-	start_led();
-
-	start_network();
-	qspi0mstr_Init_iLLD();
-
-	adbmsCommon_init();
 	Bmu_Init();
 
 	//qspi0mstr_Enable(TRUE);

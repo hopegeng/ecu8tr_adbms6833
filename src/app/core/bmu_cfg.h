@@ -4,14 +4,12 @@
 #include <stdint.h>
 
 /* System topology */
-#define BMU_CSC_COUNT                    (18u)
+#define BMU_CSC_COUNT                   (18u)
 #define BMU_CELLS_PER_CSC               (20u)
 #define BMU_TOTAL_CELLS                 (BMU_CSC_COUNT * BMU_CELLS_PER_CSC)
 
-/* DBC base CAN ID for C001_CellMessage */
-#define BMU_CANID_C001_CELLMESSAGE      (0x90000C01UL)
-
 /* DBC timing */
+
 #define BMU_CELLMESSAGE_CYCLE_MS        (1000u)
 
 /* Scheduler tick used by CellMessage publisher */
