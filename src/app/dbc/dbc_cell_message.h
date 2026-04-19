@@ -73,13 +73,6 @@ extern "C" {
 # error "Cxxx_CellMessage ID range is inconsistent."
 #endif
 
-typedef struct
-{
-    uint32_t id;
-    uint8_t  dlc;
-    bool     is_extended;
-    uint8_t  data[8];
-} Dbc_CanMsgType;
 
 typedef struct
 {
@@ -153,9 +146,9 @@ uint16_t Dbc_GpioVoltage_mV_ToRaw(float value_mV);
 
 bool Dbc_CellMessage_Pack(uint16_t cell_index_1based,
                           const Dbc_CellMessageSignalsType *sig,
-                          Dbc_CanMsgType *msg);
+						  CanIf_MsgType *msg);
 
-bool Dbc_CellMessage_Unpack(const Dbc_CanMsgType *msg,
+bool Dbc_CellMessage_Unpack(const CanIf_MsgType *msg,
                             uint16_t *cell_index_1based,
                             Dbc_CellMessageSignalsType *sig);
 

@@ -15,6 +15,7 @@
 #include <stdbool.h>
 #include "bmu_cfg.h"
 #include "bmu_types.h"
+#include "can_if.h"
 #include "dbc_cell_message.h"
 
 typedef struct

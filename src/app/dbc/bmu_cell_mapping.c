@@ -5,7 +5,7 @@
  *      Author: rgeng
  */
 
-
+#include "can_if.h"
 #include "bmu_cell_mapping.h"
 #include "dbc_cell_message.h"
 

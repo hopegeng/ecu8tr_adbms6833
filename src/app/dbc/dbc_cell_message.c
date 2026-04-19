@@ -5,7 +5,7 @@
  *      Author: rgeng
  */
 
-
+#include "can_if.h"
 #include "dbc_cell_message.h"
 
 /* ---------- local helpers ---------- */
@@ -80,7 +80,7 @@ uint16_t Dbc_GpioVoltage_mV_ToRaw(float value_mV)
 
 bool Dbc_CellMessage_Pack(uint16_t cell_index_1based,
                           const Dbc_CellMessageSignalsType *sig,
-                          Dbc_CanMsgType *msg)
+						  CanIf_MsgType *msg)
 {
     uint16_t temp_u16;
 
@@ -116,7 +116,7 @@ bool Dbc_CellMessage_Pack(uint16_t cell_index_1based,
 
 /* ---------- unpack ---------- */
 
-bool Dbc_CellMessage_Unpack(const Dbc_CanMsgType *msg,
+bool Dbc_CellMessage_Unpack(const CanIf_MsgType *msg,
                             uint16_t *cell_index_1based,
                             Dbc_CellMessageSignalsType *sig)
 {
