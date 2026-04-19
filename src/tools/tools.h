@@ -15,6 +15,18 @@
 #include <FreeRTOS.h>
 #include <task.h>
 #include <Stm/Std/IfxStm.h>
+#include <IfxPort.h>
+#include <Ifx_Types.h>
+#include <IfxCpu.h>
+#include <IfxScuRcu.h>
+
+typedef enum SysRstType_e
+{
+	eSysSystem,
+	eSysApplication,
+
+	eSysRstUnknown
+} SysRstType_t;
 
 
 static void delayMillSecond( uint32 delay )
@@ -286,5 +298,29 @@ static boolean parse_tle9012_write_params(const char *str, int *pDev, int *pReg,
 
     return FALSE;
 }
+
+
+
+static uint32 bytes_to_u32_le(const uint8 data[4])
+{
+    return ((uint32_t)data[0] << 0)  |
+           ((uint32_t)data[1] << 8)  |
+           ((uint32_t)data[2] << 16) |
+           ((uint32_t)data[3] << 24);
+}
+
+
+static void board_reset( SysRstType_t type)
+{
+	if(type == eSysSystem)
+	{
+		IfxScuRcu_performReset(IfxScuRcu_ResetType_system, 0xBEEFu);
+	}
+	else
+	{
+		IfxScuRcu_performReset(IfxScuRcu_ResetType_application, 0xBEEFu);
+	}
+}/* sys_ResetType() */
+
 
 #endif /* APP_INC_TOOLS_H_ */

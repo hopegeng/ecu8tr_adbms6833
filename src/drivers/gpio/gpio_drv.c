@@ -1,7 +1,7 @@
 /*
- * reset.c
+ * gpio_drv.c
  *
- *  Created on: Jan 24, 2024
+ *  Created on: Apr 18, 2026
  *      Author: rgeng
  */
 
@@ -11,23 +11,10 @@
 #include <IfxScuRcu.h>
 #include <IfxPort.h>
 #include <IfxPort_reg.h>
-#include "board.h"
 
-void board_reset( SysRstType_t type)
-{
-	if(type == eSysSystem)
-	{
-		IfxScuRcu_performReset(IfxScuRcu_ResetType_system, 0xBEEFu);
-	}
-	else
-	{
-		IfxScuRcu_performReset(IfxScuRcu_ResetType_application, 0xBEEFu);
-	}
-}/* sys_ResetType() */
+#include "gpio_drv.h"
 
-
-
-void gpio_init( void )
+void gpioDrv_initGPIO( void )
 {
 	/* What is MODULE_P34, looks like it is for CAN01 PHY */
 	IfxPort_setPinModeOutput( &MODULE_P34, 1,  IfxPort_OutputMode_pushPull, IfxPort_OutputIdx_general);

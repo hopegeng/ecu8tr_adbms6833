@@ -9,7 +9,6 @@
 #include <IfxPort_reg.h>
 #include <freeRTOS.h>
 #include <queue.h>
-#include <can.h>
 #include "shell.h"
 #include "ecu8tr_cmd.h"
 

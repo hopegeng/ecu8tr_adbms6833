@@ -12,7 +12,6 @@
 #include "_Impl/IfxFlash_cfg.h"
 #include "swap.h"
 #include "flash.h"
-#include "board.h"
 #include "tools.h"
 #include "shell.h"
 #include "ecu8tr_cmd.h"

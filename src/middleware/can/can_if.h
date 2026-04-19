@@ -5,8 +5,8 @@
  *      Author: rgeng
  */
 
-#ifndef SRC_APP_DBC_CAN_IF_H_
-#define SRC_APP_DBC_CAN_IF_H_
+#ifndef SRC_MIDDLEWARE_CAN_CAN_IF_H_
+#define SRC_MIDDLEWARE_CAN_CAN_IF_H_
 
 
 #include <stdint.h>
@@ -25,4 +25,4 @@ void CanIf_Init(void);
 Bmu_ReturnType CanIf_Transmit(const CanIf_MsgType *msg);
 
 
-#endif /* SRC_APP_DBC_CAN_IF_H_ */
+#endif /* SRC_MIDDLEWARE_CAN_CAN_IF_H_ */

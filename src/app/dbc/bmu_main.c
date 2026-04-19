@@ -16,11 +16,14 @@
 #include <task.h>
 
 #include "bmu_main.h"
+
 #include "can_if.h"
 #include "bmu_cell_mapping.h"
 #include "bmu_cell_db.h"
 #include "bmu_cell_scheduler.h"
 #include "bmu_csc_acq.h"
+#include "gpio_drv.h"
+
 
 #define BMU_TASK_10MS_PERIOD_TICKS      pdMS_TO_TICKS(10u)
 #define BMU_TASK_20MS_PERIOD_TICKS      pdMS_TO_TICKS(20u)
@@ -71,6 +74,8 @@ static void Bmu_Task_100ms_FreeRTOS(void *pvParameters)
 
 void Bmu_Init(void)
 {
+	gpioDrv_initGPIO();
+
     CanIf_Init();
     Bmu_CellMapping_InitDefault();
     Bmu_CellDb_Init();

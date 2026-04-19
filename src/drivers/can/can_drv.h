@@ -49,5 +49,8 @@ typedef struct CanMgrTxNodeQ_s
 
 
 extern void start_can( void );
+extern void CanDrv_initCan( void );
+extern void ecu8tr_canServerInit( void );
+extern IfxCan_Status can_transmitCanMessage( uint32 msgId, uint32 low, uint32 high );
 
 #endif /* CAN_TEST_H_ */

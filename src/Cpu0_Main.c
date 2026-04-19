@@ -44,9 +44,7 @@
 #include "shell.h"
 #include "GETH_OS.h"
 #include "eeprom.h"
-#include "board.h"
 #include "led.h"
-#include "can.h"
 #include "ecu8tr_net.h"
 #include "qspi0mstr_illd.h"
 //#include "qspi0mstr.h"
@@ -88,14 +86,13 @@ void core0_main(void)
 
 	eeprom_read_config();
 
-	gpio_init();
-	start_can();
 	start_led();
 
 	start_network();
 	qspi0mstr_Init_iLLD();
 
 	adbmsCommon_init();
+	Bmu_Init();
 
 	//qspi0mstr_Enable(TRUE);
 

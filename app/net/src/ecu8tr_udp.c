@@ -25,7 +25,7 @@
 #include <tcpip.h>
 #include <udp.h>
 
-#include "board.h"
+#include "tools.h"
 #include "bootloader.h"
 #include "shell.h"
 #include "ecu8tr_cmd.h"

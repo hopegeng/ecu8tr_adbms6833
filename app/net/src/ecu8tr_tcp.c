@@ -5,7 +5,7 @@
  *      Author: rgeng
  */
 
-#include <bsp/inc/ecu8tr_global.h>
+#include <ecu8tr_global.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
@@ -27,7 +27,6 @@
 #include "eeprom.h"
 #include "ecu8tr_cmd.h"
 #include "ecu8tr_version.h"
-#include "board.h"
 #include "qspi0mstr_illd.h"
 #include "adbms6830.h"
 #include "adbmsCommon.h"
@@ -1069,8 +1068,8 @@ ECU8TR_TLE9012_State_t ecu8tr_getTLE9012State( void )
 
 void ecu8_tcpServerInit( void )
 {
-    xTaskCreate( ecu8tr_tcpServerTask, "TCPServer", configMINIMAL_STACK_SIZE, NULL, 0, NULL);
-    xTaskCreate( ecu8tr_TLE9012Task, "TCPClient", 2*configMINIMAL_STACK_SIZE, NULL, 0, NULL);
+    //xTaskCreate( ecu8tr_tcpServerTask, "TCPServer", configMINIMAL_STACK_SIZE, NULL, 0, NULL);
+    //xTaskCreate( ecu8tr_TLE9012Task, "TCPClient", 2*configMINIMAL_STACK_SIZE, NULL, 0, NULL);
 }
 
 

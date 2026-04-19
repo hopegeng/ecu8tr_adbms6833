@@ -10,6 +10,8 @@
 /*********************************************************************************************************************/
 /*-----------------------------------------------------Includes------------------------------------------------------*/
 /*********************************************************************************************************************/
+#include "can_drv.h"
+
 #include <Ifx_Types.h>
 #include <IfxPort.h>
 #include <IfxPort_reg.h>
@@ -17,7 +19,8 @@
 #include <queue.h>
 #include <IfxCan_Can.h>
 #include <IfxCan.h>
-#include <can.h>
+#include <FreeRTOS.h>
+#include <semphr.h>
 #include "tools.h"
 
 /*----- Constant members -----------------------------------------------------*/
@@ -74,24 +77,27 @@ volatile uint32 can_rx_data[2];
 
 volatile boolean is_tx_done = FALSE;
 
+extern SemaphoreHandle_t canTxSemaphore;
 
 IFX_INTERRUPT(canIsrTxHandler, 0, ISR_PRIORITY_CAN_TX);
 IFX_INTERRUPT(canIsrRxHandler, 0, ISR_PRIORITY_CAN_RX);
 
 /* Interrupt Service Routine (ISR) called once the TX interrupt has been generated.
- * Turns on the LED1 to indicate successful CAN message transmission.
+ *
  */
 void canIsrTxHandler(void)
 {
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     /* Clear the "Transmission Completed" interrupt flag */
     IfxCan_Node_clearInterruptFlag(g_mcmcan.canSrcNode.node, IfxCan_Interrupt_transmissionCompleted);
     is_tx_done = TRUE;
-#if defined(__TRIBOARD__)
-	IfxPort_togglePin( &MODULE_P13, 3 );
-#else
-	IfxPort_togglePin( &MODULE_P20, 7 );
-#endif
-    /* Just to indicate that the CAN message has been transmitted by turning on LED1 */
+	// Release the semaphore to unblock the task
+    if( canTxSemaphore != NULL )
+    {
+    	xSemaphoreGiveFromISR(canTxSemaphore, &xHigherPriorityTaskWoken);
+    	// Yield if a higher-priority task was woken
+    	portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
 }
 
 /* Interrupt Service Routine (ISR) called once the RX interrupt has been generated.
@@ -127,7 +133,7 @@ void canIsrRxHandler(void)
 
 	cell_data_received = TRUE;
 
-	IfxPort_togglePin( &MODULE_P20, 8 );
+	//IfxPort_togglePin( &MODULE_P20, 8 );
 
 	canPkt.msg.messageId = rxMsgID;
 	canPkt.data = g_mcmcan.rxData;
@@ -155,7 +161,7 @@ IFX_CONST IfxCan_Can_Pins Can01_pins =
 };
 
 
-void initMcmcan(void)
+void CanDrv_initCan(void)
 {
 
 #if 0
@@ -343,7 +349,8 @@ void initMcmcan(void)
 /* Function to initialize both TX and RX messages with the default data values.
  * After initialization of the messages, the TX message is transmitted.
  */
-void transmitCanMessage( uint32 msgId, uint32 low, uint32 high )
+//FixMe: This function should be protected by a mutex since multiple task calls this function
+IfxCan_Status can_transmitCanMessage( uint32 msgId, uint32 low, uint32 high )
 {
     /* Initialization of the RX message with the default configuration */
 	//IfxCan_Can_initMessage(&g_mcmcan.rxMsg);
@@ -364,11 +371,14 @@ void transmitCanMessage( uint32 msgId, uint32 low, uint32 high )
     g_mcmcan.txMsg.frameMode = IfxCan_FrameMode_standard;
 
     /* Send the CAN message with the previously defined TX message content */
+#if 0
     while( IfxCan_Status_notSentBusy ==
            IfxCan_Can_sendMessage(&g_mcmcan.canSrcNode, &g_mcmcan.txMsg, &g_mcmcan.txData[0]) )
     {
     }
-
+#else
+    return IfxCan_Can_sendMessage(&g_mcmcan.canSrcNode, &g_mcmcan.txMsg, &g_mcmcan.txData[0]);
+#endif
 }
 
 
@@ -377,29 +387,34 @@ uint32 can_doCanSend(void* lpParam)
 	CanMgrTxNodeQ_t *pCanMsg = (CanMgrTxNodeQ_t*)lpParam;
 	uint32 low;
 	uint32 high;
+	IfxCan_Status status;
 
 	low = *(uint32*)(pCanMsg->tx_data);
 	high = *(uint32*)(pCanMsg->tx_data+1);
   
-
-	transmitCanMessage( pCanMsg->pkt.msg.messageId, low, high );
+	do
+	{
+		status = can_transmitCanMessage( pCanMsg->pkt.msg.messageId, low, high );
+	} while( status == IfxCan_Status_notSentBusy );
 
 	return 0;
 
 
 } /* END of can_doCanSend() */
 
-
-void start_can( void )
-{
-	initMcmcan();
-}
-
 void can_test( void )
 {
 	while( 1 )
 	{
-		transmitCanMessage( 0x88, 0x02, 0x02 );
+		can_transmitCanMessage( 0x88, 0x02, 0x02 );
 		delayMillSecond( 1000 );
 	}
 }
+
+
+void start_can( void )
+{
+	CanDrv_initCan();
+	can_test();
+}
+
