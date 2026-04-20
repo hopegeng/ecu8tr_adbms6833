@@ -5,8 +5,8 @@
  *      Author: rgeng
  */
 
-#ifndef SRC_APP_DBC_BMU_CELL_CAN_H_
-#define SRC_APP_DBC_BMU_CELL_CAN_H_
+#ifndef SRC_APP_BMU_BMU_CELL_CAN_H_
+#define SRC_APP_BMU_BMU_CELL_CAN_H_
 
 
 
@@ -17,4 +17,4 @@ Bmu_ReturnType Bmu_CellCan_BuildMessage(uint16_t global_cell_0based, void *msg_o
 Bmu_ReturnType Bmu_CellCan_SendOne(uint16_t global_cell_0based);
 
 
-#endif /* SRC_APP_DBC_BMU_CELL_CAN_H_ */
+#endif /* SRC_APP_BMU_BMU_CELL_CAN_H_ */

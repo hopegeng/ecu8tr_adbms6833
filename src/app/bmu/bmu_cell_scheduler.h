@@ -5,8 +5,8 @@
  *      Author: rgeng
  */
 
-#ifndef SRC_APP_DBC_BMU_CELL_SCHEDULER_H_
-#define SRC_APP_DBC_BMU_CELL_SCHEDULER_H_
+#ifndef SRC_APP_BMU_BMU_CELL_SCHEDULER_H_
+#define SRC_APP_BMU_BMU_CELL_SCHEDULER_H_
 
 
 #include <stdint.h>
@@ -21,4 +21,4 @@ void Bmu_CellScheduler_Init(void);
 void Bmu_CellScheduler_10msTask(void);
 
 
-#endif /* SRC_APP_DBC_BMU_CELL_SCHEDULER_H_ */
+#endif /* SRC_APP_BMU_BMU_CELL_SCHEDULER_H_ */

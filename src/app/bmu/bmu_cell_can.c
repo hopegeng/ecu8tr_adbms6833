@@ -6,11 +6,11 @@
  */
 
 
-#include "bmu_cell_can.h"
+#include "../bmu/bmu_cell_can.h"
 
 #include "../../middleware/can/can_if.h"
-#include "bmu_cell_db.h"
-#include "bmu_cell_mapping.h"
+#include "../bmu/bmu_cell_db.h"
+#include "../bmu/bmu_cell_mapping.h"
 #include "bmu_cfg.h"
 
 static void Bmu_CellCan_PackPayload(const Bmu_CellRecordType *rec, CanIf_MsgType *msg)

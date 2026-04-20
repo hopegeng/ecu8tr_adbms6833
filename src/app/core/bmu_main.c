@@ -17,11 +17,11 @@
 
 #include "bmu_main.h"
 
+#include "../bmu/bmu_cell_db.h"
+#include "../bmu/bmu_cell_mapping.h"
+#include "../bmu/bmu_cell_scheduler.h"
+#include "../bmu/bmu_csc_acq.h"
 #include "can_if.h"
-#include "bmu_cell_mapping.h"
-#include "bmu_cell_db.h"
-#include "bmu_cell_scheduler.h"
-#include "bmu_csc_acq.h"
 #include "gpio_drv.h"
 #include "shell.h"
 #include "GETH_OS.h"

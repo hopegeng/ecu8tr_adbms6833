@@ -5,8 +5,8 @@
  *      Author: rgeng
  */
 
-#ifndef SRC_APP_DBC_BMU_CELL_MAPPING_H_
-#define SRC_APP_DBC_BMU_CELL_MAPPING_H_
+#ifndef SRC_APP_BMU_BMU_CELL_MAPPING_H_
+#define SRC_APP_BMU_BMU_CELL_MAPPING_H_
 
 #ifndef BMU_CELL_MAPPING_H
 #define BMU_CELL_MAPPING_H
@@ -37,4 +37,4 @@ uint32_t Bmu_CellMessageIdFromGlobal0(uint16_t global_cell_0based);
 
 #endif /* BMU_CELL_MAPPING_H */
 
-#endif /* SRC_APP_DBC_BMU_CELL_MAPPING_H_ */
+#endif /* SRC_APP_BMU_BMU_CELL_MAPPING_H_ */

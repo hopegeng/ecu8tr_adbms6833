@@ -5,8 +5,8 @@
  *      Author: rgeng
  */
 
-#ifndef SRC_APP_DBC_BMU_CELL_DB_H_
-#define SRC_APP_DBC_BMU_CELL_DB_H_
+#ifndef SRC_APP_BMU_BMU_CELL_DB_H_
+#define SRC_APP_BMU_BMU_CELL_DB_H_
 
 #ifndef BMU_CELL_DB_H
 #define BMU_CELL_DB_H
@@ -53,4 +53,4 @@ void Bmu_CellDb_StaleMonitor(uint32_t now_ms);
 
 #endif /* BMU_CELL_DB_H */
 
-#endif /* SRC_APP_DBC_BMU_CELL_DB_H_ */
+#endif /* SRC_APP_BMU_BMU_CELL_DB_H_ */

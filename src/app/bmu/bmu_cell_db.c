@@ -6,8 +6,9 @@
  */
 
 
-#include "bmu_cell_db.h"
-#include "bmu_cell_mapping.h"
+#include "../bmu/bmu_cell_db.h"
+
+#include "../bmu/bmu_cell_mapping.h"
 
 Bmu_CellDbType g_bmuCellDb;
 

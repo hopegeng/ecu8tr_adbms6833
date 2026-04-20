@@ -5,8 +5,8 @@
  *      Author: rgeng
  */
 
-#ifndef SRC_APP_DBC_DBC_CELL_MESSAGE_H_
-#define SRC_APP_DBC_DBC_CELL_MESSAGE_H_
+#ifndef SRC_APP_BMU_DBC_CELL_MESSAGE_H_
+#define SRC_APP_BMU_DBC_CELL_MESSAGE_H_
 
 
 #include <stdint.h>
@@ -156,4 +156,4 @@ bool Dbc_CellMessage_Unpack(const CanIf_MsgType *msg,
 }
 #endif
 
-#endif /* SRC_APP_DBC_DBC_CELL_MESSAGE_H_ */
+#endif /* SRC_APP_BMU_DBC_CELL_MESSAGE_H_ */

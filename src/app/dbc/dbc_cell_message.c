@@ -8,6 +8,7 @@
 #include "can_if.h"
 #include "dbc_cell_message.h"
 
+
 /* ---------- local helpers ---------- */
 
 static uint16_t Dbc_ClampU16_FromFloat(float value, float factor, uint16_t max_raw)

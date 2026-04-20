@@ -6,8 +6,9 @@
  */
 
 
-#include "bmu_cell_scheduler.h"
-#include "bmu_cell_can.h"
+#include "../bmu/bmu_cell_scheduler.h"
+
+#include "../bmu/bmu_cell_can.h"
 #include "bmu_cfg.h"
 
 /*
