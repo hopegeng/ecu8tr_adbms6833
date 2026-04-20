@@ -24,11 +24,11 @@
 #include <tcp.h>
 #include <tcpip.h>
 #include <udp.h>
+#include "../../network/inc/ecu8tr_cmd.h"
 
 #include "tools.h"
 #include "bootloader.h"
 #include "shell.h"
-#include "ecu8tr_cmd.h"
 
 void bootloader_set_upgradeStatus( ECU8TR_UPGRADE_STATUS_e status );
 

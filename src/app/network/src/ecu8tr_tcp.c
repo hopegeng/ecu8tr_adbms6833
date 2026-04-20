@@ -5,6 +5,8 @@
  *      Author: rgeng
  */
 
+#include "../../network/inc/ecu8tr_tcp.h"
+
 #include <ecu8tr_global.h>
 #include <stdint.h>
 #include <string.h>
@@ -20,18 +22,17 @@
 #include <tcp.h>
 #include <tcpip.h>
 #include <udp.h>
+#include "../../network/inc/ecu8tr_cmd.h"
 
 
 #include "shell.h"
 #include "tools.h"
 #include "eeprom.h"
-#include "ecu8tr_cmd.h"
 #include "ecu8tr_version.h"
 #include "qspi0mstr_illd.h"
 #include "adbms6830.h"
 #include "adbmsCommon.h"
 #include "adbms6830_reg.h"
-#include "ecu8tr_tcp.h"
 #include "adbms6830SM.h"
 
 #define ECU8_TCP_CMD_SERVER_PORT  				8000
@@ -633,7 +634,7 @@ static void ecu8tr_tcpServerTask( void *arg )
  *  *****************************************************************************/
 static void adbms6830_reverse_rawData_array(ADBMS6830_FUELCELL_INFO_t *adbmsData)
 {
-	RAW_DATA_t tempVar;
+	ADBMS6830_NodeRawData_t tempVar;
 	for(uint8 i=0; i<ADBMS6830_NUMBER_OF_NODES/2; ++i)
 	{
 		tempVar = adbmsData->rawData[i];
@@ -791,6 +792,9 @@ static void ecu8tr_TLE9012Task( void *arg )
 	/* Wake up isoSPI */
 	tx_buff[0] = 0x0;
 
+	adbms6830_InitDriver(NULL);
+	adbms6830_SetSpiChipSelect(eQspiHwCs02);
+
 //	static uint16_t streamingTimeOut = 0;
 
 	while( adbms6830Info.isInitialized == false )
@@ -798,6 +802,7 @@ static void ecu8tr_TLE9012Task( void *arg )
 		if (false == adbms6830Info.isInitialized)
 		{
 			// try initializing adbms6830 with CS=2
+			adbms6830_SetSpiChipSelect(eQspiHwCs02);
 			if (true == adbms6830_Config())
 			{
 				adbms6830Info.isInitialized = true;
@@ -807,6 +812,7 @@ static void ecu8tr_TLE9012Task( void *arg )
 			{
 				// try initializing adbms6830 with CS=6
 				CS = eQspiHwCs06;
+				adbms6830_SetSpiChipSelect(eQspiHwCs06);
 				if (true == adbms6830_Config())
 				{
 					adbms6830Info.isInitialized = true;

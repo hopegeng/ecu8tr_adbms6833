@@ -12,6 +12,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+static bool g_qspi0IlldInitialized = false;
+
 IfxQspi_SpiMaster spi;
 IfxQspi_SpiMaster_Channel spiChannel;
 IfxQspi_SpiMaster_ChannelConfig spiMasterChannelConfig;
@@ -66,6 +68,11 @@ IFX_INTERRUPT(qspi0ErISR, 0, IFX_INTPRIO_QSPI0_ER)
 
 void qspi0mstr_Init_iLLD(void)
 {
+	if (g_qspi0IlldInitialized == true)
+	{
+		return;
+	}
+
 	/* Initialize Module */
 
 	// create module config
@@ -117,6 +124,8 @@ void qspi0mstr_Init_iLLD(void)
 	spiMasterChannelConfig.sls.output = slsOutput2;
 	// initialize channel
 	IfxQspi_SpiMaster_initChannel(&spiChannel, &spiMasterChannelConfig);
+
+	g_qspi0IlldInitialized = true;
 }
 
 extern SpiIf_Status qspi0_send_receive_iLLD(QspiCs_t CS, uint16 u16Length, uint8* pu8SrcBuff, uint8* pu8DstBuff)

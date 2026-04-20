@@ -17,6 +17,7 @@
 
 #include "bmu_main.h"
 
+#include "../network/inc/ecu8tr_net.h"
 #include "can_if.h"
 #include "bmu_cell_mapping.h"
 #include "bmu_cell_db.h"
@@ -27,7 +28,6 @@
 #include "GETH_OS.h"
 #include "eeprom.h"
 #include "led.h"
-#include "ecu8tr_net.h"
 #include "qspi0mstr_illd.h"
 //#include "qspi0mstr.h"
 #include "adbms6830.h"
@@ -41,8 +41,8 @@
     #define pdTICKS_TO_MS( xTimeInTicks )    ( ( TickType_t ) ( ( ( uint64_t ) ( xTimeInTicks ) * ( uint64_t ) 1000U ) / ( uint64_t ) configTICK_RATE_HZ ) )
 #endif
 
-__private0 ADBMS6830_FUELCELL_INFO_t adbms6830Info = {0};
-__private0 ADBMS6830_SM_FAULT_t adbms6830Faults;
+ADBMS6830_FUELCELL_INFO_t adbms6830Info = {0};
+ADBMS6830_SM_FAULT_t adbms6830Faults = {0};
 
 static void Bmu_Task_10ms_FreeRTOS(void *pvParameters)
 {
@@ -88,17 +88,16 @@ void Bmu_Init(void)
 	gpioDrv_initGPIO();
 	eeprom_read_config();
 	start_led();
-
-	start_network();
+	netDrv_initNetwork();
 	qspi0mstr_Init_iLLD();
-
-	adbmsCommon_init();
 
     CanIf_Init();
     Bmu_CellMapping_InitDefault();
     Bmu_CellDb_Init();
     Bmu_CellScheduler_Init();
     Bmu_CscAcq_Init();
+
+    adbmsCommon_init();
 
     xTaskCreate(Bmu_Task_10ms_FreeRTOS, "BMU_10MS", configMINIMAL_STACK_SIZE, NULL, 0, NULL);
     xTaskCreate(Bmu_Task_20ms_FreeRTOS, "BMU_20MS", configMINIMAL_STACK_SIZE, NULL, 0, NULL);

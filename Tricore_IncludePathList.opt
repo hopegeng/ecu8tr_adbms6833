@@ -75,8 +75,6 @@
 "-I../bsp/qspi/inc/"
 "-I../bsp/machine/inc/"
 
-"-I../app/net/inc/"
-"-I../app/inc/"
 "-I../app/tle9012/inc/"
 "-I../app/adbms6830/inc/"
 
@@ -93,6 +91,7 @@
 "-I../src/app/shell/inc/"
 "-I../src/app/led/inc/"
 "-I../src/app/eeprom/inc/"
+"-I../src/app/network/inc/"
 
 "-I../src/middleware/can/"
 
