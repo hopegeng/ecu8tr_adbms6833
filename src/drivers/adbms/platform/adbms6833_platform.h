@@ -45,7 +45,7 @@ void AdbmsPlatform_SetStubTimeMs(uint32_t time_ms);
  * PEC15 helper
  * Polynomial 0x4599
  * ========================= */
-uint16_t AdbmsPlatform_Pec15(const uint8_t *data, uint16_t len);
+uint16_t AdbmsPlatform_Calc_PEC15(const uint8_t *data, uint16_t len);
 
 #ifdef __cplusplus
 }

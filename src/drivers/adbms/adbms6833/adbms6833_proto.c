@@ -28,9 +28,10 @@ static void Adbms6833_BuildCommandFrame(uint16_t cmd, uint8_t frame[ADBMS6833_CM
     frame[0] = (uint8_t)((cmd >> 8) & 0xFFu);
     frame[1] = (uint8_t)(cmd & 0xFFu);
 
-    pec = AdbmsPlatform_Pec15(frame, 2u);
+    pec = AdbmsPlatform_Calc_PEC15(frame, 2u);
     frame[2] = (uint8_t)((pec >> 8) & 0xFFu);
     frame[3] = (uint8_t)(pec & 0xFFu);
+
 }
 
 void Adbms6833Proto_Init(void)

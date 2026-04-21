@@ -322,5 +322,10 @@ static void board_reset( SysRstType_t type)
 	}
 }/* sys_ResetType() */
 
+static uint32 get_MicroSecondOnSTM0( void )
+{
+	return IfxStm_get( &MODULE_STM0 ) / (IfxStm_getFrequency( &MODULE_STM0) / 1000000);
+}
+
 
 #endif /* APP_INC_TOOLS_H_ */

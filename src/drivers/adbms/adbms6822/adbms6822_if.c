@@ -6,17 +6,23 @@
  */
 
 
+#include <stdint.h>
 #include "adbms6822_if.h"
 #include "adbms6833_platform.h"
 #include <string.h>
+#include "tools.h"
 
 #define ADBMS6822_WAKE_DUMMY_LEN    (2u)
 
 static Adbms6822_StateType g_adbms6822State;
+static uint64_t adbmsCommon_isoSPI_wakeup_timeoutUs = 0;
+
+
 
 void Adbms6822_Init(void)
 {
     (void)memset(&g_adbms6822State, 0, sizeof(g_adbms6822State));
+	adbmsCommon_isoSPI_wakeup_timeoutUs = get_MicroSecondOnSTM0() + 4300;
     AdbmsPlatform_Init();
     g_adbms6822State.initialized = true;
 }
