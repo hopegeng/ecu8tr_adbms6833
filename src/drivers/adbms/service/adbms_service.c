@@ -25,7 +25,7 @@ Bmu_ReturnType Adbms_Service_Init(void)
 
 Bmu_ReturnType Adbms_Service_Wake(void)
 {
-    return Adbms6822_WakeChain();
+    return Adbms6822_WakeChain( true );
 }
 
 static Bmu_ReturnType Adbms_Service_RefreshStackIfNeeded(void)
@@ -34,7 +34,7 @@ static Bmu_ReturnType Adbms_Service_RefreshStackIfNeeded(void)
 
     if (!Adbms6822_IsAwake())
     {
-        ret = Adbms6822_WakeChain();
+        ret = Adbms6822_WakeChain( true );
         if (ret != BMU_OK)
         {
             return ret;

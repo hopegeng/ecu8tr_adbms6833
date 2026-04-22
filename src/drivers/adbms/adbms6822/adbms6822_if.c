@@ -37,20 +37,18 @@ bool Adbms6822_IsAwake(void)
     return g_adbms6822State.link_awake;
 }
 
-Bmu_ReturnType Adbms6822_WakeChain(void)
+Bmu_ReturnType Adbms6822_WakeChain( bool force )
 {
     uint8_t dummyTx[ADBMS6822_WAKE_DUMMY_LEN] = {0x00u, 0x00u};
     uint8_t dummyRx[ADBMS6822_WAKE_DUMMY_LEN] = {0u, 0u};
     Bmu_ReturnType ret;
 
-    if (g_adbms6822State.initialized == false)
+    if( (force == false) && g_adbms6822State.initialized == false)
     {
         return BMU_E_NOT_OK;
     }
 
-    AdbmsPlatform_CsAssert();
     ret = AdbmsPlatform_SpiTransfer(dummyTx, dummyRx, ADBMS6822_WAKE_DUMMY_LEN);
-    AdbmsPlatform_CsDeassert();
 
     if (ret == BMU_OK)
     {
@@ -59,6 +57,7 @@ Bmu_ReturnType Adbms6822_WakeChain(void)
         g_adbms6822State.tx_count++;
         g_adbms6822State.rx_count++;
     }
+
 
     return ret;
 }
@@ -79,9 +78,10 @@ Bmu_ReturnType Adbms6822_SendRawFrame(const uint8_t *tx,
         return BMU_E_NOT_OK;
     }
 
-    AdbmsPlatform_CsAssert();
+    Adbms6822_WakeChain( true );
+
     ret = AdbmsPlatform_SpiTransfer(tx, rx, len);
-    AdbmsPlatform_CsDeassert();
+    AdbmsPlatform_DelayUs( 500 );		//Delay 500us, important
 
     if (ret == BMU_OK)
     {

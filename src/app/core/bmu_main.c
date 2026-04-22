@@ -91,10 +91,8 @@ void Bmu_Init(void)
 
 	start_network();
 	qspi0mstr_Init_iLLD();
-
-	adbmsCommon_init();
-
     CanIf_Init();
+
     Bmu_CellMapping_InitDefault();
     Bmu_CellDb_Init();
     Bmu_CellScheduler_Init();

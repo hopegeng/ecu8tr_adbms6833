@@ -5,9 +5,11 @@
  *      Author: rgeng
  */
 
-
-#include "adbms6833_platform.h"
 #include <string.h>
+#include <IfxQspi_SpiMaster.h>
+#include "adbms6833_platform.h"
+#include "qspi.h"
+#include "qspi0mstr_illd.h"
 
 /* ============================================================
  * Stub platform state
@@ -16,7 +18,7 @@
 static bool g_stubEchoMode = true;
 static uint32_t g_stubTimeMs = 0u;
 static bool g_stubCsAsserted = false;
-
+static QspiCs_t SSEL = eQspiHwCs02;
 
 
 void AdbmsPlatform_Init(void)
@@ -24,6 +26,7 @@ void AdbmsPlatform_Init(void)
     g_stubEchoMode = true;
     g_stubTimeMs = 0u;
     g_stubCsAsserted = false;
+    qspi0mstr_Init_iLLD();
 }
 
 void AdbmsPlatform_DelayUs(uint32_t delay_us)
@@ -57,6 +60,7 @@ void AdbmsPlatform_CsDeassert(void)
     g_stubCsAsserted = false;
 }
 
+
 Bmu_ReturnType AdbmsPlatform_SpiTransfer(const uint8_t *tx,
                                          uint8_t *rx,
                                          uint16_t len)
@@ -83,11 +87,16 @@ Bmu_ReturnType AdbmsPlatform_SpiTransfer(const uint8_t *tx,
         }
         else
         {
-            (void)memset(rx, 0, len);
+        	if( SpiIf_Status_ok != qspi0_send_receive_iLLD( SSEL, len, tx, rx ) )
+        	{
+        		return BMU_E_NOT_OK;
+        	}
         }
+
+    	(void)qspimstr_waitForRxDone_iLLD();
+
     }
 
-    (void)g_stubCsAsserted;
     return BMU_OK;
 }
 

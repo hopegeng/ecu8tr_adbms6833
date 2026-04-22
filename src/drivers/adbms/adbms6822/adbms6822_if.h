@@ -32,7 +32,7 @@ void Adbms6822_Init(void);
 const Adbms6822_StateType *Adbms6822_GetState(void);
 
 bool Adbms6822_IsAwake(void);
-Bmu_ReturnType Adbms6822_WakeChain(void);
+Bmu_ReturnType Adbms6822_WakeChain( bool force );
 Bmu_ReturnType Adbms6822_SendRawFrame(const uint8_t *tx,
                                       uint8_t *rx,
                                       uint16_t len);
