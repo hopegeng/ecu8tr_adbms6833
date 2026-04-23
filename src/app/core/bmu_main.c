@@ -90,20 +90,21 @@ void Bmu_Init(void)
 	start_led();
 
 	start_network();
-	qspi0mstr_Init_iLLD();
     CanIf_Init();
+	//qspi0mstr_Init_iLLD();
 
+#if 0
     Bmu_CellMapping_InitDefault();
     Bmu_CellDb_Init();
     Bmu_CellScheduler_Init();
     Bmu_CscAcq_Init();
 
-    while( 1 )
-    	;
 
     xTaskCreate(Bmu_Task_10ms_FreeRTOS, "BMU_10MS", configMINIMAL_STACK_SIZE, NULL, 0, NULL);
     xTaskCreate(Bmu_Task_20ms_FreeRTOS, "BMU_20MS", configMINIMAL_STACK_SIZE, NULL, 0, NULL);
     xTaskCreate(Bmu_Task_100ms_FreeRTOS, "BMU_100MS", configMINIMAL_STACK_SIZE, NULL, 0, NULL);
+#endif
+
 }
 
 void Bmu_Task_10ms(uint32_t now_ms)

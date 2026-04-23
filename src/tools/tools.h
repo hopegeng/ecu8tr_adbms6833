@@ -38,6 +38,15 @@ static void delayMillSecond( uint32 delay )
 }
 
 
+static void delayMicroSecond( uint32 delay )
+{
+	float32 fre = IfxStm_getFrequency( &MODULE_STM0 );
+	uint32 ticks = delay * (fre/1000000.0);
+
+	IfxStm_waitTicks( &MODULE_STM0, ticks );
+}
+
+
 static boolean convert_ip_to_uint8( const char* ip_str, uint8 ip_bytes[4] )
 {
     int parts[4];
@@ -329,30 +338,18 @@ static uint32 get_MicroSecondOnSTM0( void )
 
 static void delay_ms_stm2(uint32 ms)
 {
-    // The iLLD handles the frequency lookup for STM2 automatically
-    uint32 ticks = IfxStm_getTicksFromMilliseconds(&MODULE_STM2, ms);
-    uint32 startTick = IfxStm_getLower(&MODULE_STM2);
+	float32 fre = IfxStm_getFrequency( &MODULE_STM2 );
+	uint32 ticks = ms * (fre/1000.0);
 
-    // Standard overflow-safe polling
-    while( (uint32)(IfxStm_getLower(&MODULE_STM2) - startTick) < ticks );
+	IfxStm_waitTicks( &MODULE_STM2, ticks );
 }
 
 static void delay_us_stm2(uint32 us)
 {
-    // 1. Get the number of STM ticks that represent the requested microseconds.
-    // The iLLD function IfxStm_getTicksFromMicroseconds handles the
-    // frequency calculation for MODULE_STM2 automatically.
-    uint32 ticks = IfxStm_getTicksFromMicroseconds(&MODULE_STM2, us);
+	float32 fre = IfxStm_getFrequency( &MODULE_STM2 );
+	uint32 ticks = us * (fre/1000000.0);
 
-    // 2. Capture the starting tick count from the lower 32 bits of STM2.
-    uint32 startTick = IfxStm_getLower(&MODULE_STM2);
-
-    // 3. Busy-wait until the difference between current and start is >= ticks.
-    // This subtraction method is robust against 32-bit register overflow.
-    while ((uint32)(IfxStm_getLower(&MODULE_STM2) - startTick) < ticks)
-    {
-        // Optional: __nop(); or execute background safety tasks
-    }
+	IfxStm_waitTicks( &MODULE_STM2, ticks );
 }
 
 #endif /* APP_INC_TOOLS_H_ */

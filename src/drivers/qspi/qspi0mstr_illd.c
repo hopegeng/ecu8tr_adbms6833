@@ -40,19 +40,20 @@ IfxQspi_SpiMaster_Output slsOutput6 = {
 // dma priorities
 #define IFX_INTPRIO_DMA_CH1  10
 #define IFX_INTPRIO_DMA_CH2  11
+#define ISR_PROVIDER_QSPI0   IfxSrc_Tos_cpu2
+#define QSPI0_INTERRUPT_CORE 2
 
-
-IFX_INTERRUPT(qspi0DmaTxISR, 0, IFX_INTPRIO_DMA_CH1 )
+IFX_INTERRUPT(qspi0DmaTxISR, QSPI0_INTERRUPT_CORE, IFX_INTPRIO_DMA_CH1 )
 {
     IfxQspi_SpiMaster_isrDmaTransmit(&spi);
 }
 
-IFX_INTERRUPT(qspi0DmaRxISR, 0, IFX_INTPRIO_DMA_CH2)
+IFX_INTERRUPT(qspi0DmaRxISR, QSPI0_INTERRUPT_CORE, IFX_INTPRIO_DMA_CH2)
 {
    IfxQspi_SpiMaster_isrDmaReceive(&spi);
 }
 
-IFX_INTERRUPT(qspi0ErISR, 0, IFX_INTPRIO_QSPI0_ER)
+IFX_INTERRUPT(qspi0ErISR, QSPI0_INTERRUPT_CORE, IFX_INTPRIO_QSPI0_ER)
 {
     IfxQspi_SpiMaster_isrError(&spi);
 
@@ -80,6 +81,7 @@ void qspi0mstr_Init_iLLD(void)
 	spiMasterConfig.base.txPriority       = IFX_INTPRIO_DMA_CH1;
 	spiMasterConfig.base.rxPriority       = IFX_INTPRIO_DMA_CH2;
 	spiMasterConfig.base.erPriority       = IFX_INTPRIO_QSPI0_ER;
+	spiMasterConfig.base.isrProvider	  = ISR_PROVIDER_QSPI0;
 
 	// dma configuration.
 	spiMasterConfig.dma.txDmaChannelId = IfxDma_ChannelId_1;

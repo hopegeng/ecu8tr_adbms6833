@@ -27,6 +27,9 @@
 #include "Ifx_Types.h"
 #include "IfxCpu.h"
 #include "IfxScuWdt.h"
+#include "tools.h"
+#include "shell.h"
+
 
 extern IfxCpu_syncEvent g_cpuSyncEvent;
 extern void adbms_main_on_core2(void);
@@ -44,5 +47,8 @@ void core2_main(void)
     IfxCpu_emitEvent(&g_cpuSyncEvent);
     IfxCpu_waitEvent(&g_cpuSyncEvent, 1);
     
+    delay_ms_stm2( 2000 );
+
     adbms_main_on_core2();
+
 }

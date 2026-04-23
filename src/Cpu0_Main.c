@@ -79,11 +79,10 @@ void core0_main(void)
 
 	Bmu_Init();
 
-	//qspi0mstr_Enable(TRUE);
-
+#if 0
 	ecu8_tcpServerInit();
-
     ecu8_udpServerInit();
+#endif
 
     /* Start the scheduler */
     vTaskStartScheduler();

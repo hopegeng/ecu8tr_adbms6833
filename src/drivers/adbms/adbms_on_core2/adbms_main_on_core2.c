@@ -22,7 +22,7 @@
  * ========================================================= */
 
 // Define a priority for the interrupt
-#define ISR_PRIORITY_STM2_TICK  10
+#define ISR_PRIORITY_STM2_TICK  12
 
 /* =========================================================
  * Project globals
@@ -51,7 +51,7 @@ static void App_InitCore2BmsRuntime(void);
 
 
 /*Static functions */
-IFX_INTERRUPT(stm2_isr_handler, 0, ISR_PRIORITY_STM2_TICK);
+IFX_INTERRUPT(stm2_isr_handler, 2, ISR_PRIORITY_STM2_TICK);
 void stm2_isr_handler(void)
 {
     uint32_t nextCompare;
@@ -59,11 +59,9 @@ void stm2_isr_handler(void)
     // Enable global interrupts to allow higher priority tasks to nest if needed
     IfxCpu_enableInterrupts();
 
-    IfxStm_clearCompareFlag(&MODULE_STM2, IfxStm_Comparator_0);
-
     // Schedule the next compare match using an absolute compare value.
-    nextCompare = MODULE_STM2.CMP[0].B.CMPVAL + IfxStm_getTicksFromMilliseconds(&MODULE_STM2, 1U);
-    IfxStm_updateCompare(&MODULE_STM2, IfxStm_Comparator_0, nextCompare);
+    nextCompare = IfxStm_getTicksFromMilliseconds(&MODULE_STM2, 1U);
+    IfxStm_increaseCompare(&MODULE_STM2, IfxStm_Comparator_0, nextCompare);
 
     // Increment your global millisecond counter
     g_sysTickMs++;
@@ -174,13 +172,10 @@ static void App_InitCore2BmsRuntime(void)
         return;
     }
 
-    qspi0mstr_Init_iLLD();
-
     IfxStm_initCompareConfig(&stmCompareConfig);
     stmCompareConfig.comparator = IfxStm_Comparator_0;
     stmCompareConfig.compareOffset = IfxStm_ComparatorOffset_0;
     stmCompareConfig.compareSize = IfxStm_ComparatorSize_32Bits;
-    stmCompareConfig.comparatorInterrupt = IfxStm_ComparatorInterrupt_ir0;
     stmCompareConfig.ticks = IfxStm_getTicksFromMilliseconds(&MODULE_STM2, 1U);
     stmCompareConfig.triggerPriority = ISR_PRIORITY_STM2_TICK;
     stmCompareConfig.typeOfService = IfxSrc_Tos_cpu2;
@@ -189,6 +184,7 @@ static void App_InitCore2BmsRuntime(void)
 
     g_sysTickMs = 0U;
     g_core2BmsRuntimeInit = true;
+    IfxCpu_enableInterrupts();
 }
 
 /* =========================================================
@@ -196,7 +192,9 @@ static void App_InitCore2BmsRuntime(void)
  * ========================================================= */
 void adbms_main_on_core2(void)
 {
+
     App_InitCore2BmsRuntime();
+    qspi0mstr_Init_iLLD();
 
     /* HAL hooks */
     g_bmsHal.spiTransfer = adbms_QspiTransfer;
@@ -218,6 +216,7 @@ void adbms_main_on_core2(void)
 
     /* Optional: force known startup state */
     g_bmsDrv.svcState = ADBMS6830_SVC_BOOT;
+
 
     while (1)
     {

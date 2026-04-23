@@ -394,6 +394,7 @@ derivative tc39
             "__IF_CONST" := addressof(group:interface_const);
             "__START0" := LCF_STARTPTR_NC_CPU0;
             "__START1" := LCF_STARTPTR_NC_CPU1;
+            "__START2" := LCF_STARTPTR_NC_CPU2;
         }
         
         /*Fixed memory Allocations for Trap Vector Table*/

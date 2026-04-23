@@ -202,6 +202,7 @@ uint32_t Adbms6830_RawTo_uV(uint16_t raw)
     return (uint32_t)raw * 150U;
 }
 
+volatile static uint32_t ray = 0;
 Adbms6830_Status_t Adbms6830_WakeUp(const Adbms6830_Hal_t *hal)
 {
     uint8_t tx[2] = {0x00U, 0x00U};
@@ -213,11 +214,15 @@ Adbms6830_Status_t Adbms6830_WakeUp(const Adbms6830_Hal_t *hal)
         return ADBMS6830_ERR_PARAM;
     }
 
+    ray = 1;
     st = hal->spiTransfer(tx, rx, 2U);
     if (st != ADBMS6830_OK)
     {
+    	ray = 2;
         return st;
     }
+
+    ray = 3;
 
     hal->delayUs(ADBMS6830_WAKE_DELAY_US);
     return ADBMS6830_OK;
@@ -575,6 +580,7 @@ Adbms6830_Status_t Adbms6830_Task(Adbms6830_Context_t *ctx,
                 ctx->commErrorCount++;
                 ctx->linkState = ADBMS6830_LINK_ERROR;
                 ctx->svcState = ADBMS6830_SVC_FAULT;
+                __debug();
             }
             break;
 
@@ -588,6 +594,8 @@ Adbms6830_Status_t Adbms6830_Task(Adbms6830_Context_t *ctx,
                 ctx->commErrorCount++;
                 ctx->linkState = ADBMS6830_LINK_ERROR;
                 ctx->svcState = ADBMS6830_SVC_FAULT;
+                __debug();
+
             }
             break;
 

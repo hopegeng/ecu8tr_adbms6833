@@ -1068,8 +1068,8 @@ ECU8TR_TLE9012_State_t ecu8tr_getTLE9012State( void )
 
 void ecu8_tcpServerInit( void )
 {
-    //xTaskCreate( ecu8tr_tcpServerTask, "TCPServer", configMINIMAL_STACK_SIZE, NULL, 0, NULL);
-    //xTaskCreate( ecu8tr_TLE9012Task, "TCPClient", 2*configMINIMAL_STACK_SIZE, NULL, 0, NULL);
+    xTaskCreate( ecu8tr_tcpServerTask, "TCPServer", configMINIMAL_STACK_SIZE, NULL, 0, NULL);
+    xTaskCreate( ecu8tr_TLE9012Task, "TCPClient", 2*configMINIMAL_STACK_SIZE, NULL, 0, NULL);
 }
 
 

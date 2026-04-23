@@ -26,7 +26,6 @@ void AdbmsPlatform_Init(void)
     g_stubEchoMode = true;
     g_stubTimeMs = 0u;
     g_stubCsAsserted = false;
-    qspi0mstr_Init_iLLD();
 }
 
 void AdbmsPlatform_DelayUs(uint32_t delay_us)
