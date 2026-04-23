@@ -98,6 +98,9 @@ void Bmu_Init(void)
     Bmu_CellScheduler_Init();
     Bmu_CscAcq_Init();
 
+    while( 1 )
+    	;
+
     xTaskCreate(Bmu_Task_10ms_FreeRTOS, "BMU_10MS", configMINIMAL_STACK_SIZE, NULL, 0, NULL);
     xTaskCreate(Bmu_Task_20ms_FreeRTOS, "BMU_20MS", configMINIMAL_STACK_SIZE, NULL, 0, NULL);
     xTaskCreate(Bmu_Task_100ms_FreeRTOS, "BMU_100MS", configMINIMAL_STACK_SIZE, NULL, 0, NULL);

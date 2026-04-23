@@ -12,6 +12,8 @@
 #include "tools.h"
 #include "qspi.h"
 #include "qspi0mstr_illd.h"
+#include "adbms6830.h"
+#include "adbms6830_reg.h"
 #include "adbms6830_driver.h"
 #include "adbms6830_balance.h"
 
@@ -32,6 +34,7 @@ static Adbms6830_Hal_t            g_bmsHal;
 
 /* 1 ms system tick, incremented from a timer ISR */
 volatile static uint32_t g_sysTickMs = 0U;
+static bool g_core2BmsRuntimeInit = false;
 
 /* =========================================================
  * Platform-specific hooks you must provide
@@ -43,19 +46,24 @@ static void adbms_DelayMs(uint32_t ms);
 
 static void App_FillDefaultCfga( Adbms6830_Context_t *ctx );
 static void App_FillDefaultCfgb( Adbms6830_Context_t *ctx );
+static uint16_t App_EncodeCellThreshold_mV(int16_t threshold_mV);
+static void App_InitCore2BmsRuntime(void);
 
 
 /*Static functions */
 IFX_INTERRUPT(stm2_isr_handler, 0, ISR_PRIORITY_STM2_TICK);
 void stm2_isr_handler(void)
 {
+    uint32_t nextCompare;
+
     // Enable global interrupts to allow higher priority tasks to nest if needed
     IfxCpu_enableInterrupts();
 
-    // Schedule the next compare match (1ms from the current match value)
-    // This handles the timing precisely without cumulative drift
-    IfxStm_updateCompare(&MODULE_STM2, IfxStm_Comparator_0,
-                         IfxStm_getTicksFromMilliseconds(&MODULE_STM2, 1));
+    IfxStm_clearCompareFlag(&MODULE_STM2, IfxStm_Comparator_0);
+
+    // Schedule the next compare match using an absolute compare value.
+    nextCompare = MODULE_STM2.CMP[0].B.CMPVAL + IfxStm_getTicksFromMilliseconds(&MODULE_STM2, 1U);
+    IfxStm_updateCompare(&MODULE_STM2, IfxStm_Comparator_0, nextCompare);
 
     // Increment your global millisecond counter
     g_sysTickMs++;
@@ -70,10 +78,15 @@ static Adbms6830_Status_t adbms_QspiTransfer( const uint8_t *tx, uint8_t *rx, ui
         return ADBMS6830_ERR_PARAM;
     }
 
-	retVal = qspi0_send_receive_iLLD( eQspiHwCs02, len, rx, rx  );	/* 2 = pec15 */
+	retVal = qspi0_send_receive_iLLD( eQspiHwCs02, len, (uint8_t *)tx, rx );
 	if( retVal == SpiIf_Status_ok )
 	{
-		return ADBMS6830_OK;
+		if (qspimstr_waitForRxDone_iLLD() == true)
+		{
+			return ADBMS6830_OK;
+		}
+
+		return ADBMS6830_ERR_TIMEOUT;
 	}
 
 	return ADBMS6830_ERR_COMM;
@@ -95,41 +108,87 @@ static void App_FillDefaultCfga(Adbms6830_Context_t *ctx)
 
     for (ic = 0U; ic < ctx->icCount; ic++)
     {
-        /* clear first */
-        for (uint8_t i = 0U; i < ADBMS6830_BYTES_PER_CFGR; i++)
-        {
-            ctx->cfga[ic].data[i] = 0U;
-        }
+        ADBMS6830_CFGA_t cfga;
 
-        /* TODO:
-           Fill with your approved CFGA bit settings:
-           - REFON
-           - ADC/filter mode
-           - UV/OV settings
-           - GPIO / COMM related settings
-        */
+        (void)memset(&cfga, 0, sizeof(cfga));
+
+        cfga.CFGA0.B.REFON = 1U;
+        cfga.CFGA5.B.COMMBK = 1U;
+        cfga.CFGA5.B.FC = 7U;
+
+        ctx->cfga[ic].data[0] = cfga.CFGA0.U8;
+        ctx->cfga[ic].data[1] = cfga.CFGA1.U8;
+        ctx->cfga[ic].data[2] = cfga.CFGA2.U8;
+        ctx->cfga[ic].data[3] = cfga.CFGA3.U8;
+        ctx->cfga[ic].data[4] = cfga.CFGA4.U8;
+        ctx->cfga[ic].data[5] = cfga.CFGA5.U8;
     }
 }
 
 static void App_FillDefaultCfgb(Adbms6830_Context_t *ctx)
 {
     uint8_t ic;
+    uint16_t uvCode = App_EncodeCellThreshold_mV(ADBMS6830_CELL_UV_THRESHOLD);
+    uint16_t ovCode = App_EncodeCellThreshold_mV(ADBMS6830_CELL_OV_THRESHOLD);
 
     for (ic = 0U; ic < ctx->icCount; ic++)
     {
-        for (uint8_t i = 0U; i < ADBMS6830_BYTES_PER_CFGR; i++)
-        {
-            ctx->cfgb[ic].data[i] = 0U;
-        }
+        ADBMS6830_CFGB_t cfgb;
 
-        /* TODO:
-           Fill with your approved CFGB bit settings:
-           - DCC bits off at startup
-           - DCTO
-           - DTMEN
-           - other discharge / balancing options
-        */
+        (void)memset(&cfgb, 0, sizeof(cfgb));
+
+        cfgb.CFGB0.B.VUV = (uint8_t)(uvCode & 0x00FFU);
+        cfgb.CFGB1.B.VUV = (uint8_t)((uvCode >> 8U) & 0x0FU);
+        cfgb.CFGB1.B.VOV = (uint8_t)(ovCode & 0x000FU);
+        cfgb.CFGB2.B.VOV = (uint8_t)((ovCode >> 4U) & 0x00FFU);
+        cfgb.CFGB3.B.DCTO = 0U;
+        cfgb.CFGB3.B.DTRNG = 0U;
+        cfgb.CFGB3.B.DTMEN = 0U;
+
+        ctx->cfgb[ic].data[0] = cfgb.CFGB0.U8;
+        ctx->cfgb[ic].data[1] = cfgb.CFGB1.U8;
+        ctx->cfgb[ic].data[2] = cfgb.CFGB2.U8;
+        ctx->cfgb[ic].data[3] = cfgb.CFGB3.U8;
+        ctx->cfgb[ic].data[4] = cfgb.CFGB4.U8;
+        ctx->cfgb[ic].data[5] = cfgb.CFGB5.U8;
     }
+}
+
+static uint16_t App_EncodeCellThreshold_mV(int16_t threshold_mV)
+{
+    int32_t scaled;
+
+    scaled = (((int32_t)threshold_mV - (int32_t)ADBMS6830_CELL_CONVERSION_FACTOR) *
+              (int32_t)ADBMS6830_CELL_VOLTAGE_CONVERSION) /
+             ((int32_t)ADBMS6830_NO_OF_CELLS * 1000);
+
+    return (uint16_t)((uint32_t)scaled & 0x0FFFU);
+}
+
+static void App_InitCore2BmsRuntime(void)
+{
+    IfxStm_CompareConfig stmCompareConfig;
+
+    if (g_core2BmsRuntimeInit == true)
+    {
+        return;
+    }
+
+    qspi0mstr_Init_iLLD();
+
+    IfxStm_initCompareConfig(&stmCompareConfig);
+    stmCompareConfig.comparator = IfxStm_Comparator_0;
+    stmCompareConfig.compareOffset = IfxStm_ComparatorOffset_0;
+    stmCompareConfig.compareSize = IfxStm_ComparatorSize_32Bits;
+    stmCompareConfig.comparatorInterrupt = IfxStm_ComparatorInterrupt_ir0;
+    stmCompareConfig.ticks = IfxStm_getTicksFromMilliseconds(&MODULE_STM2, 1U);
+    stmCompareConfig.triggerPriority = ISR_PRIORITY_STM2_TICK;
+    stmCompareConfig.typeOfService = IfxSrc_Tos_cpu2;
+
+    (void)IfxStm_initCompare(&MODULE_STM2, &stmCompareConfig);
+
+    g_sysTickMs = 0U;
+    g_core2BmsRuntimeInit = true;
 }
 
 /* =========================================================
@@ -137,6 +196,7 @@ static void App_FillDefaultCfgb(Adbms6830_Context_t *ctx)
  * ========================================================= */
 void adbms_main_on_core2(void)
 {
+    App_InitCore2BmsRuntime();
 
     /* HAL hooks */
     g_bmsHal.spiTransfer = adbms_QspiTransfer;

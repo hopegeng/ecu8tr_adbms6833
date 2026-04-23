@@ -29,6 +29,7 @@
 #include "IfxScuWdt.h"
 
 extern IfxCpu_syncEvent g_cpuSyncEvent;
+extern void adbms_main_on_core2(void);
 
 void core2_main(void)
 {
@@ -43,7 +44,5 @@ void core2_main(void)
     IfxCpu_emitEvent(&g_cpuSyncEvent);
     IfxCpu_waitEvent(&g_cpuSyncEvent, 1);
     
-    while(1)
-    {
-    }
+    adbms_main_on_core2();
 }

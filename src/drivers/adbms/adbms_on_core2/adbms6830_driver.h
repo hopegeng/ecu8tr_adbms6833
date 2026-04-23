@@ -94,6 +94,11 @@ typedef struct
     uint16_t WRCFGA;
     uint16_t WRCFGB;
     uint16_t RDCFGA;
+    uint16_t RDCFGB;
+    uint16_t RDSTATC;
+    uint16_t RDSID;
+    uint16_t SRST;
+    uint16_t CLRFLAG;
     uint16_t RDCVALL;
     uint16_t ADCV;
     uint16_t MUTE;
@@ -115,6 +120,9 @@ Adbms6830_Status_t Adbms6830_WriteCfga(Adbms6830_Context_t *ctx,
 Adbms6830_Status_t Adbms6830_WriteCfgb(Adbms6830_Context_t *ctx,
                                        const Adbms6830_Hal_t *hal,
                                        const Adbms6830_CommandSet_t *cmds);
+Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
+                                            const Adbms6830_Hal_t *hal,
+                                            const Adbms6830_CommandSet_t *cmds);
 Adbms6830_Status_t Adbms6830_ReadCellVoltagesAll(Adbms6830_Context_t *ctx,
                                                  const Adbms6830_Hal_t *hal,
                                                  const Adbms6830_CommandSet_t *cmds);
