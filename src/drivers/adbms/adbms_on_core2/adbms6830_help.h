@@ -1,5 +1,5 @@
 /**
- * \file adbms6830.h
+ * \file adbms6830_help.h
  * \brief ADBMS6830 register header file
  * \author R. Larocque
  *
@@ -2395,7 +2395,6 @@ typedef union
 }ADBMS6830_SM_FAULT_t;
 /*----- Private Functions Prototypes ----------------------------------------------------*/
 static uint64_t adbms6830_Micros(void);
-static void adbms6830_wakeup(bool force);
 static bool adbms6830_ReadSID(void);
 static bool adbms6830_read( uint16_t addr, uint8_t *pRxBuff, uint16_t rd_len);
 static bool adbms6830_muteDischarge(void);

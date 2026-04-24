@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-#define ADBMS6830_MAX_ICS            (4U)
+#define ADBMS6830_MAX_ICS            (60U)			//The maximum ADBMS6830 can be daisy chained on the isoSPI. The stack may overflow on Core2( 2K user stack )
 #define ADBMS6830_CELLS_PER_IC       (16U)
 #define ADBMS6830_BYTES_PER_CFGR     (6U)
 #define ADBMS6830_CMD_FRAME_SIZE     (4U)
@@ -72,9 +72,12 @@ typedef struct
     uint32_t lastCommMs;
     uint32_t lastMeasureMs;
 
-    uint8_t pecErrorCount;
-    uint8_t commErrorCount;
+    uint32_t pecErrorCount;
+    uint32_t commErrorCount;
     bool configured;
+
+    uint32_t measureCount;
+
 
     Adbms6830_CfgReg_t cfga[ADBMS6830_MAX_ICS];
     Adbms6830_CfgReg_t cfgb[ADBMS6830_MAX_ICS];
@@ -111,7 +114,7 @@ void Adbms6830_SetDefaultCommands(Adbms6830_CommandSet_t *cmds);
 uint16_t Adbms6830_RawTo_mV(uint16_t raw);
 uint32_t Adbms6830_RawTo_uV(uint16_t raw);
 
-Adbms6830_Status_t Adbms6830_WakeUp(const Adbms6830_Hal_t *hal);
+Adbms6830_Status_t Adbms6830_WakeUp(const Adbms6830_Context_t *ctx, const Adbms6830_Hal_t *hal);
 Adbms6830_Status_t Adbms6830_StartCellConversion(const Adbms6830_Hal_t *hal,
                                                  const Adbms6830_CommandSet_t *cmds);
 Adbms6830_Status_t Adbms6830_WriteCfga(Adbms6830_Context_t *ctx,

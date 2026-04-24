@@ -12,10 +12,10 @@
 #include "tools.h"
 #include "qspi.h"
 #include "qspi0mstr_illd.h"
-#include "adbms6830.h"
 #include "adbms6830_reg.h"
 #include "adbms6830_driver.h"
 #include "adbms6830_balance.h"
+#include "adbms6830_help.h"
 
 /* =========================================================
  * macro
@@ -231,6 +231,13 @@ void adbms_main_on_core2(void)
                              3U);    /* ADC conversion wait: 3 ms, adjust to your mode */
 
         /* Example: after fresh measurements, evaluate balancing */
+        /* Loop:
+		  1. MUTE (stop balancing)
+		  2. Measure cells
+		  3. Calculate ΔV
+		  4. Update DCC/PWM
+		  5. UNMUTE (resume balancing)
+         */
         if (g_bmsDrv.svcState == ADBMS6830_SVC_STANDBY)
         {
             Adbms6830_BalanceEvaluate(&g_bmsBal, &g_bmsDrv);

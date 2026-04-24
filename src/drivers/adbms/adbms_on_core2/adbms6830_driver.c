@@ -3,10 +3,15 @@
 #include "adbms6830_pec.h"
 
 #include <string.h>
+#include "shell.h"
 
-#define ADBMS6830_WAKE_DELAY_US      (500U)
-#define ADBMS6830_LINK_IDLE_TIMEOUT  (5U)
+//ADBMS6830 datasheet: D:\NeutronControls\ADI\ADBMS6830\ds_ADBMS6830_Datasheet_RevSpA_2021-12.pdf
+#define ADBMS6830_READY_DELAY_US	 (10)			//rReady: 10us
+#define ADBMS6830_WAKE_DELAY_US      (500U)			//tWAKE = 500us,
+#define ADBMS6830_LINK_IDLE_TIMEOUT  (5U)			//tIDLE = 5ms, ADBMS6830 Datasheet P9
 #define ADBMS6830_REG_GROUP_DATA_LEN (6U)
+
+#define ENABLE_PRECAUTION_WAKEUP		0			//We may not need so many wakeup call
 
 static Adbms6830_Status_t Adbms6830_ReadRegisterGroup(const Adbms6830_Hal_t *hal,
                                                       uint16_t cmd,
@@ -50,11 +55,13 @@ static Adbms6830_Status_t Adbms6830_SendCommandOnly(const Adbms6830_Hal_t *hal, 
         return st;
     }
 
+#if ENABLE_PRECAUTION_WAKEUP
     st = Adbms6830_WakeUp(hal);
     if (st != ADBMS6830_OK)
     {
         return st;
     }
+#endif
 
     return hal->spiTransfer(tx, rx, ADBMS6830_CMD_FRAME_SIZE);
 }
@@ -111,10 +118,12 @@ static Adbms6830_Status_t Adbms6830_ReadRegisterGroup(const Adbms6830_Hal_t *hal
     (void)memset(tx, 0, totalLen);
     (void)Adbms6830_BuildCmdFrame(cmd, tx);
 
+#if ENABLE_PRECAUTION_WAKEUP
     if (Adbms6830_WakeUp(hal) != ADBMS6830_OK)
     {
         return ADBMS6830_ERR_COMM;
     }
+#endif
 
     if (hal->spiTransfer(tx, rx, totalLen) != ADBMS6830_OK)
     {
@@ -202,29 +211,28 @@ uint32_t Adbms6830_RawTo_uV(uint16_t raw)
     return (uint32_t)raw * 150U;
 }
 
-volatile static uint32_t ray = 0;
-Adbms6830_Status_t Adbms6830_WakeUp(const Adbms6830_Hal_t *hal)
+Adbms6830_Status_t Adbms6830_WakeUp(const Adbms6830_Context_t *ctx, const Adbms6830_Hal_t *hal)
 {
     uint8_t tx[2] = {0x00U, 0x00U};
     uint8_t rx[2];
     Adbms6830_Status_t st;
 
-    if ((hal == NULL) || (hal->spiTransfer == NULL) || (hal->delayUs == NULL))
+    if (( ctx == NULL ) || (hal == NULL) || (hal->spiTransfer == NULL) || (hal->delayUs == NULL))
     {
         return ADBMS6830_ERR_PARAM;
     }
 
-    ray = 1;
-    st = hal->spiTransfer(tx, rx, 2U);
-    if (st != ADBMS6830_OK)
+    for( uint8_t ic = 0; ic < ctx->icCount; ic++ )
     {
-    	ray = 2;
-        return st;
+		st = hal->spiTransfer(tx, rx, 2U);
+		if (st != ADBMS6830_OK)
+		{
+			return st;
+		}
+
+		hal->delayUs(ADBMS6830_WAKE_DELAY_US);
     }
 
-    ray = 3;
-
-    hal->delayUs(ADBMS6830_WAKE_DELAY_US);
     return ADBMS6830_OK;
 }
 
@@ -266,10 +274,12 @@ Adbms6830_Status_t Adbms6830_WriteCfga(Adbms6830_Context_t *ctx,
         tx[idx++] = (uint8_t)(pec & 0xFFU);
     }
 
-    if (Adbms6830_WakeUp(hal) != ADBMS6830_OK)
+#if ENABLE_PRECAUTION_WAKEUP
+    if (Adbms6830_WakeUp(ctx, hal) != ADBMS6830_OK)
     {
         return ADBMS6830_ERR_COMM;
     }
+#endif
 
     return hal->spiTransfer(tx, rx, idx);
 }
@@ -301,10 +311,13 @@ Adbms6830_Status_t Adbms6830_WriteCfgb(Adbms6830_Context_t *ctx,
         tx[idx++] = (uint8_t)(pec & 0xFFU);
     }
 
+#if ENABLE_PRECAUTION_WAKEUP
     if (Adbms6830_WakeUp(hal) != ADBMS6830_OK)
     {
         return ADBMS6830_ERR_COMM;
     }
+#endif
+
 
     return hal->spiTransfer(tx, rx, idx);
 }
@@ -331,10 +344,13 @@ Adbms6830_Status_t Adbms6830_ReadCellVoltagesAll(Adbms6830_Context_t *ctx,
     memset(tx, 0, totalLen);
     (void)Adbms6830_BuildCmdFrame(cmds->RDCVALL, tx);
 
+#if ENABLE_PRECAUTION_WAKEUP
     if (Adbms6830_WakeUp(hal) != ADBMS6830_OK)
     {
         return ADBMS6830_ERR_COMM;
     }
+#endif
+
 
     if (hal->spiTransfer(tx, rx, totalLen) != ADBMS6830_OK)
     {
@@ -377,6 +393,7 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
 
     ctx->pecErrorCount = 0U;
     ctx->commErrorCount = 0U;
+    ctx->measureCount = 0U;
 
     st = Adbms6830_SendCommandOnly(hal, cmds->SRST);
     if (st != ADBMS6830_OK)
@@ -398,6 +415,14 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
     st = Adbms6830_ReadRegisterGroup(hal, cmds->RDCFGA, readCfga, ADBMS6830_REG_GROUP_DATA_LEN, ctx->icCount);
     if (st != ADBMS6830_OK)
     {
+    	if( st == ADBMS6830_ERR_PEC )
+    	{
+    		ctx->pecErrorCount++;
+    	}
+    	if( st == ADBMS6830_ERR_COMM )
+    	{
+    		ctx->commErrorCount++;
+    	}
         return st;
     }
 
@@ -405,6 +430,7 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
     {
         if (memcmp(&ctx->cfga[ic].data[0], &readCfga[(uint16_t)ic * ADBMS6830_REG_GROUP_DATA_LEN], ADBMS6830_REG_GROUP_DATA_LEN) != 0)
         {
+    		ctx->commErrorCount++;
             return ADBMS6830_ERR_COMM;
         }
     }
@@ -412,6 +438,14 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
     st = Adbms6830_WriteCfgb(ctx, hal, cmds);
     if (st != ADBMS6830_OK)
     {
+    	if( st == ADBMS6830_ERR_PEC )
+    	{
+    		ctx->pecErrorCount++;
+    	}
+    	if( st == ADBMS6830_ERR_COMM )
+    	{
+    		ctx->commErrorCount++;
+    	}
         return st;
     }
 
@@ -425,6 +459,7 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
     {
         if (memcmp(&ctx->cfgb[ic].data[0], &readCfgb[(uint16_t)ic * ADBMS6830_REG_GROUP_DATA_LEN], ADBMS6830_REG_GROUP_DATA_LEN) != 0)
         {
+    		ctx->commErrorCount++;
             return ADBMS6830_ERR_COMM;
         }
     }
@@ -454,10 +489,12 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
             tx[idx++] = (uint8_t)(pec & 0xFFU);
         }
 
+#if 0
         if (Adbms6830_WakeUp(hal) != ADBMS6830_OK)
         {
             return ADBMS6830_ERR_COMM;
         }
+#endif
 
         if (hal->spiTransfer(tx, rx, idx) != ADBMS6830_OK)
         {
@@ -495,10 +532,10 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
 
         for (byteIdx = 0U; byteIdx < ADBMS6830_REG_GROUP_DATA_LEN; byteIdx++)
         {
+        	PRINTF( "The SID %d = 0x%x\r\n", byteIdx, readSid[byteIdx] );
             if (readSid[(uint16_t)ic * ADBMS6830_REG_GROUP_DATA_LEN + byteIdx] != 0U)
             {
                 sidIsAllZero = false;
-                break;
             }
         }
 
@@ -568,7 +605,7 @@ Adbms6830_Status_t Adbms6830_Task(Adbms6830_Context_t *ctx,
             break;
 
         case ADBMS6830_SVC_WAKE_STACK:
-            if (Adbms6830_WakeUp(hal) == ADBMS6830_OK)
+            if (Adbms6830_WakeUp(ctx, hal) == ADBMS6830_OK)
             {
                 ctx->linkState = ADBMS6830_LINK_READY;
                 ctx->lastCommMs = ctx->tickMs;
@@ -620,6 +657,7 @@ Adbms6830_Status_t Adbms6830_Task(Adbms6830_Context_t *ctx,
                 ctx->lastCommMs = ctx->tickMs;
                 ctx->stateEntryMs = ctx->tickMs;
                 ctx->svcState = ADBMS6830_SVC_WAIT_MEASURE;
+                ctx->measureCount++;
             }
             else
             {

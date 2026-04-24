@@ -17,6 +17,7 @@
 
 #include "bmu_main.h"
 
+#include "../../drivers/adbms/adbms_on_core2/adbms6830_help.h"
 #include "../bmu/bmu_cell_db.h"
 #include "../bmu/bmu_cell_mapping.h"
 #include "../bmu/bmu_cell_scheduler.h"
@@ -30,7 +31,6 @@
 #include "ecu8tr_net.h"
 #include "qspi0mstr_illd.h"
 //#include "qspi0mstr.h"
-#include "adbms6830.h"
 #include "adbmsCommon.h"
 
 #define BMU_TASK_10MS_PERIOD_TICKS      pdMS_TO_TICKS(10u)
