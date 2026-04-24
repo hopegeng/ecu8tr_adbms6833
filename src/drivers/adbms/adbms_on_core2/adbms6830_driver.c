@@ -13,6 +13,7 @@
 #define ADBMS6830_REG_GROUP_DATA_LEN 		(6U)
 #define ADBMS6830_MEASUREMENT_TIME			(8)				//1ms needed to a averaged measurement; tested, 1ms just read out 0x8000, only 8ms works
 #define ADBMS6830_AVG_MEASUREMENT_TIME		(8)				//8ms for averged measured time
+#define ADBMS6830_CELL_CONVERSION_OFFSET	(1500U)			//Table 106: Result registes bit description
 
 #define ENABLE_PRECAUTION_WAKEUP			 0			//We may not need so many wakeup call
 
@@ -211,7 +212,7 @@ void Adbms6830_SetDefaultCommands(Adbms6830_CommandSet_t *cmds)
 
 uint16_t Adbms6830_RawTo_mV(uint16_t raw)
 {
-    return (uint16_t)(((uint32_t)raw * 15U) / 100U);
+    return (uint16_t)(((uint32_t)raw * 15U) / 100U) + ADBMS6830_CELL_CONVERSION_OFFSET;
 }
 
 uint32_t Adbms6830_RawTo_uV(uint16_t raw)

@@ -228,7 +228,7 @@ void adbms_main_on_core2(void)
         status = Adbms6830_Task(&g_bmsDrv,
                              &g_bmsHal,
                              &g_bmsCmds,
-                             1000);   /* measurement period: 100 ms */
+                             5000);   /* measurement period: 100 ms */
         if( status != ADBMS6830_OK )
         {
         	//__debug();

@@ -80,7 +80,6 @@ typedef struct
 
     uint32_t measureCount;
 
-
     Adbms6830_CfgReg_t cfga[ADBMS6830_MAX_ICS];
     Adbms6830_CfgReg_t cfgb[ADBMS6830_MAX_ICS];
     Adbms6830_CellData_t cell[ADBMS6830_MAX_ICS];
