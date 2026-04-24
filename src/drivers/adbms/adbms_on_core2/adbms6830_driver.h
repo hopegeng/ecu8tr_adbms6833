@@ -22,12 +22,14 @@ typedef enum
     ADBMS6830_ERR_PARAM,
     ADBMS6830_ERR_COMM,
     ADBMS6830_ERR_PEC,
-    ADBMS6830_ERR_TIMEOUT
+    ADBMS6830_ERR_TIMEOUT,
+	ADBMS6830_ERR_STATE
 } Adbms6830_Status_t;
 
 typedef enum
 {
     ADBMS6830_LINK_OFF = 0,
+	ADBMS6830_LINK_IDLE,
     ADBMS6830_LINK_WAKE_REQ,
     ADBMS6830_LINK_WAKE_WAIT,
     ADBMS6830_LINK_READY,
@@ -137,8 +139,7 @@ Adbms6830_Status_t Adbms6830_SendUnmute(const Adbms6830_Hal_t *hal,
 Adbms6830_Status_t Adbms6830_Task(Adbms6830_Context_t *ctx,
                                   const Adbms6830_Hal_t *hal,
                                   const Adbms6830_CommandSet_t *cmds,
-                                  uint32_t measurementPeriodMs,
-                                  uint32_t conversionDelayMs);
+                                  uint32_t measurementPeriodMs);
 
 /*
  * IMPORTANT:

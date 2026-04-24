@@ -220,16 +220,19 @@ void adbms_main_on_core2(void)
 
     while (1)
     {
+    	Adbms6830_Status_t status;
         /* keep driver time base updated */
         g_bmsDrv.tickMs = g_sysTickMs;
 
         /* run state machine */
-        (void)Adbms6830_Task(&g_bmsDrv,
+        status = Adbms6830_Task(&g_bmsDrv,
                              &g_bmsHal,
                              &g_bmsCmds,
-                             100U,   /* measurement period: 100 ms */
-                             3U);    /* ADC conversion wait: 3 ms, adjust to your mode */
-
+                             1000);   /* measurement period: 100 ms */
+        if( status != ADBMS6830_OK )
+        {
+        	//__debug();
+        }
         /* Example: after fresh measurements, evaluate balancing */
         /* Loop:
 		  1. MUTE (stop balancing)

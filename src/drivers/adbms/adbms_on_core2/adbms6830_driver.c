@@ -6,12 +6,15 @@
 #include "shell.h"
 
 //ADBMS6830 datasheet: D:\NeutronControls\ADI\ADBMS6830\ds_ADBMS6830_Datasheet_RevSpA_2021-12.pdf
-#define ADBMS6830_READY_DELAY_US	 (10)			//rReady: 10us
-#define ADBMS6830_WAKE_DELAY_US      (500U)			//tWAKE = 500us,
-#define ADBMS6830_LINK_IDLE_TIMEOUT  (5U)			//tIDLE = 5ms, ADBMS6830 Datasheet P9
-#define ADBMS6830_REG_GROUP_DATA_LEN (6U)
+#define ADBMS6830_READY_DELAY_US	 		(10)			//rReady: 10us
+#define ADBMS6830_WAKE_DELAY_US      		(500U)			//tWAKE = 500us,
+#define ADBMS6830_LINK_IDLE_TIMEOUT  		(5U)			//tIDLE = 5ms, ADBMS6830 Datasheet P9
+#define ADBMS6830_SLEEP_WATCHDOG_TIMEOUT	(2000U)			//the page 31
+#define ADBMS6830_REG_GROUP_DATA_LEN 		(6U)
+#define ADBMS6830_MEASUREMENT_TIME			(8)				//1ms needed to a averaged measurement; tested, 1ms just read out 0x8000, only 8ms works
+#define ADBMS6830_AVG_MEASUREMENT_TIME		(8)				//8ms for averged measured time
 
-#define ENABLE_PRECAUTION_WAKEUP		0			//We may not need so many wakeup call
+#define ENABLE_PRECAUTION_WAKEUP			 0			//We may not need so many wakeup call
 
 static Adbms6830_Status_t Adbms6830_ReadRegisterGroup(const Adbms6830_Hal_t *hal,
                                                       uint16_t cmd,
@@ -156,8 +159,13 @@ static void Adbms6830_ParseCellBlock(Adbms6830_CellData_t *cell, const uint8_t *
     {
         uint16_t raw = (uint16_t)(((uint16_t)block[(uint16_t)(2U * i) + 1U] << 8U) |
                                    (uint16_t)block[(uint16_t)(2U * i)]);
+
         cell->raw[i] = raw;
         cell->mV[i]  = Adbms6830_RawTo_mV(raw);
+        if( i == 0 )
+        {
+        	PRINTF( "The first cell = 0x%x\r\n", cell->raw[i] );
+        }
     }
 }
 
@@ -196,7 +204,7 @@ void Adbms6830_SetDefaultCommands(Adbms6830_CommandSet_t *cmds)
     cmds->SRST = ADBMS6830_SRST_REG;
     cmds->CLRFLAG = ADBMS6830_CLRFLAG_REG;
     cmds->RDCVALL = ADBMS6830_RDCVALL_REG;
-    cmds->ADCV = (uint16_t)(ADBMS6830_ADCV_BASE_REG | ADBMS6830_ADCV_CONT_OPTION);
+    cmds->ADCV = (uint16_t)(ADBMS6830_ADCV_BASE_REG);		// | ADBMS6830_ADCV_CONT_OPTION);
     cmds->MUTE = ADBMS6830_MUTE_REG;
     cmds->UNMUTE = ADBMS6830_UNMUTE_REG;
 }
@@ -395,16 +403,19 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
     ctx->commErrorCount = 0U;
     ctx->measureCount = 0U;
 
+#if 0
     st = Adbms6830_SendCommandOnly(hal, cmds->SRST);
     if (st != ADBMS6830_OK)
     {
         return st;
     }
 
+
     if (hal->delayMs != NULL)
     {
         hal->delayMs(1U);
     }
+#endif
 
     st = Adbms6830_WriteCfga(ctx, hal, cmds);
     if (st != ADBMS6830_OK)
@@ -532,7 +543,7 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
 
         for (byteIdx = 0U; byteIdx < ADBMS6830_REG_GROUP_DATA_LEN; byteIdx++)
         {
-        	PRINTF( "The SID %d = 0x%x\r\n", byteIdx, readSid[byteIdx] );
+        	//PRINTF( "The SID %d = 0x%x\r\n", byteIdx, readSid[byteIdx] );
             if (readSid[(uint16_t)ic * ADBMS6830_REG_GROUP_DATA_LEN + byteIdx] != 0U)
             {
                 sidIsAllZero = false;
@@ -551,17 +562,24 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
         return st;
     }
 
+
+#if 0
     st = Adbms6830_StartCellConversion(hal, cmds);
     if (st != ADBMS6830_OK)
     {
         return st;
     }
 
+
     ctx->configured = true;
     ctx->lastCommMs = ctx->tickMs;
     ctx->lastMeasureMs = ctx->tickMs;
     ctx->linkState = ADBMS6830_LINK_READY;
-
+#else
+    ctx->configured = true;
+    ctx->lastCommMs = ctx->tickMs;
+    ctx->linkState = ADBMS6830_LINK_READY;
+#endif
     return ADBMS6830_OK;
 }
 
@@ -590,120 +608,248 @@ Adbms6830_Status_t Adbms6830_SendUnmute(const Adbms6830_Hal_t *hal,
 Adbms6830_Status_t Adbms6830_Task(Adbms6830_Context_t *ctx,
                                   const Adbms6830_Hal_t *hal,
                                   const Adbms6830_CommandSet_t *cmds,
-                                  uint32_t measurementPeriodMs,
-                                  uint32_t conversionDelayMs)
+                                  uint32_t measurementPeriodMs)
 {
+    uint32_t timeSinceLastComm;
+    uint32_t timeSinceLastMeasure;
+
     if ((ctx == NULL) || (hal == NULL) || (cmds == NULL))
     {
         return ADBMS6830_ERR_PARAM;
     }
 
+    timeSinceLastComm    = ctx->tickMs - ctx->lastCommMs;
+    timeSinceLastMeasure = ctx->tickMs - ctx->lastMeasureMs;
+
     switch (ctx->svcState)
     {
         case ADBMS6830_SVC_BOOT:
-            ctx->svcState = ADBMS6830_SVC_WAKE_STACK;
+            ctx->configured   = false;
+            ctx->linkState    = ADBMS6830_LINK_IDLE;
+            ctx->stateEntryMs = ctx->tickMs;
+            ctx->svcState     = ADBMS6830_SVC_WAKE_STACK;
+            break;
+
+        case ADBMS6830_SVC_STANDBY:
+            if (timeSinceLastMeasure >= measurementPeriodMs)
+            {
+                if (timeSinceLastComm >= ADBMS6830_SLEEP_WATCHDOG_TIMEOUT)
+                {
+                    /* Core likely entered sleep; CFGA/CFGB may be reset */
+                    ctx->configured = false;
+                    ctx->svcState = ADBMS6830_SVC_WAKE_STACK;
+                }
+                else if (timeSinceLastComm >= ADBMS6830_LINK_IDLE_TIMEOUT)
+                {
+                    /* isoSPI idle only; config still valid */
+                    ctx->svcState = ADBMS6830_SVC_WAKE_STACK;
+                }
+                else
+                {
+                    /* Link and core are still ready */
+                    ctx->svcState = ADBMS6830_SVC_START_MEASURE;
+                }
+
+                ctx->stateEntryMs = ctx->tickMs;
+            }
             break;
 
         case ADBMS6830_SVC_WAKE_STACK:
             if (Adbms6830_WakeUp(ctx, hal) == ADBMS6830_OK)
             {
-                ctx->linkState = ADBMS6830_LINK_READY;
-                ctx->lastCommMs = ctx->tickMs;
+                ctx->linkState    = ADBMS6830_LINK_READY;
+                ctx->lastCommMs   = ctx->tickMs;
                 ctx->stateEntryMs = ctx->tickMs;
-                ctx->svcState = (ctx->configured == true) ? ADBMS6830_SVC_STANDBY : ADBMS6830_SVC_CONFIGURE;
+
+                if (ctx->configured == false)
+                {
+                    ctx->svcState = ADBMS6830_SVC_CONFIGURE;
+                }
+                else
+                {
+                    ctx->svcState = ADBMS6830_SVC_START_MEASURE;
+                }
+                PRINTF( "Start Wake @%d\r\n", ctx->tickMs );
             }
             else
             {
                 ctx->commErrorCount++;
                 ctx->linkState = ADBMS6830_LINK_ERROR;
-                ctx->svcState = ADBMS6830_SVC_FAULT;
-                __debug();
+                ctx->svcState  = ADBMS6830_SVC_FAULT;
+                return ADBMS6830_ERR_COMM;
             }
             break;
 
         case ADBMS6830_SVC_CONFIGURE:
             if (Adbms6830_FullInitialize(ctx, hal, cmds) == ADBMS6830_OK)
             {
-                ctx->svcState = ADBMS6830_SVC_STANDBY;
+                ctx->configured   = true;
+                ctx->linkState    = ADBMS6830_LINK_READY;
+                ctx->lastCommMs   = ctx->tickMs;
+                ctx->stateEntryMs = ctx->tickMs;
+                ctx->svcState     = ADBMS6830_SVC_START_MEASURE;
+                PRINTF( "Start Configure @%d\r\n", ctx->tickMs );
+
             }
             else
             {
+                ctx->configured = false;
                 ctx->commErrorCount++;
                 ctx->linkState = ADBMS6830_LINK_ERROR;
-                ctx->svcState = ADBMS6830_SVC_FAULT;
-                __debug();
-
-            }
-            break;
-
-        case ADBMS6830_SVC_STANDBY:
-            if ((ctx->tickMs - ctx->lastMeasureMs) >= measurementPeriodMs)
-            {
-                if ((ctx->tickMs - ctx->lastCommMs) > ADBMS6830_LINK_IDLE_TIMEOUT)
-                {
-                    ctx->svcState = ADBMS6830_SVC_WAKE_STACK;
-                }
-                else
-                {
-                    ctx->svcState = ADBMS6830_SVC_START_MEASURE;
-                }
+                ctx->svcState  = ADBMS6830_SVC_FAULT;
+                return ADBMS6830_ERR_COMM;
             }
             break;
 
         case ADBMS6830_SVC_START_MEASURE:
+            /*
+             * Safety check: if this state is reached after a long delay,
+             * re-route through wake/configure logic.
+             */
+            timeSinceLastComm = ctx->tickMs - ctx->lastCommMs;
+
+            if (timeSinceLastComm >= ADBMS6830_SLEEP_WATCHDOG_TIMEOUT)
+            {
+                ctx->configured = false;
+                ctx->svcState = ADBMS6830_SVC_WAKE_STACK;
+                break;
+            }
+
+            if (timeSinceLastComm >= ADBMS6830_LINK_IDLE_TIMEOUT)
+            {
+                ctx->svcState = ADBMS6830_SVC_WAKE_STACK;
+                break;
+            }
+
             if (Adbms6830_StartCellConversion(hal, cmds) == ADBMS6830_OK)
             {
-                ctx->linkState = ADBMS6830_LINK_XFER;
-                ctx->lastCommMs = ctx->tickMs;
+                ctx->linkState    = ADBMS6830_LINK_XFER;
+                ctx->lastCommMs   = ctx->tickMs;
                 ctx->stateEntryMs = ctx->tickMs;
-                ctx->svcState = ADBMS6830_SVC_WAIT_MEASURE;
                 ctx->measureCount++;
+                ctx->svcState     = ADBMS6830_SVC_WAIT_MEASURE;
+                PRINTF( "Start Measure @%d\r\n", ctx->tickMs );
             }
             else
             {
                 ctx->commErrorCount++;
                 ctx->linkState = ADBMS6830_LINK_ERROR;
-                ctx->svcState = ADBMS6830_SVC_FAULT;
+                ctx->svcState  = ADBMS6830_SVC_FAULT;
+                return ADBMS6830_ERR_COMM;
             }
             break;
 
         case ADBMS6830_SVC_WAIT_MEASURE:
-            if ((ctx->tickMs - ctx->stateEntryMs) >= conversionDelayMs)
+            if ((ctx->tickMs - ctx->stateEntryMs) > ADBMS6830_MEASUREMENT_TIME )
             {
+                /*
+                 * Usually ADBMS6830_MEASUREMENT_TIME is less than tIDLE.
+                 * If not, wake the isoSPI link before reading.
+                 *
+                 * NOTE:
+                 * This assumes Adbms6830_WakeUp() does not disturb the completed
+                 * conversion result.
+                 */
+                if ((ctx->tickMs - ctx->lastCommMs) >= ADBMS6830_LINK_IDLE_TIMEOUT)
+                {
+                    if (Adbms6830_WakeUp(ctx, hal) != ADBMS6830_OK)
+                    {
+                        ctx->commErrorCount++;
+                        ctx->linkState = ADBMS6830_LINK_ERROR;
+                        ctx->svcState  = ADBMS6830_SVC_FAULT;
+                        return ADBMS6830_ERR_COMM;
+                    }
+
+                    ctx->linkState    = ADBMS6830_LINK_READY;
+                    ctx->lastCommMs   = ctx->tickMs;
+                    ctx->stateEntryMs = ctx->tickMs;
+                }
+
                 ctx->svcState = ADBMS6830_SVC_READ_RESULTS;
             }
             break;
 
         case ADBMS6830_SVC_READ_RESULTS:
+            /*
+             * Safety check again before read.
+             */
+            timeSinceLastComm = ctx->tickMs - ctx->lastCommMs;
+
+            if (timeSinceLastComm >= ADBMS6830_SLEEP_WATCHDOG_TIMEOUT)
+            {
+                ctx->configured = false;
+                ctx->svcState = ADBMS6830_SVC_WAKE_STACK;
+                break;
+            }
+
+            if (timeSinceLastComm >= ADBMS6830_LINK_IDLE_TIMEOUT)
+            {
+                if (Adbms6830_WakeUp(ctx, hal) != ADBMS6830_OK)
+                {
+                    ctx->commErrorCount++;
+                    ctx->linkState = ADBMS6830_LINK_ERROR;
+                    ctx->svcState  = ADBMS6830_SVC_FAULT;
+                    PRINTF( "Start wake line 796 @%d\r\n", ctx->tickMs );
+                    return ADBMS6830_ERR_COMM;
+                }
+
+                ctx->linkState  = ADBMS6830_LINK_READY;
+                ctx->lastCommMs = ctx->tickMs;
+            }
+
             if (Adbms6830_ReadCellVoltagesAll(ctx, hal, cmds) == ADBMS6830_OK)
             {
-                ctx->linkState = ADBMS6830_LINK_READY;
-                ctx->lastCommMs = ctx->tickMs;
-                ctx->svcState = ADBMS6830_SVC_PROCESS_RESULTS;
+                ctx->linkState     = ADBMS6830_LINK_READY;
+                ctx->lastCommMs    = ctx->tickMs;
+                ctx->lastMeasureMs = ctx->tickMs;
+                ctx->svcState      = ADBMS6830_SVC_PROCESS_RESULTS;
+                PRINTF( "Start Read @%d\r\n", ctx->tickMs );
+
             }
             else
             {
                 ctx->commErrorCount++;
                 ctx->linkState = ADBMS6830_LINK_ERROR;
-                ctx->svcState = ADBMS6830_SVC_FAULT;
+                ctx->svcState  = ADBMS6830_SVC_FAULT;
+                return ADBMS6830_ERR_COMM;
             }
             break;
 
         case ADBMS6830_SVC_PROCESS_RESULTS:
-            ctx->lastMeasureMs = ctx->tickMs;
+            /*
+             * Add application-level checks here if needed.
+             * Example: voltage plausibility, PEC error handling, fault flags.
+             */
             ctx->svcState = ADBMS6830_SVC_STANDBY;
             break;
 
         case ADBMS6830_SVC_SLEEP:
+            /*
+             * Software sleep state.
+             * For next measurement, force full wake + reconfigure.
+             */
+            if (timeSinceLastMeasure >= measurementPeriodMs)
+            {
+                ctx->configured = false;
+                ctx->svcState   = ADBMS6830_SVC_WAKE_STACK;
+            }
             break;
 
         case ADBMS6830_SVC_FAULT:
-            ctx->svcState = ADBMS6830_SVC_WAKE_STACK;
+            /*
+             * Simple recovery policy:
+             * force full reconfiguration after any fault.
+             */
+            ctx->configured   = false;
+            ctx->linkState    = ADBMS6830_LINK_ERROR;
+            ctx->stateEntryMs = ctx->tickMs;
+            ctx->svcState     = ADBMS6830_SVC_WAKE_STACK;
             break;
 
         default:
-            ctx->svcState = ADBMS6830_SVC_FAULT;
-            break;
+            ctx->configured = false;
+            ctx->svcState   = ADBMS6830_SVC_FAULT;
+            return ADBMS6830_ERR_STATE;;
     }
 
     return ADBMS6830_OK;
