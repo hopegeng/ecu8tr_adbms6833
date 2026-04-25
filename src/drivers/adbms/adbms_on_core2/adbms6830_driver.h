@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-#define ADBMS6830_MAX_ICS            (60U)			//The maximum ADBMS6830 can be daisy chained on the isoSPI. The stack may overflow on Core2( 2K user stack )
+#define ADBMS6830_MAX_ICS            (2U)			//The maximum ADBMS6830 can be daisy chained on the isoSPI. The stack may overflow on Core2( 2K user stack )
 #define ADBMS6830_CELLS_PER_IC       (16U)
 #define ADBMS6830_BYTES_PER_CFGR     (6U)
 #define ADBMS6830_CMD_FRAME_SIZE     (4U)
