@@ -165,7 +165,7 @@ static void ecu8_udpServerTask( void *arg )
     }
 }
 
-void ecu8_udpServerInit( void )
+void network_initUDPServer( void )
 {
     xTaskCreate( ecu8_udpServerTask, "UDPServer", configMINIMAL_STACK_SIZE, NULL, 0, NULL);
 }

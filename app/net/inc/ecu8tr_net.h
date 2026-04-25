@@ -9,6 +9,6 @@
 #define APP_NET_INC_ECU8TR_NET_H_
 
 extern void ecu8_tcpServerInit( void );
-extern void ecu8_udpServerInit( void );
+extern void network_initUDPServer( void );
 
 #endif /* APP_NET_INC_ECU8TR_NET_H_ */

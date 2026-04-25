@@ -16,6 +16,7 @@
 #include "adbms6830_driver.h"
 #include "adbms6830_balance.h"
 #include "adbms6830_help.h"
+#include "ecu8tr_cmd.h"
 
 /* =========================================================
  * macro
@@ -35,6 +36,7 @@ static Adbms6830_Hal_t            g_bmsHal;
 /* 1 ms system tick, incremented from a timer ISR */
 volatile static uint32_t g_sysTickMs = 0U;
 static bool g_core2BmsRuntimeInit = false;
+static ECU8TR_ADBMS6830_State_t adbms6830_state = ECU8TR_ADBMS6830_IDLE;
 
 /* =========================================================
  * Platform-specific hooks you must provide
@@ -231,9 +233,15 @@ void adbms_main_on_core2(void)
                              5000);   /* measurement period: 100 ms */
         if( status != ADBMS6830_OK )
         {
+        	adbms6830_state = ECU8TR_ADBMS6830_ERROR;
         	//__debug();
         }
-        /* Example: after fresh measurements, evaluate balancing */
+        else
+        {
+        	adbms6830_state = ECU8TR_ADBMS6830_OK;
+
+        }
+        /* After fresh measurements, evaluate balancing */
         /* Loop:
 		  1. MUTE (stop balancing)
 		  2. Measure cells
@@ -256,4 +264,9 @@ void adbms_main_on_core2(void)
 
         /* optional: other application work */
     }
+}
+
+ECU8TR_ADBMS6830_State_t adbms6830_getState( void )
+{
+	return adbms6830_state;
 }

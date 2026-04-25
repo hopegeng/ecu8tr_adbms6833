@@ -14,6 +14,8 @@
 
 ECU8TR_UPGRADE_STATUS_e bootloader_get_upgradeStatus( void );
 
+extern ECU8TR_ADBMS6830_State_t adbms6830_getState( void );
+
 
 /* Task which runs the LED1 app */
 static void task_app_led1(void *arg)
@@ -73,6 +75,23 @@ static void task_r_g_led(void *arg)
 			continue;
 		}
 
+#if 1
+		if( adbms6830_getState() == ECU8TR_ADBMS6830_ERROR  )
+		{
+			IfxPort_setPinLow( &MODULE_P33, 14 );
+			IfxPort_togglePin( &MODULE_P34, 4 );
+		}
+		else if( adbms6830_getState() == ECU8TR_ADBMS6830_OK  )
+		{
+			IfxPort_togglePin( &MODULE_P33, 14 );	//Green
+			IfxPort_setPinLow( &MODULE_P34, 4 );	//RED OFF
+		}
+		else
+		{
+			IfxPort_setPinHigh( &MODULE_P33, 14 );	//Green ON
+			IfxPort_setPinLow( &MODULE_P34, 4 );	//RED OFF
+		}
+#else
 		if( ecu8tr_getTLE9012State() == ECU8TR_TLE9012_WAKEUP_DONE  )
 		{
 			IfxPort_setPinHigh( &MODULE_P33, 14 );	//Green ON
@@ -94,12 +113,15 @@ static void task_r_g_led(void *arg)
 			IfxPort_togglePin( &MODULE_P34, 4 );
 		}
 
+#endif
 		vTaskDelay(pdMS_TO_TICKS(500));
+
 	}
+
 }
 
 
-void start_led( void )
+void led_startTasks( void )
 {
 
     /* Create LED1 app task */

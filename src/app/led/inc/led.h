@@ -8,6 +8,6 @@
 #ifndef BSP_LED_INC_LED_H_
 #define BSP_LED_INC_LED_H_
 
-extern void start_led( void );
+extern void led_startTasks( void );
 
 #endif /* BSP_LED_INC_LED_H_ */

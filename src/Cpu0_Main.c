@@ -43,7 +43,12 @@
 
 #include "GETH_OS.h"
 #include "ecu8tr_net.h"
-
+#include "can_if.h"
+#include "gpio_drv.h"
+#include "shell.h"
+#include "GETH_OS.h"
+#include "eeprom.h"
+#include "led.h"
 
 IFX_ALIGN(4) IfxCpu_syncEvent g_cpuSyncEvent = 0;
 
@@ -77,12 +82,20 @@ void core0_main(void)
 #endif
 
 
-	Bmu_Init();
 
 #if 0
 	ecu8_tcpServerInit();
-    ecu8_udpServerInit();
 #endif
+
+
+	gpioDrv_initGPIO();
+	eeprom_read_config();
+	led_startTasks();
+	network_initLWIP();
+    CanIf_Init();
+    network_initUDPServer();
+
+	Bmu_Init();
 
     /* Start the scheduler */
     vTaskStartScheduler();

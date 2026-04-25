@@ -562,7 +562,7 @@ boolean ethif_LwipGetNetIfStatus(void)
 }/* END ethif_LwipGetNetIfStatus() */
 
 
-void start_network( void )
+void network_initLWIP( void )
 {
 	GETH_OS_init_LWIP( TRUE );
 }
