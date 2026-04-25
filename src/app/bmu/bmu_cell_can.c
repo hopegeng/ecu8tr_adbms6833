@@ -91,3 +91,20 @@ Bmu_ReturnType Bmu_CellCan_SendOne(uint16_t global_cell_0based)
 
     return CanIf_Transmit(&msg);
 }
+
+Bmu_ReturnType Bmu_CellCan_SendAll(void)
+{
+    uint16_t cellIdx;
+    Bmu_ReturnType ret = BMU_OK;
+
+    for (cellIdx = 0u; cellIdx < BMU_TOTAL_CELLS; cellIdx++)
+    {
+        ret = Bmu_CellCan_SendOne(cellIdx);
+        if (ret != BMU_OK)
+        {
+            return ret;
+        }
+    }
+
+    return ret;
+}

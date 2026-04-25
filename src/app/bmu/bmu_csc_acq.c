@@ -9,7 +9,7 @@
 #include "../bmu/bmu_csc_acq.h"
 
 #include "../bmu/bmu_cell_db.h"
-#include "adbms_service.h"
+#include "../../drivers/adbms/adbms_on_core2/adbms6830_shared.h"
 #include "bmu_cfg.h"
 
 
@@ -20,9 +20,8 @@
  * 18 boards -> full sweep in 360 ms
  */
 
-static uint8_t g_nextCscToAcquire = 0u;
-
 #if __DEMO__
+static uint8_t g_nextCscToAcquire = 0u;
 
 void Bmu_CscAcq_Init(void)
 {
@@ -85,48 +84,48 @@ void Bmu_CscAcq_MainTask_20ms(uint32_t now_ms)
 }
 
 #else
-static int16_t Bmu_ConvertTempRawFromGpio(uint16_t gpio_raw)
-{
-    (void)gpio_raw;
-    return 2500;
-}
+static uint32_t g_lastSampleCounter = 0u;
 
 void Bmu_CscAcq_Init(void)
 {
-    (void)Adbms_Service_Init();
+    g_lastSampleCounter = 0u;
 }
 
 void Bmu_CscAcq_MainTask_20ms(uint32_t now_ms)
 {
-    static uint8_t next_csc = 0u;
-    Adbms_ServiceCscSnapshotType snap;
-    uint8_t cell;
+    Adbms6830_SharedSnapshot_t snapshot;
+    uint8_t afeIdx;
+    uint8_t cellIdx;
 
-    if (Adbms_Service_ReadCscSnapshot(next_csc, &snap) == BMU_OK)
+    if (Adbms6830_SharedRead(&snapshot) == false)
     {
-        if (snap.valid)
+        return;
+    }
+
+    if ((snapshot.valid == false) || (snapshot.sample_counter == 0u))
+    {
+        return;
+    }
+
+    if (snapshot.sample_counter == g_lastSampleCounter)
+    {
+        return;
+    }
+
+    for (afeIdx = 0u; afeIdx < BMU_AFE_COUNT_PER_CSC; afeIdx++)
+    {
+        for (cellIdx = 0u; cellIdx < BMU_CELL_COUNT_PER_AFE; cellIdx++)
         {
-            for (cell = 0u; cell < BMU_CELLS_PER_CSC; cell++)
-            {
-                if (snap.cells[cell].valid)
-                {
-                    (void)Bmu_CellDb_UpdateMeasurement(next_csc,
-                                                       cell,
-                                                       snap.cells[cell].cell_voltage_raw_0p1mV,
-                                                       Bmu_ConvertTempRawFromGpio(
-                                                           snap.cells[cell].gpio_voltage_raw_0p1mV),
-                                                       snap.cells[cell].gpio_voltage_raw_0p1mV,
-                                                       snap.cells[cell].balancing,
-                                                       now_ms);
-                }
-            }
+            (void)Bmu_CellDb_UpdateMeasurement(0u,
+                                               (uint8_t)((afeIdx * BMU_CELL_COUNT_PER_AFE) + cellIdx),
+                                               (uint16_t)(snapshot.cell_voltage_mV[afeIdx][cellIdx] * 10u),
+                                               (int16_t)BMU_INVALID_CELL_TEMP_RAW,
+                                               BMU_INVALID_GPIO_VOLTAGE_RAW,
+                                               (snapshot.balancing[afeIdx][cellIdx] != 0u),
+                                               now_ms);
         }
     }
 
-    next_csc++;
-    if (next_csc >= BMU_CSC_COUNT)
-    {
-        next_csc = 0u;
-    }
+    g_lastSampleCounter = snapshot.sample_counter;
 }
 #endif

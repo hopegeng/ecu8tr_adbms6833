@@ -87,10 +87,6 @@
 "-I../src/drivers/gpio/"
 "-I../src/drivers/qspi/"
 "-I../src/drivers/eth/inc/"
-"-I../src/drivers/adbms/adbms6833/"
-"-I../src/drivers/adbms/adbms6822/"
-"-I../src/drivers/adbms/platform/"
-"-I../src/drivers/adbms/service/"
 "-I../src/drivers/adbms/adbms_on_core2//"
 
 "-I../src/"
@@ -102,4 +98,3 @@
 "-I../src/app/bmu/"
 
 "-I../src/middleware/can/"
-

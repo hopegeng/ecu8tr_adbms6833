@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "tools.h"
 #include "qspi.h"
@@ -16,6 +17,7 @@
 #include "adbms6830_driver.h"
 #include "adbms6830_balance.h"
 #include "adbms6830_help.h"
+#include "adbms6830_shared.h"
 #include "ecu8tr_cmd.h"
 
 /* =========================================================
@@ -24,6 +26,7 @@
 
 // Define a priority for the interrupt
 #define ISR_PRIORITY_STM2_TICK  12
+#define ADBMS6830_MEASUREMENT_PERIOD_MS (1000u)
 
 /* =========================================================
  * Project globals
@@ -33,10 +36,20 @@ static Adbms6830_BalanceContext_t g_bmsBal;
 static Adbms6830_CommandSet_t     g_bmsCmds;
 static Adbms6830_Hal_t            g_bmsHal;
 
+typedef struct
+{
+    uint32_t sequence;
+    Adbms6830_SharedSnapshot_t snapshot;
+} Adbms6830_SharedMemory_t;
+
+static volatile Adbms6830_SharedMemory_t g_adbms6830Shared __attribute__ ((section("NC_cpu0_dlmu"))) = {0};
+
 /* 1 ms system tick, incremented from a timer ISR */
 volatile static uint32_t g_sysTickMs = 0U;
 static bool g_core2BmsRuntimeInit = false;
 static ECU8TR_ADBMS6830_State_t adbms6830_state = ECU8TR_ADBMS6830_IDLE;
+static uint32_t g_lastPublishedMeasureMs = 0u;
+static uint32_t g_sampleCounter = 0u;
 
 /* =========================================================
  * Platform-specific hooks you must provide
@@ -50,6 +63,97 @@ static void App_FillDefaultCfga( Adbms6830_Context_t *ctx );
 static void App_FillDefaultCfgb( Adbms6830_Context_t *ctx );
 static uint16_t App_EncodeCellThreshold_mV(int16_t threshold_mV);
 static void App_InitCore2BmsRuntime(void);
+static void App_PublishSharedSnapshot(void);
+
+void Adbms6830_SharedInit(void)
+{
+    uint8_t afeIdx;
+    uint8_t cellIdx;
+
+    g_adbms6830Shared.sequence = 0u;
+    g_adbms6830Shared.snapshot.sample_counter = 0u;
+    g_adbms6830Shared.snapshot.sample_timestamp_ms = 0u;
+    g_adbms6830Shared.snapshot.valid = false;
+
+    for (afeIdx = 0u; afeIdx < ADBMS6830_SHARED_AFE_COUNT; afeIdx++)
+    {
+        for (cellIdx = 0u; cellIdx < ADBMS6830_SHARED_USED_CELLS_PER_AFE; cellIdx++)
+        {
+            g_adbms6830Shared.snapshot.cell_voltage_mV[afeIdx][cellIdx] = 0u;
+            g_adbms6830Shared.snapshot.balancing[afeIdx][cellIdx] = 0u;
+        }
+    }
+}
+
+void Adbms6830_SharedPublish(const Adbms6830_SharedSnapshot_t *snapshot)
+{
+    uint8_t afeIdx;
+    uint8_t cellIdx;
+
+    if (snapshot == 0)
+    {
+        return;
+    }
+
+    g_adbms6830Shared.sequence++;
+    g_adbms6830Shared.snapshot.sample_counter = snapshot->sample_counter;
+    g_adbms6830Shared.snapshot.sample_timestamp_ms = snapshot->sample_timestamp_ms;
+    g_adbms6830Shared.snapshot.valid = snapshot->valid;
+
+    for (afeIdx = 0u; afeIdx < ADBMS6830_SHARED_AFE_COUNT; afeIdx++)
+    {
+        for (cellIdx = 0u; cellIdx < ADBMS6830_SHARED_USED_CELLS_PER_AFE; cellIdx++)
+        {
+            g_adbms6830Shared.snapshot.cell_voltage_mV[afeIdx][cellIdx] =
+                snapshot->cell_voltage_mV[afeIdx][cellIdx];
+            g_adbms6830Shared.snapshot.balancing[afeIdx][cellIdx] =
+                snapshot->balancing[afeIdx][cellIdx];
+        }
+    }
+
+    g_adbms6830Shared.sequence++;
+}
+
+bool Adbms6830_SharedRead(Adbms6830_SharedSnapshot_t *snapshot)
+{
+    uint32_t seqStart;
+    uint32_t seqEnd;
+    uint8_t afeIdx;
+    uint8_t cellIdx;
+
+    if (snapshot == 0)
+    {
+        return false;
+    }
+
+    do
+    {
+        seqStart = g_adbms6830Shared.sequence;
+        if ((seqStart & 0x1u) != 0u)
+        {
+            continue;
+        }
+
+        snapshot->sample_counter = g_adbms6830Shared.snapshot.sample_counter;
+        snapshot->sample_timestamp_ms = g_adbms6830Shared.snapshot.sample_timestamp_ms;
+        snapshot->valid = g_adbms6830Shared.snapshot.valid;
+
+        for (afeIdx = 0u; afeIdx < ADBMS6830_SHARED_AFE_COUNT; afeIdx++)
+        {
+            for (cellIdx = 0u; cellIdx < ADBMS6830_SHARED_USED_CELLS_PER_AFE; cellIdx++)
+            {
+                snapshot->cell_voltage_mV[afeIdx][cellIdx] =
+                    g_adbms6830Shared.snapshot.cell_voltage_mV[afeIdx][cellIdx];
+                snapshot->balancing[afeIdx][cellIdx] =
+                    g_adbms6830Shared.snapshot.balancing[afeIdx][cellIdx];
+            }
+        }
+
+        seqEnd = g_adbms6830Shared.sequence;
+    } while ((seqStart != seqEnd) || ((seqEnd & 0x1u) != 0u));
+
+    return true;
+}
 
 
 /*Static functions */
@@ -186,7 +290,34 @@ static void App_InitCore2BmsRuntime(void)
 
     g_sysTickMs = 0U;
     g_core2BmsRuntimeInit = true;
+    Adbms6830_SharedInit();
     IfxCpu_enableInterrupts();
+}
+
+static void App_PublishSharedSnapshot(void)
+{
+    Adbms6830_SharedSnapshot_t snapshot;
+    uint8_t afeIdx;
+    uint8_t usedCellIdx;
+
+    snapshot.sample_counter = ++g_sampleCounter;
+    snapshot.sample_timestamp_ms = g_bmsDrv.lastMeasureMs;
+    snapshot.valid = (adbms6830_state == ECU8TR_ADBMS6830_OK);
+
+    for (afeIdx = 0u; afeIdx < ADBMS6830_SHARED_AFE_COUNT; afeIdx++)
+    {
+        for (usedCellIdx = 0u; usedCellIdx < ADBMS6830_SHARED_USED_CELLS_PER_AFE; usedCellIdx++)
+        {
+            uint8_t driverCellIdx = (uint8_t)(ADBMS6830_SHARED_FIRST_USED_CELL_0BASED + usedCellIdx);
+            uint16_t dccMask = g_bmsBal.result[afeIdx].dccMask;
+
+            snapshot.cell_voltage_mV[afeIdx][usedCellIdx] = g_bmsDrv.cell[afeIdx].mV[driverCellIdx];
+            snapshot.balancing[afeIdx][usedCellIdx] =
+                ((dccMask & ((uint16_t)1u << driverCellIdx)) != 0u) ? 1u : 0u;
+        }
+    }
+
+    Adbms6830_SharedPublish(&snapshot);
 }
 
 /* =========================================================
@@ -204,7 +335,7 @@ void adbms_main_on_core2(void)
     g_bmsHal.delayMs     = adbms_DelayMs;
 
     /* Driver init */
-    Adbms6830_Init(&g_bmsDrv, 1U);                 /* example: 1 ADBMS6830 in chain */
+    Adbms6830_Init(&g_bmsDrv, ADBMS6830_SHARED_AFE_COUNT);
     Adbms6830_SetDefaultCommands(&g_bmsCmds);     /* replace placeholder opcodes later */
     Adbms6830_BalanceInit(&g_bmsBal);
 
@@ -230,7 +361,7 @@ void adbms_main_on_core2(void)
         status = Adbms6830_Task(&g_bmsDrv,
                              &g_bmsHal,
                              &g_bmsCmds,
-                             5000);   /* measurement period: 100 ms */
+                             ADBMS6830_MEASUREMENT_PERIOD_MS);
         if( status != ADBMS6830_OK )
         {
         	adbms6830_state = ECU8TR_ADBMS6830_ERROR;
@@ -259,6 +390,12 @@ void adbms_main_on_core2(void)
                 (void)Adbms6830_SendMute(&g_bmsHal, &g_bmsCmds);
                 (void)Adbms6830_BalanceApplyDcc(&g_bmsBal, &g_bmsDrv, &g_bmsHal, &g_bmsCmds);
                 (void)Adbms6830_SendUnmute(&g_bmsHal, &g_bmsCmds);
+            }
+
+            if ((g_bmsDrv.lastMeasureMs != 0u) && (g_bmsDrv.lastMeasureMs != g_lastPublishedMeasureMs))
+            {
+                App_PublishSharedSnapshot();
+                g_lastPublishedMeasureMs = g_bmsDrv.lastMeasureMs;
             }
         }
 
