@@ -17,6 +17,7 @@ typedef struct
     uint32_t sample_counter;
     uint32_t sample_timestamp_ms;
     uint16_t cell_voltage_mV[ADBMS6830_SHARED_AFE_COUNT][ADBMS6830_SHARED_USED_CELLS_PER_AFE];
+    int16_t cell_temp_raw_0p01C[ADBMS6830_SHARED_AFE_COUNT][ADBMS6830_SHARED_USED_CELLS_PER_AFE];
     uint8_t balancing[ADBMS6830_SHARED_AFE_COUNT][ADBMS6830_SHARED_USED_CELLS_PER_AFE];
     bool valid;
 } Adbms6830_SharedSnapshot_t;

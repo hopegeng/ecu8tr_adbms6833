@@ -27,6 +27,7 @@
 // Define a priority for the interrupt
 #define ISR_PRIORITY_STM2_TICK  12
 #define ADBMS6830_MEASUREMENT_PERIOD_MS (1000u)
+#define ADBMS6830_CORE2_DEMO_MODE       (1u)
 
 /* =========================================================
  * Project globals
@@ -64,6 +65,13 @@ static void App_FillDefaultCfgb( Adbms6830_Context_t *ctx );
 static uint16_t App_EncodeCellThreshold_mV(int16_t threshold_mV);
 static void App_InitCore2BmsRuntime(void);
 static void App_PublishSharedSnapshot(void);
+static void App_PublishDemoSnapshot(void);
+static void Adbms6830_SharedMemoryBarrier(void);
+
+static void Adbms6830_SharedMemoryBarrier(void)
+{
+    __dsync();
+}
 
 void Adbms6830_SharedInit(void)
 {
@@ -80,6 +88,7 @@ void Adbms6830_SharedInit(void)
         for (cellIdx = 0u; cellIdx < ADBMS6830_SHARED_USED_CELLS_PER_AFE; cellIdx++)
         {
             g_adbms6830Shared.snapshot.cell_voltage_mV[afeIdx][cellIdx] = 0u;
+            g_adbms6830Shared.snapshot.cell_temp_raw_0p01C[afeIdx][cellIdx] = 0;
             g_adbms6830Shared.snapshot.balancing[afeIdx][cellIdx] = 0u;
         }
     }
@@ -96,6 +105,8 @@ void Adbms6830_SharedPublish(const Adbms6830_SharedSnapshot_t *snapshot)
     }
 
     g_adbms6830Shared.sequence++;
+    Adbms6830_SharedMemoryBarrier();
+
     g_adbms6830Shared.snapshot.sample_counter = snapshot->sample_counter;
     g_adbms6830Shared.snapshot.sample_timestamp_ms = snapshot->sample_timestamp_ms;
     g_adbms6830Shared.snapshot.valid = snapshot->valid;
@@ -106,12 +117,16 @@ void Adbms6830_SharedPublish(const Adbms6830_SharedSnapshot_t *snapshot)
         {
             g_adbms6830Shared.snapshot.cell_voltage_mV[afeIdx][cellIdx] =
                 snapshot->cell_voltage_mV[afeIdx][cellIdx];
+            g_adbms6830Shared.snapshot.cell_temp_raw_0p01C[afeIdx][cellIdx] =
+                snapshot->cell_temp_raw_0p01C[afeIdx][cellIdx];
             g_adbms6830Shared.snapshot.balancing[afeIdx][cellIdx] =
                 snapshot->balancing[afeIdx][cellIdx];
         }
     }
 
+    Adbms6830_SharedMemoryBarrier();
     g_adbms6830Shared.sequence++;
+    Adbms6830_SharedMemoryBarrier();
 }
 
 bool Adbms6830_SharedRead(Adbms6830_SharedSnapshot_t *snapshot)
@@ -129,6 +144,8 @@ bool Adbms6830_SharedRead(Adbms6830_SharedSnapshot_t *snapshot)
     do
     {
         seqStart = g_adbms6830Shared.sequence;
+        Adbms6830_SharedMemoryBarrier();
+
         if ((seqStart & 0x1u) != 0u)
         {
             continue;
@@ -144,11 +161,14 @@ bool Adbms6830_SharedRead(Adbms6830_SharedSnapshot_t *snapshot)
             {
                 snapshot->cell_voltage_mV[afeIdx][cellIdx] =
                     g_adbms6830Shared.snapshot.cell_voltage_mV[afeIdx][cellIdx];
+                snapshot->cell_temp_raw_0p01C[afeIdx][cellIdx] =
+                    g_adbms6830Shared.snapshot.cell_temp_raw_0p01C[afeIdx][cellIdx];
                 snapshot->balancing[afeIdx][cellIdx] =
                     g_adbms6830Shared.snapshot.balancing[afeIdx][cellIdx];
             }
         }
 
+        Adbms6830_SharedMemoryBarrier();
         seqEnd = g_adbms6830Shared.sequence;
     } while ((seqStart != seqEnd) || ((seqEnd & 0x1u) != 0u));
 
@@ -312,6 +332,8 @@ static void App_PublishSharedSnapshot(void)
             uint16_t dccMask = g_bmsBal.result[afeIdx].dccMask;
 
             snapshot.cell_voltage_mV[afeIdx][usedCellIdx] = g_bmsDrv.cell[afeIdx].mV[driverCellIdx];
+            //TODO: will implement the real code to read NTC values from ADBMS6830 CSC board
+            snapshot.cell_temp_raw_0p01C[afeIdx][usedCellIdx] = 2500;
             snapshot.balancing[afeIdx][usedCellIdx] =
                 ((dccMask & ((uint16_t)1u << driverCellIdx)) != 0u) ? 1u : 0u;
         }
@@ -320,13 +342,57 @@ static void App_PublishSharedSnapshot(void)
     Adbms6830_SharedPublish(&snapshot);
 }
 
+static void App_PublishDemoSnapshot(void)
+{
+    Adbms6830_SharedSnapshot_t snapshot;
+    uint32_t frameIdx = g_sampleCounter;
+    uint8_t afeIdx;
+    uint8_t cellIdx;
+
+    snapshot.sample_counter = ++g_sampleCounter;
+    snapshot.sample_timestamp_ms = g_sysTickMs;
+    snapshot.valid = true;
+
+    for (afeIdx = 0u; afeIdx < ADBMS6830_SHARED_AFE_COUNT; afeIdx++)
+    {
+        for (cellIdx = 0u; cellIdx < ADBMS6830_SHARED_USED_CELLS_PER_AFE; cellIdx++)
+        {
+            uint16_t baseVoltage_mV = (uint16_t)(3660u + ((uint16_t)afeIdx * 35u) + ((uint16_t)cellIdx * 8u));
+            uint16_t waveform_mV = (uint16_t)((frameIdx + ((uint32_t)afeIdx * 3u) + cellIdx) % 9u);
+            int16_t baseTempRaw = (int16_t)(2450 + ((int16_t)afeIdx * 180) + ((int16_t)cellIdx * 12));
+            int16_t waveformTempRaw = (int16_t)(((int16_t)((frameIdx + cellIdx) % 7u) - 3) * 8);
+            bool balancingActive = (((frameIdx + afeIdx + cellIdx) % 11u) >= 8u);
+
+            snapshot.cell_voltage_mV[afeIdx][cellIdx] = (uint16_t)(baseVoltage_mV + waveform_mV);
+            snapshot.cell_temp_raw_0p01C[afeIdx][cellIdx] = (int16_t)(baseTempRaw + waveformTempRaw);
+            snapshot.balancing[afeIdx][cellIdx] = balancingActive ? 1u : 0u;
+        }
+    }
+
+    adbms6830_state = ECU8TR_ADBMS6830_OK;
+    g_lastPublishedMeasureMs = snapshot.sample_timestamp_ms;
+    Adbms6830_SharedPublish(&snapshot);
+}
+
 /* =========================================================
  * Example main
  * ========================================================= */
 void adbms_main_on_core2(void)
 {
+    uint32_t lastDemoPublishMs = 0u;
 
     App_InitCore2BmsRuntime();
+
+#if (ADBMS6830_CORE2_DEMO_MODE == 1u)
+    while (1)
+    {
+        if ((g_sysTickMs - lastDemoPublishMs) >= ADBMS6830_MEASUREMENT_PERIOD_MS)
+        {
+            App_PublishDemoSnapshot();
+            lastDemoPublishMs = g_sysTickMs;
+        }
+    }
+#else
     qspi0mstr_Init_iLLD();
 
     /* HAL hooks */
@@ -401,6 +467,7 @@ void adbms_main_on_core2(void)
 
         /* optional: other application work */
     }
+#endif
 }
 
 ECU8TR_ADBMS6830_State_t adbms6830_getState( void )

@@ -163,10 +163,6 @@ static void Adbms6830_ParseCellBlock(Adbms6830_CellData_t *cell, const uint8_t *
 
         cell->raw[i] = raw;
         cell->mV[i]  = Adbms6830_RawTo_mV(raw);
-        if( i == 0 )
-        {
-        	PRINTF( "The first cell = 0x%x\r\n", cell->raw[i] );
-        }
     }
 }
 
