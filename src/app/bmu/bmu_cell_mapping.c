@@ -23,14 +23,14 @@ void Bmu_CellMapping_InitDefault(void)
      */
 }
 
-bool Bmu_IsValidCscIndex(uint8_t csc_index)
+bool Bmu_IsValidAfeIndex(uint8_t afe_index)
 {
-    return (csc_index < BMU_CSC_COUNT);
+    return (afe_index < BMU_AFE_COUNT);
 }
 
-bool Bmu_IsValidCellOnCsc(uint8_t cell_on_csc)
+bool Bmu_IsValidCellOnAfe(uint8_t cell_on_afe)
 {
-    return (cell_on_csc < BMU_CELLS_PER_CSC);
+    return (cell_on_afe < BMU_CELL_COUNT_PER_AFE);
 }
 
 bool Bmu_IsValidGlobalCell0(uint16_t global_cell_0based)
@@ -38,9 +38,9 @@ bool Bmu_IsValidGlobalCell0(uint16_t global_cell_0based)
     return (global_cell_0based < BMU_TOTAL_CELLS);
 }
 
-uint16_t Bmu_MakeGlobalCellIndex0(uint8_t csc_index, uint8_t cell_on_csc)
+uint16_t Bmu_MakeGlobalCellIndex0(uint8_t afe_index, uint8_t cell_on_afe)
 {
-    return (uint16_t)(((uint16_t)csc_index * BMU_CELLS_PER_CSC) + cell_on_csc);
+    return (uint16_t)(((uint16_t)afe_index * BMU_CELL_COUNT_PER_AFE) + cell_on_afe);
 }
 
 uint8_t Bmu_GlobalToCscIndex(uint16_t global_cell_0based)

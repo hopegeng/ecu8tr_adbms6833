@@ -39,7 +39,7 @@ extern Bmu_CellDbType g_bmuCellDb;
 
 void Bmu_CellDb_Init(void);
 
-Bmu_ReturnType Bmu_CellDb_UpdateMeasurement(uint8_t csc_index,
+Bmu_ReturnType Bmu_CellDb_UpdateMeasurement(uint8_t afe_index,
                                             uint8_t cell_on_csc,
                                             uint16_t cell_voltage_raw_0p1mV,
                                             int16_t cell_temp_raw_0p01C,

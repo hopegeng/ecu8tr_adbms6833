@@ -24,11 +24,11 @@ typedef struct
 
 void Bmu_CellMapping_InitDefault(void);
 
-bool Bmu_IsValidCscIndex(uint8_t csc_index);
-bool Bmu_IsValidCellOnCsc(uint8_t cell_on_csc);
+bool Bmu_IsValidAfeIndex(uint8_t csc_index);
+bool Bmu_IsValidCellOnAfe(uint8_t cell_on_csc);
 bool Bmu_IsValidGlobalCell0(uint16_t global_cell_0based);
 
-uint16_t Bmu_MakeGlobalCellIndex0(uint8_t csc_index, uint8_t cell_on_csc);
+uint16_t Bmu_MakeGlobalCellIndex0(uint8_t afe_index, uint8_t cell_on_afe);
 uint8_t  Bmu_GlobalToCscIndex(uint16_t global_cell_0based);
 uint8_t  Bmu_GlobalToCellOnCsc(uint16_t global_cell_0based);
 

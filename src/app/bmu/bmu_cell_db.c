@@ -30,8 +30,8 @@ void Bmu_CellDb_Init(void)
     }
 }
 
-Bmu_ReturnType Bmu_CellDb_UpdateMeasurement(uint8_t csc_index,
-                                            uint8_t cell_on_csc,
+Bmu_ReturnType Bmu_CellDb_UpdateMeasurement(uint8_t afe_index,
+                                            uint8_t cell_on_afe,
                                             uint16_t cell_voltage_raw_0p1mV,
                                             int16_t cell_temp_raw_0p01C,
                                             uint16_t gpio_voltage_raw_0p1mV,
@@ -40,12 +40,12 @@ Bmu_ReturnType Bmu_CellDb_UpdateMeasurement(uint8_t csc_index,
 {
     uint16_t idx;
 
-    if ((!Bmu_IsValidCscIndex(csc_index)) || (!Bmu_IsValidCellOnCsc(cell_on_csc)))
+    if ((!Bmu_IsValidAfeIndex(afe_index)) || (!Bmu_IsValidCellOnAfe(cell_on_afe)))
     {
         return BMU_E_RANGE;
     }
 
-    idx = Bmu_MakeGlobalCellIndex0(csc_index, cell_on_csc);
+    idx = Bmu_MakeGlobalCellIndex0(afe_index, cell_on_afe);
 
     g_bmuCellDb.cells[idx].dbc_cell_sig.cell_voltage_raw_0p1mV = cell_voltage_raw_0p1mV;
     g_bmuCellDb.cells[idx].dbc_cell_sig.cell_temp_raw_0p01C = cell_temp_raw_0p01C;

@@ -116,7 +116,7 @@ void Bmu_CscAcq_MainTask_20ms(uint32_t now_ms)
     {
         for (cellIdx = 0u; cellIdx < BMU_CELL_COUNT_PER_AFE; cellIdx++)
         {
-            (void)Bmu_CellDb_UpdateMeasurement(0u,
+            (void)Bmu_CellDb_UpdateMeasurement(afeIdx,
                                                (uint8_t)((afeIdx * BMU_CELL_COUNT_PER_AFE) + cellIdx),
                                                (uint16_t)(snapshot.cell_voltage_mV[afeIdx][cellIdx] * 10u),
                                                snapshot.cell_temp_raw_0p01C[afeIdx][cellIdx],
