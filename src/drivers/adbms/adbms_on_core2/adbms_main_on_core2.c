@@ -26,8 +26,8 @@
 
 // Define a priority for the interrupt
 #define ISR_PRIORITY_STM2_TICK  12
-#define ADBMS6830_MEASUREMENT_PERIOD_MS (1000u)
-#define ADBMS6830_CORE2_DEMO_MODE       (1u)
+#define ADBMS6830_MEASUREMENT_PERIOD_MS (5000u)
+#define ADBMS6830_CORE2_DEMO_MODE       (0u)
 
 /* =========================================================
  * Project globals
@@ -202,6 +202,7 @@ static Adbms6830_Status_t adbms_QspiTransfer( const uint8_t *tx, uint8_t *rx, ui
         return ADBMS6830_ERR_PARAM;
     }
 
+
 	retVal = qspi0_send_receive_iLLD( eQspiHwCs02, len, (uint8_t *)tx, rx );
 	if( retVal == SpiIf_Status_ok )
 	{
@@ -237,7 +238,7 @@ static void App_FillDefaultCfga(Adbms6830_Context_t *ctx)
         (void)memset(&cfga, 0, sizeof(cfga));
 
         cfga.CFGA0.B.REFON = 1U;
-        cfga.CFGA5.B.COMMBK = 1U;
+        cfga.CFGA5.B.COMMBK = (ic==(ctx->icCount-1))? 1: 0;
         cfga.CFGA5.B.FC = 7U;
 
         ctx->cfga[ic].data[0] = cfga.CFGA0.U8;
@@ -415,6 +416,7 @@ void adbms_main_on_core2(void)
 
     /* Optional: force known startup state */
     g_bmsDrv.svcState = ADBMS6830_SVC_BOOT;
+
 
 
     while (1)
