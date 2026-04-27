@@ -15,6 +15,11 @@ extern "C" {
 #define ADBMS6830_CMD_FRAME_SIZE     (4U)
 #define ADBMS6830_DATA_PEC_SIZE      (2U)
 #define ADBMS6830_RDCVALL_DATA_BYTES (32U)
+#define ADBMS6830_CELL_GROUP_DATA_BYTES (6U)
+
+#ifndef ADBMS6830_USE_RDCVALL
+#define ADBMS6830_USE_RDCVALL        (0U)
+#endif
 
 typedef enum
 {
@@ -103,6 +108,12 @@ typedef struct
     uint16_t RDSID;
     uint16_t SRST;
     uint16_t CLRFLAG;
+    uint16_t RDCVA;
+    uint16_t RDCVB;
+    uint16_t RDCVC;
+    uint16_t RDCVD;
+    uint16_t RDCVE;
+    uint16_t RDCVF;
     uint16_t RDCVALL;
     uint16_t ADCV;
     uint16_t MUTE;
@@ -130,6 +141,9 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
 Adbms6830_Status_t Adbms6830_ReadCellVoltagesAll(Adbms6830_Context_t *ctx,
                                                  const Adbms6830_Hal_t *hal,
                                                  const Adbms6830_CommandSet_t *cmds);
+Adbms6830_Status_t Adbms6830_ReadCellVoltagesByGroup(Adbms6830_Context_t *ctx,
+                                                     const Adbms6830_Hal_t *hal,
+                                                     const Adbms6830_CommandSet_t *cmds);
 Adbms6830_Status_t Adbms6830_SendMute(const Adbms6830_Hal_t *hal,
                                       const Adbms6830_CommandSet_t *cmds);
 Adbms6830_Status_t Adbms6830_SendUnmute(const Adbms6830_Hal_t *hal,

@@ -203,7 +203,7 @@ static Adbms6830_Status_t adbms_QspiTransfer( const uint8_t *tx, uint8_t *rx, ui
     }
 
 
-	retVal = qspi0_send_receive_iLLD( eQspiHwCs02, len, (uint8_t *)tx, rx );
+	retVal = qspi0_send_receive_iLLD( eQspiHwCs06, len, (uint8_t *)tx, rx );
 	if( retVal == SpiIf_Status_ok )
 	{
 		if (qspimstr_waitForRxDone_iLLD() == true)

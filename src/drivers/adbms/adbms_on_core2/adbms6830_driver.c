@@ -7,7 +7,7 @@
 
 //ADBMS6830 datasheet: D:\NeutronControls\ADI\ADBMS6830\ds_ADBMS6830_Datasheet_RevSpA_2021-12.pdf
 #define ADBMS6830_READY_DELAY_US	 		(10)			//rReady: 10us
-#define ADBMS6830_WAKE_DELAY_US      		(500U)			//tWAKE = 500us,
+#define ADBMS6830_WAKE_DELAY_US      		(400U)			//tWAKE = 500us,
 #define ADBMS6830_LINK_IDLE_TIMEOUT  		(5U)			//tIDLE = 5ms, ADBMS6830 Datasheet P9
 #define ADBMS6830_SLEEP_WATCHDOG_TIMEOUT	(2000U)			//the page 31
 #define ADBMS6830_REG_GROUP_DATA_LEN 		(6U)
@@ -25,6 +25,12 @@ static Adbms6830_Status_t Adbms6830_ReadRegisterGroup(const Adbms6830_Hal_t *hal
                                                       uint8_t *rxData,
                                                       uint16_t dataLen,
                                                       uint8_t icCount);
+static void Adbms6830_ParseCellBlock(Adbms6830_CellData_t *cell, const uint8_t *block);
+
+static void Adbms6830_ParseCellGroup(Adbms6830_CellData_t *cell,
+                                     const uint8_t *block,
+                                     uint8_t startCellIndex,
+                                     uint8_t cellCount);
 
 static Adbms6830_Status_t Adbms6830_BuildCmdFrame(uint16_t cmd, uint8_t frame[ADBMS6830_CMD_FRAME_SIZE])
 {
@@ -161,6 +167,11 @@ static void Adbms6830_ParseCellBlock(Adbms6830_CellData_t *cell, const uint8_t *
 {
     uint8_t i;
 
+    if ((cell == NULL) || (block == NULL))
+    {
+        return;
+    }
+
     for (i = 0U; i < ADBMS6830_CELLS_PER_IC; i++)
     {
         uint16_t raw = (uint16_t)(((uint16_t)block[(uint16_t)(2U * i) + 1U] << 8U) |
@@ -168,6 +179,28 @@ static void Adbms6830_ParseCellBlock(Adbms6830_CellData_t *cell, const uint8_t *
 
         cell->raw[i] = raw;
         cell->mV[i]  = Adbms6830_RawTo_mV(raw);
+    }
+}
+
+static void Adbms6830_ParseCellGroup(Adbms6830_CellData_t *cell,
+                                     const uint8_t *block,
+                                     uint8_t startCellIndex,
+                                     uint8_t cellCount)
+{
+    uint8_t i;
+
+    if ((cell == NULL) || (block == NULL))
+    {
+        return;
+    }
+
+    for (i = 0U; i < cellCount; i++)
+    {
+        uint16_t raw = (uint16_t)(((uint16_t)block[(uint16_t)(2U * i) + 1U] << 8U) |
+                                   (uint16_t)block[(uint16_t)(2U * i)]);
+
+        cell->raw[(uint8_t)(startCellIndex + i)] = raw;
+        cell->mV[(uint8_t)(startCellIndex + i)]  = Adbms6830_RawTo_mV(raw);
     }
 }
 
@@ -208,6 +241,12 @@ void Adbms6830_SetDefaultCommands(Adbms6830_CommandSet_t *cmds)
     cmds->RDSID = ADBMS6830_RDSID_REG;
     cmds->SRST = ADBMS6830_SRST_REG;
     cmds->CLRFLAG = ADBMS6830_CLRFLAG_REG;
+    cmds->RDCVA = ADBMS6830_RDCVA_REG;
+    cmds->RDCVB = ADBMS6830_RDCVB_REG;
+    cmds->RDCVC = ADBMS6830_RDCVC_REG;
+    cmds->RDCVD = ADBMS6830_RDCVD_REG;
+    cmds->RDCVE = ADBMS6830_RDCVE_REG;
+    cmds->RDCVF = ADBMS6830_RDCVF_REG;
     cmds->RDCVALL = ADBMS6830_RDCVALL_REG;
     cmds->ADCV = (uint16_t)(ADBMS6830_ADCV_BASE_REG);		// | ADBMS6830_ADCV_CONT_OPTION);
     cmds->MUTE = ADBMS6830_MUTE_REG;
@@ -364,7 +403,6 @@ Adbms6830_Status_t Adbms6830_ReadCellVoltagesAll(Adbms6830_Context_t *ctx,
     }
 #endif
 
-
     if (hal->spiTransfer(tx, rx, totalLen) != ADBMS6830_OK)
     {
         return ADBMS6830_ERR_COMM;
@@ -372,8 +410,7 @@ Adbms6830_Status_t Adbms6830_ReadCellVoltagesAll(Adbms6830_Context_t *ctx,
 
     offset = ADBMS6830_CMD_FRAME_SIZE;
 
-    memcpy( ray_buffer, rx, totalLen );
-
+    memcpy(ray_buffer, rx, totalLen);
 
     for (ic = (int32_t)ctx->icCount - 1; ic >= 0; ic--)
     {
@@ -385,6 +422,58 @@ Adbms6830_Status_t Adbms6830_ReadCellVoltagesAll(Adbms6830_Context_t *ctx,
 
         Adbms6830_ParseCellBlock(&ctx->cell[ic], &rx[offset]);
         offset = (uint16_t)(offset + ADBMS6830_RDCVALL_DATA_BYTES + ADBMS6830_DATA_PEC_SIZE);
+    }
+
+    return ADBMS6830_OK;
+}
+
+Adbms6830_Status_t Adbms6830_ReadCellVoltagesByGroup(Adbms6830_Context_t *ctx,
+                                                     const Adbms6830_Hal_t *hal,
+                                                     const Adbms6830_CommandSet_t *cmds)
+{
+    static const uint8_t groupStartIndex[6] = { 0U, 3U, 6U, 9U, 12U, 15U };
+    static const uint8_t groupCellCount[6]  = { 3U, 3U, 3U, 3U, 3U, 1U };
+    uint8_t groupData[ADBMS6830_MAX_ICS * ADBMS6830_CELL_GROUP_DATA_BYTES];
+    uint16_t groupCmds[6];
+    uint8_t group;
+    uint8_t ic;
+    Adbms6830_Status_t st;
+
+    if ((ctx == NULL) || (hal == NULL) || (cmds == NULL) || (hal->spiTransfer == NULL))
+    {
+        return ADBMS6830_ERR_PARAM;
+    }
+
+    groupCmds[0] = cmds->RDCVA;
+    groupCmds[1] = cmds->RDCVB;
+    groupCmds[2] = cmds->RDCVC;
+    groupCmds[3] = cmds->RDCVD;
+    groupCmds[4] = cmds->RDCVE;
+    groupCmds[5] = cmds->RDCVF;
+
+    for (group = 0U; group < 6U; group++)
+    {
+        st = Adbms6830_ReadRegisterGroup(hal,
+                                         groupCmds[group],
+                                         groupData,
+                                         ADBMS6830_CELL_GROUP_DATA_BYTES,
+                                         ctx->icCount);
+        if (st != ADBMS6830_OK)
+        {
+            if (st == ADBMS6830_ERR_PEC)
+            {
+                ctx->pecErrorCount++;
+            }
+            return st;
+        }
+
+        for (ic = 0U; ic < ctx->icCount; ic++)
+        {
+            Adbms6830_ParseCellGroup(&ctx->cell[ic],
+                                     &groupData[(uint16_t)ic * ADBMS6830_CELL_GROUP_DATA_BYTES],
+                                     groupStartIndex[group],
+                                     groupCellCount[group]);
+        }
     }
 
     return ADBMS6830_OK;
@@ -831,7 +920,11 @@ Adbms6830_Status_t Adbms6830_Task(Adbms6830_Context_t *ctx,
 
             PRINTF( "Start Read Result @%d\r\n", ctx->tickMs );
 
+#if ADBMS6830_USE_RDCVALL
             if (Adbms6830_ReadCellVoltagesAll(ctx, hal, cmds) == ADBMS6830_OK)
+#else
+            if (Adbms6830_ReadCellVoltagesByGroup(ctx, hal, cmds) == ADBMS6830_OK)
+#endif
             {
                 ctx->linkState     = ADBMS6830_LINK_READY;
                 ctx->lastCommMs    = ctx->tickMs;
