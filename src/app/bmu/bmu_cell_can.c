@@ -25,7 +25,7 @@ static void Bmu_CellCan_PackPayload(const Bmu_CellRecordType *rec, CanIf_MsgType
         return;
     }
 
-    if ((rec->valid == false) || (rec->stale == true))
+    if (rec->valid == false)
     {
         v_raw = BMU_INVALID_CELL_VOLTAGE_RAW;
         g_raw = BMU_INVALID_GPIO_VOLTAGE_RAW;
@@ -34,6 +34,9 @@ static void Bmu_CellCan_PackPayload(const Bmu_CellRecordType *rec, CanIf_MsgType
     }
     else
     {
+        /* Keep publishing the last sampled payload at the CAN cycle time
+         * even when the acquisition period is slower than the 1 s bus period.
+         */
         v_raw = rec->dbc_cell_sig.cell_voltage_raw_0p1mV;
         g_raw = rec->dbc_cell_sig.gpio_voltage_raw_0p1mV;
         t_raw_u16 = (uint16_t)rec->dbc_cell_sig.cell_temp_raw_0p01C;

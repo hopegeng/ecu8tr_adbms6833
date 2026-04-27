@@ -12,6 +12,10 @@ extern "C" {
 #define ADBMS6830_SHARED_USED_CELLS_PER_AFE     (10u)
 #define ADBMS6830_SHARED_FIRST_USED_CELL_0BASED (6u)
 
+#ifndef ADBMS6830_SHARED_SAMPLE_PERIOD_MS
+#define ADBMS6830_SHARED_SAMPLE_PERIOD_MS       (5000u)
+#endif
+
 typedef struct
 {
     uint32_t sample_counter;

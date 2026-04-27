@@ -26,7 +26,6 @@
 
 // Define a priority for the interrupt
 #define ISR_PRIORITY_STM2_TICK  12
-#define ADBMS6830_MEASUREMENT_PERIOD_MS (5000u)
 #define ADBMS6830_CORE2_DEMO_MODE       (0u)
 
 /* =========================================================
@@ -203,7 +202,7 @@ static Adbms6830_Status_t adbms_QspiTransfer( const uint8_t *tx, uint8_t *rx, ui
     }
 
 
-	retVal = qspi0_send_receive_iLLD( eQspiHwCs06, len, (uint8_t *)tx, rx );
+	retVal = qspi0_send_receive_iLLD( eQspiHwCs02, len, (uint8_t *)tx, rx );
 	if( retVal == SpiIf_Status_ok )
 	{
 		if (qspimstr_waitForRxDone_iLLD() == true)
@@ -334,7 +333,7 @@ static void App_PublishSharedSnapshot(void)
 
             snapshot.cell_voltage_mV[afeIdx][usedCellIdx] = g_bmsDrv.cell[afeIdx].mV[driverCellIdx];
             //TODO: will implement the real code to read NTC values from ADBMS6830 CSC board
-            snapshot.cell_temp_raw_0p01C[afeIdx][usedCellIdx] = 2500;
+            snapshot.cell_temp_raw_0p01C[afeIdx][usedCellIdx] = (afeIdx == 0)?2500:3000;
             snapshot.balancing[afeIdx][usedCellIdx] =
                 ((dccMask & ((uint16_t)1u << driverCellIdx)) != 0u) ? 1u : 0u;
         }
@@ -387,7 +386,7 @@ void adbms_main_on_core2(void)
 #if (ADBMS6830_CORE2_DEMO_MODE == 1u)
     while (1)
     {
-        if ((g_sysTickMs - lastDemoPublishMs) >= ADBMS6830_MEASUREMENT_PERIOD_MS)
+        if ((g_sysTickMs - lastDemoPublishMs) >= ADBMS6830_SHARED_SAMPLE_PERIOD_MS)
         {
             App_PublishDemoSnapshot();
             lastDemoPublishMs = g_sysTickMs;
@@ -429,7 +428,7 @@ void adbms_main_on_core2(void)
         status = Adbms6830_Task(&g_bmsDrv,
                              &g_bmsHal,
                              &g_bmsCmds,
-                             ADBMS6830_MEASUREMENT_PERIOD_MS);
+                             ADBMS6830_SHARED_SAMPLE_PERIOD_MS);
         if( status != ADBMS6830_OK )
         {
         	adbms6830_state = ECU8TR_ADBMS6830_ERROR;

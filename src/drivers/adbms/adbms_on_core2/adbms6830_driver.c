@@ -248,7 +248,7 @@ void Adbms6830_SetDefaultCommands(Adbms6830_CommandSet_t *cmds)
     cmds->RDCVE = ADBMS6830_RDCVE_REG;
     cmds->RDCVF = ADBMS6830_RDCVF_REG;
     cmds->RDCVALL = ADBMS6830_RDCVALL_REG;
-    cmds->ADCV = (uint16_t)(ADBMS6830_ADCV_BASE_REG);		// | ADBMS6830_ADCV_CONT_OPTION);
+    cmds->ADCV = (uint16_t)(ADBMS6830_ADCV_BASE_REG);		// 0x260 = MD = 1(normal speed), DCP = 0( no discharge ), CH = 0(all cells )
     cmds->MUTE = ADBMS6830_MUTE_REG;
     cmds->UNMUTE = ADBMS6830_UNMUTE_REG;
 }

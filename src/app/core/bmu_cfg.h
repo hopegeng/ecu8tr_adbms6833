@@ -2,6 +2,7 @@
 #define BMU_CFG_H
 
 #include <stdint.h>
+#include "../../drivers/adbms/adbms_on_core2/adbms6830_shared.h"
 
 /* BMU topology for the current ADBMS6830 platform:
  * one BMU controls one battery module
@@ -26,12 +27,16 @@
 /* DBC timing */
 
 #define BMU_CELLMESSAGE_CYCLE_MS        (1000u)
+#define BMU_SAMPLE_PERIOD_MS            (ADBMS6830_SHARED_SAMPLE_PERIOD_MS)
 
 /* Scheduler tick used by CellMessage publisher */
 #define BMU_CELL_TX_TASK_PERIOD_MS      (10u)
 
 /* Stale policy */
-#define BMU_CELL_STALE_TIMEOUT_MS       (1500u)
+/* Allow CAN to keep sending the last valid snapshot between slower
+ * acquisitions, but still flag data stale after several missed sample windows.
+ */
+#define BMU_CELL_STALE_TIMEOUT_MS       ((BMU_SAMPLE_PERIOD_MS * 3u) + BMU_CELLMESSAGE_CYCLE_MS)
 
 /* DBC invalid fallback values if measurement is stale/invalid */
 #define BMU_INVALID_CELL_VOLTAGE_RAW    (0u)     /* 0.1 mV/bit */
