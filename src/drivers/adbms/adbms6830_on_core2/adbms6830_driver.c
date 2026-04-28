@@ -35,6 +35,10 @@ static void Adbms6830_ParseAuxGroup(Adbms6830_AuxData_t *aux,
                                     const uint8_t *block,
                                     uint8_t startAuxIndex,
                                     uint8_t auxCount);
+static void Adbms6830_ParseAuxStatusA(Adbms6830_AuxStatusData_t *auxStatus, const uint8_t *block);
+static void Adbms6830_ParseAuxStatusB(Adbms6830_AuxStatusData_t *auxStatus, const uint8_t *block);
+static uint32_t Adbms6830_RawToPrimaryAuxMilliVolt(uint16_t raw, uint8_t auxIndex);
+static int16_t Adbms6830_RawToItempDegC(uint16_t raw);
 
 static Adbms6830_Status_t Adbms6830_BuildCmdFrame(uint16_t cmd, uint8_t frame[ADBMS6830_CMD_FRAME_SIZE])
 {
@@ -227,12 +231,61 @@ static void Adbms6830_ParseAuxGroup(Adbms6830_AuxData_t *aux,
 
     for (i = 0U; i < auxCount; i++)
     {
+        uint8_t auxIndex = (uint8_t)(startAuxIndex + i);
         uint16_t raw = (uint16_t)(((uint16_t)block[(uint16_t)(2U * i) + 1U] << 8U) |
                                    (uint16_t)block[(uint16_t)(2U * i)]);
 
-        aux->raw[(uint8_t)(startAuxIndex + i)] = raw;
-        aux->mV[(uint8_t)(startAuxIndex + i)]  = Adbms6830_RawTo_mV(raw);
+        aux->raw[auxIndex] = raw;
+        aux->mV[auxIndex]  = Adbms6830_RawToPrimaryAuxMilliVolt(raw, auxIndex);
     }
+}
+
+static void Adbms6830_ParseAuxStatusA(Adbms6830_AuxStatusData_t *auxStatus, const uint8_t *block)
+{
+    if ((auxStatus == NULL) || (block == NULL))
+    {
+        return;
+    }
+
+    auxStatus->vref2Raw = (uint16_t)(((uint16_t)block[1] << 8U) | (uint16_t)block[0]);
+    auxStatus->vref2mV = (uint32_t)Adbms6830_RawTo_mV(auxStatus->vref2Raw);
+    auxStatus->itmpRaw = (uint16_t)(((uint16_t)block[3] << 8U) | (uint16_t)block[2]);
+    auxStatus->itmpDegC = Adbms6830_RawToItempDegC(auxStatus->itmpRaw);
+}
+
+static void Adbms6830_ParseAuxStatusB(Adbms6830_AuxStatusData_t *auxStatus, const uint8_t *block)
+{
+    if ((auxStatus == NULL) || (block == NULL))
+    {
+        return;
+    }
+
+    auxStatus->vdRaw = (uint16_t)(((uint16_t)block[1] << 8U) | (uint16_t)block[0]);
+    auxStatus->vdmV = (uint32_t)Adbms6830_RawTo_mV(auxStatus->vdRaw);
+    auxStatus->vaRaw = (uint16_t)(((uint16_t)block[3] << 8U) | (uint16_t)block[2]);
+    auxStatus->vamV = (uint32_t)Adbms6830_RawTo_mV(auxStatus->vaRaw);
+    auxStatus->vresRaw = (uint16_t)(((uint16_t)block[5] << 8U) | (uint16_t)block[4]);
+    auxStatus->vresmV = (uint32_t)Adbms6830_RawTo_mV(auxStatus->vresRaw);
+}
+
+static uint32_t Adbms6830_RawToPrimaryAuxMilliVolt(uint16_t raw, uint8_t auxIndex)
+{
+    uint32_t baseMilliVolt = (uint32_t)Adbms6830_RawTo_mV(raw);
+
+    if (auxIndex == 11U)
+    {
+        return (baseMilliVolt * 25U);
+    }
+
+    return baseMilliVolt;
+}
+
+static int16_t Adbms6830_RawToItempDegC(uint16_t raw)
+{
+    uint32_t milliVolt = (uint32_t)Adbms6830_RawTo_mV(raw);
+    int32_t tempDegC = (int32_t)(((milliVolt * 10U) + 37U) / 75U) - 273;
+
+    return (int16_t)tempDegC;
 }
 
 void Adbms6830_Init(Adbms6830_Context_t *ctx, uint8_t icCount)
@@ -268,6 +321,8 @@ void Adbms6830_SetDefaultCommands(Adbms6830_CommandSet_t *cmds)
     cmds->WRCFGB = ADBMS6830_WRCFGB_REG;
     cmds->RDCFGA = ADBMS6830_RDCFGA_REG;
     cmds->RDCFGB = ADBMS6830_RDCFGB_REG;
+    cmds->RDSTATA = ADBMS6830_RDSTATA_REG;
+    cmds->RDSTATB = ADBMS6830_RDSTATB_REG;
     cmds->RDSTATC = ADBMS6830_RDSTATC_REG;
     cmds->RDSID = ADBMS6830_RDSID_REG;
     cmds->SRST = ADBMS6830_SRST_REG;
@@ -531,6 +586,7 @@ Adbms6830_Status_t Adbms6830_ReadAuxVoltagesByGroup(Adbms6830_Context_t *ctx,
 {
     static const uint8_t groupStartIndex[4] = { 0U, 3U, 6U, 9U };
     uint8_t groupData[ADBMS6830_MAX_ICS * ADBMS6830_CELL_GROUP_DATA_BYTES];
+    uint8_t statusData[ADBMS6830_MAX_ICS * ADBMS6830_CELL_GROUP_DATA_BYTES];
     uint16_t groupCmds[4];
     uint8_t group;
     uint8_t ic;
@@ -587,6 +643,52 @@ Adbms6830_Status_t Adbms6830_ReadAuxVoltagesByGroup(Adbms6830_Context_t *ctx,
                                     groupStartIndex[group],
                                     3U);
         }
+    }
+
+    st = Adbms6830_ReadRegisterGroup(hal,
+                                     cmds->RDSTATA,
+                                     statusData,
+                                     ADBMS6830_CELL_GROUP_DATA_BYTES,
+                                     ctx->icCount);
+    if (st != ADBMS6830_OK)
+    {
+        if (st == ADBMS6830_ERR_PEC)
+        {
+            ctx->pecErrorCount++;
+        }
+        return st;
+    }
+
+    ctx->linkState  = ADBMS6830_LINK_READY;
+    ctx->lastCommMs = ctx->tickMs;
+
+    for (ic = 0U; ic < ctx->icCount; ic++)
+    {
+        Adbms6830_ParseAuxStatusA(&ctx->auxStatus[ic],
+                                  &statusData[(uint16_t)ic * ADBMS6830_CELL_GROUP_DATA_BYTES]);
+    }
+
+    st = Adbms6830_ReadRegisterGroup(hal,
+                                     cmds->RDSTATB,
+                                     statusData,
+                                     ADBMS6830_CELL_GROUP_DATA_BYTES,
+                                     ctx->icCount);
+    if (st != ADBMS6830_OK)
+    {
+        if (st == ADBMS6830_ERR_PEC)
+        {
+            ctx->pecErrorCount++;
+        }
+        return st;
+    }
+
+    ctx->linkState  = ADBMS6830_LINK_READY;
+    ctx->lastCommMs = ctx->tickMs;
+
+    for (ic = 0U; ic < ctx->icCount; ic++)
+    {
+        Adbms6830_ParseAuxStatusB(&ctx->auxStatus[ic],
+                                  &statusData[(uint16_t)ic * ADBMS6830_CELL_GROUP_DATA_BYTES]);
     }
 
     return ADBMS6830_OK;

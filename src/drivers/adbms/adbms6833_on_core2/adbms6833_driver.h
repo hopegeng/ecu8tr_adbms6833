@@ -17,6 +17,8 @@ extern "C" {
 #define ADBMS6833_RDCVALL_DATA_BYTES (32U)
 #define ADBMS6833_CELL_GROUP_DATA_BYTES (6U)
 #define ADBMS6833_AUX_CHANNELS_PER_IC (12U)
+#define ADBMS6833_AUX_STATUS_CHANNELS_PER_IC (5U)
+#define ADBMS6833_AUX_TOTAL_CHANNELS_PER_IC (17U)
 
 #ifndef ADBMS6833_USE_RDCVALL
 #define ADBMS6833_USE_RDCVALL        (0U)
@@ -71,8 +73,22 @@ typedef struct
 typedef struct
 {
     uint16_t raw[ADBMS6833_AUX_CHANNELS_PER_IC];
-    uint16_t mV[ADBMS6833_AUX_CHANNELS_PER_IC];
+    uint32_t mV[ADBMS6833_AUX_CHANNELS_PER_IC];
 } Adbms6833_AuxData_t;
+
+typedef struct
+{
+    uint16_t vref2Raw;
+    uint32_t vref2mV;
+    uint16_t itmpRaw;
+    int16_t itmpDegC;
+    uint16_t vdRaw;
+    uint32_t vdmV;
+    uint16_t vaRaw;
+    uint32_t vamV;
+    uint16_t vresRaw;
+    uint32_t vresmV;
+} Adbms6833_AuxStatusData_t;
 
 typedef struct
 {
@@ -96,6 +112,7 @@ typedef struct
     Adbms6833_CfgReg_t cfgb[ADBMS6833_MAX_ICS];
     Adbms6833_CellData_t cell[ADBMS6833_MAX_ICS];
     Adbms6833_AuxData_t aux[ADBMS6833_MAX_ICS];
+    Adbms6833_AuxStatusData_t auxStatus[ADBMS6833_MAX_ICS];
 
 } Adbms6833_Context_t;
 
@@ -112,6 +129,8 @@ typedef struct
     uint16_t WRCFGB;
     uint16_t RDCFGA;
     uint16_t RDCFGB;
+    uint16_t RDSTATA;
+    uint16_t RDSTATB;
     uint16_t RDSTATC;
     uint16_t RDSID;
     uint16_t SRST;
