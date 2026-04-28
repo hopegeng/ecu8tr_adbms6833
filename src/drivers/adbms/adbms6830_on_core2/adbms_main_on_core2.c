@@ -463,7 +463,7 @@ void adbms6830_main_on_core2(void)
 
     while (1)
     {
-    	static bool isStandbyValid = false;
+    	static bool isAuxChannelMeasured = true;
     	Adbms6830_Status_t status;
         /* keep driver time base updated */
         g_bmsDrv.tickMs = g_sysTickMs;
@@ -509,7 +509,7 @@ void adbms6830_main_on_core2(void)
                 g_lastPublishedMeasureMs = g_bmsDrv.lastMeasureMs;
             }
 
-            if( isStandbyValid == true )
+            if( isAuxChannelMeasured == false )
             //if ((g_sysTickMs - g_lastAuxPrintMs) >= ADBMS6830_AUX_PRINT_PERIOD_MS)
             {
             	ADBMS6830_MAIN_DEBUG_PRINTF( "Start Aux @%d\r\n", g_bmsDrv.tickMs );
@@ -524,12 +524,12 @@ void adbms6830_main_on_core2(void)
                 }
 
                 g_lastAuxPrintMs = g_sysTickMs;
-                isStandbyValid = false;
+                isAuxChannelMeasured = true;
             }
         }
         else
         {
-        	isStandbyValid = true;
+        	isAuxChannelMeasured = false;
         }
 
         /* optional: other application work */
