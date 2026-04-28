@@ -9,7 +9,7 @@
 #include "../bmu/bmu_csc_acq.h"
 
 #include "../bmu/bmu_cell_db.h"
-#include "../../drivers/adbms/adbms_on_core2/adbms6830_shared.h"
+#include "../../drivers/adbms/adbms_family_select.h"
 #include "bmu_cfg.h"
 
 
@@ -93,11 +93,11 @@ void Bmu_CscAcq_Init(void)
 
 void Bmu_CscAcq_MainTask_20ms(uint32_t now_ms)
 {
-    Adbms6830_SharedSnapshot_t snapshot;
+    AdbmsSharedSnapshot_t snapshot;
     uint8_t afeIdx;
     uint8_t cellIdx;
 
-    if (Adbms6830_SharedRead(&snapshot) == false)
+    if (AdbmsSharedRead(&snapshot) == false)
     {
         return;
     }

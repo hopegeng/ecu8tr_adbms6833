@@ -1,14 +1,14 @@
 /**
- * \file adbms6830_help.h
- * \brief ADBMS6830 register header file
+ * \file adbms6833_help.h
+ * \brief ADBMS6833 register header file
  * \author R. Larocque
  *
 
  *
  */
 
-#ifndef ADBMS6830_H
-#define ADBMS6830_H
+#ifndef ADBMS6833_H
+#define ADBMS6833_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -24,12 +24,12 @@
  *  @name Constants used for Fuel Cell
  *
  * \{*/
-#define ADBMS6830_CELL_OV_THRESHOLD			1400			/**< \brief Overvoltage threshold in mV*/
-#define ADBMS6830_CELL_UV_THRESHOLD			600			   	/**< \brief Undervoltage threshold in mV*/
-#define ADBMS6830_CELL_CONVERSION_FACTOR	1500			/**< \brief Conversion factor used to for calculation of voltages*/
-#define ADBMS6830_NO_OF_CELLS				16				/**< \brief Number of cells in each node*/
-#define ADBMS6830_CELL_LOW_RANGE			500				/**< \brief Cell low range in mV.  If voltage is below this VCELL_OOR fault is issued*/
-#define ADBMS6830_CELL_HIGH_RANGE			2000				/**< \brief Cell high range in mV.  If voltage is above this VCELL_OOR fault is issued*/
+#define ADBMS6833_CELL_OV_THRESHOLD			1400			/**< \brief Overvoltage threshold in mV*/
+#define ADBMS6833_CELL_UV_THRESHOLD			600			   	/**< \brief Undervoltage threshold in mV*/
+#define ADBMS6833_CELL_CONVERSION_FACTOR	1500			/**< \brief Conversion factor used to for calculation of voltages*/
+#define ADBMS6833_NO_OF_CELLS				16				/**< \brief Number of cells in each node*/
+#define ADBMS6833_CELL_LOW_RANGE			500				/**< \brief Cell low range in mV.  If voltage is below this VCELL_OOR fault is issued*/
+#define ADBMS6833_CELL_HIGH_RANGE			2000				/**< \brief Cell high range in mV.  If voltage is above this VCELL_OOR fault is issued*/
 /**\}*/
 
 /******************************************************************************/
@@ -39,15 +39,15 @@
  *  @name Macros used for Fuel Cell
  *
  * \{*/
-#define ADBMS6830_NUMBER_OF_NODES 			1u				/**< \brief number of nodes in the ring*/
-#define ADBMS6830_CELL_VOLTAGE_CONVERSION	6666			/**< \brief equates to 1/150e-6 x 1000 */
-#define ADBMS6830_CELL_V_LSB				150				/**< \brief in micro volts*/
-#define ADBMS6830_VOLT_SCALING				1000u			/**< \brief conversion factor to give results in millivolts
+#define ADBMS6833_NUMBER_OF_NODES 			2u				/**< \brief two ADBMS6833 devices per CSC board*/
+#define ADBMS6833_CELL_VOLTAGE_CONVERSION	6666			/**< \brief equates to 1/150e-6 x 1000 */
+#define ADBMS6833_CELL_V_LSB				150				/**< \brief in micro volts*/
+#define ADBMS6833_VOLT_SCALING				1000u			/**< \brief conversion factor to give results in millivolts
 																 Vaux = ADC x 150e-6 +1.500 = V
 																 Vaux = (ADC x 150 / 1000) + 1500 = mV*/
-#define ADBMS6830_TEMP_KELVIN				2730u			/**< \brief Absolute zero x 10*/
-#define ADBMS6830_MVPERDEGREEC				75u				/**< \brief represents 7.5mv/C  */
-#define ADBMS6830_TEMP_SCALING				100u
+#define ADBMS6833_TEMP_KELVIN				2730u			/**< \brief Absolute zero x 10*/
+#define ADBMS6833_MVPERDEGREEC				75u				/**< \brief represents 7.5mv/C  */
+#define ADBMS6833_TEMP_SCALING				100u
 /**\}*/
 
 
@@ -55,11 +55,11 @@
  *  @name Macros used for Fault detection
  *
  * \{*/
-#define ADBMS6830_NOFAULTS					0u				/**< \brief Used to check to see if a fault has occured */
-#define ADBMS6830_FAULT_OCCURED				1u				/**< \brief Used to check to see if a fault has occured */
-#define ADBMS6830_CxOV_FAULT				0xAA			/**< \brief bitmask to determine if Cell over voltage occurred */
-#define ADBMS6830_CxUV_FAULT				0x55			/**< \brief bitmask to determine if Cell under voltage occurred */
-#define ADBMS6830_STATC_BITMASK_FAULT		0x7FF			/**< \brief botmask to determine if faults were issued in STATC*/
+#define ADBMS6833_NOFAULTS					0u				/**< \brief Used to check to see if a fault has occured */
+#define ADBMS6833_FAULT_OCCURED				1u				/**< \brief Used to check to see if a fault has occured */
+#define ADBMS6833_CxOV_FAULT				0xAA			/**< \brief bitmask to determine if Cell over voltage occurred */
+#define ADBMS6833_CxUV_FAULT				0x55			/**< \brief bitmask to determine if Cell under voltage occurred */
+#define ADBMS6833_STATC_BITMASK_FAULT		0x7FF			/**< \brief botmask to determine if faults were issued in STATC*/
 /**\}*/
 
 
@@ -77,20 +77,20 @@ typedef struct
 	uint16_t Vd;												/**< \brief Digital power supply voltage*/
 	uint16_t Va;												/**< \brief Analog power supply voltage*/
 	uint16_t Vres;												/**< \brief Vref2 across resistor*/
-}STATUSV_t;
+}ADBMS6833_STATUSV_t;
 
 /**
  * \brief Structure to contain cell metrics
  */
 typedef struct
 {
-	int16_t packV[ADBMS6830_NUMBER_OF_NODES];									/**< \brief Total voltage of pack based on CV measurements*/
-	int16_t cellV[ADBMS6830_NUMBER_OF_NODES][ADBMS6830_NO_OF_CELLS];				/**< \brief Cell voltages for Cells 1 to 16 in each node*/
-	int16_t avgCellV[ADBMS6830_NUMBER_OF_NODES][ADBMS6830_NO_OF_CELLS];			/**< \brief Averaged Cell voltages for Cells 1 to 16 in each node*/
-	int16_t filtCellV[ADBMS6830_NUMBER_OF_NODES][ADBMS6830_NO_OF_CELLS];			/**< \brief Filtered Cell voltages for Cells 1 to 16 in each node*/
-	int16_t sPinV[ADBMS6830_NUMBER_OF_NODES][ADBMS6830_NO_OF_CELLS];				/**< \brief S-pin Cell voltages for Cells 1 to 16 in each node*/
-	STATUSV_t statusV[ADBMS6830_NUMBER_OF_NODES];									/**< \brief Status voltages for Nodex*/
-}CELL_INFO_t;
+	int16_t packV[ADBMS6833_NUMBER_OF_NODES];									/**< \brief Total voltage of pack based on CV measurements*/
+	int16_t cellV[ADBMS6833_NUMBER_OF_NODES][ADBMS6833_NO_OF_CELLS];				/**< \brief Cell voltages for Cells 1 to 16 in each node*/
+	int16_t avgCellV[ADBMS6833_NUMBER_OF_NODES][ADBMS6833_NO_OF_CELLS];			/**< \brief Averaged Cell voltages for Cells 1 to 16 in each node*/
+	int16_t filtCellV[ADBMS6833_NUMBER_OF_NODES][ADBMS6833_NO_OF_CELLS];			/**< \brief Filtered Cell voltages for Cells 1 to 16 in each node*/
+	int16_t sPinV[ADBMS6833_NUMBER_OF_NODES][ADBMS6833_NO_OF_CELLS];				/**< \brief S-pin Cell voltages for Cells 1 to 16 in each node*/
+	ADBMS6833_STATUSV_t statusV[ADBMS6833_NUMBER_OF_NODES];							/**< \brief Status voltages for Nodex*/
+}ADBMS6833_CELL_INFO_t;
 
 /**
  *  @brief Struct for Configuration Group A Register 0
@@ -102,22 +102,22 @@ typedef struct
 	uint32_t		reserved	: 4;	/**< \brief Bits 3-6: reserved*/
 	uint32_t 		REFON		: 1;	/**< \brief Bit 7: Reference Powered up\n 1 = reference remains powered up until watchdog timeout\n
 	 	 	 	 	 	 	 	 	 	 0 = reference shuts down after conversions (default)*/
-}ADBMS6830_CFGA0_s;
+}ADBMS6833_CFGA0_s;
 
 /**
  *  @brief Union for Configuration Group A Register 0
  */
 typedef union
 {
-	ADBMS6830_CFGA0_s B;
+	ADBMS6833_CFGA0_s B;
 	uint8_t U8;
-}ADBMS6830_CFGA0_t;
+}ADBMS6833_CFGA0_t;
 
 /**
  *  @brief Struct for Configuration Group A Register 1 \n
  *
  *  Assets various flags in Status Register C for latent fault detection.\n
- *  Asserting flags in status register for latent fault diagnostic does not cause the ADBMS6830 to behave as if the flag was set by the actual
+ *  Asserting flags in status register for latent fault diagnostic does not cause the ADBMS6833 to behave as if the flag was set by the actual
  *  diagnostic mechanism.
  *
  */
@@ -132,16 +132,16 @@ typedef struct
 	uint32_t	FLAG_D6		: 1;	/**< \brief Bit6 : 1 = forces NVM multiple error detection(MED).  Sets CMED and SMED.*/
 	uint32_t	FLAG_D7		: 1;	/**< \brief Bit7 : 1 = forces TMODCHK*/
 
-}ADBMS6830_CFGA1_s;
+}ADBMS6833_CFGA1_s;
 
 /**
  *  @brief Union for Configuration Group A Register 1
  */
 typedef union
 {
-	ADBMS6830_CFGA1_s B;			/**< \brief	bitfield access*/
+	ADBMS6833_CFGA1_s B;			/**< \brief	bitfield access*/
 	uint8_t U8;						/**< \brief	unsigned access*/
-}ADBMS6830_CFGA1_t;
+}ADBMS6833_CFGA1_t;
 
 /**
  *  @brief Struct for Configuration Group A Register 2
@@ -159,16 +159,16 @@ typedef struct
 	uint8_t		SOAKON				: 1;	/**< \brief Bit 7: Enables soak on AUX ADCs  \n
 	 	 	 	 	 	 	 	 	 	 	 	 	 	 0: disables soak time \n
 	 	 	 	 	 	 	 	 	 	 	 	 	 	 1: enables soak time for all commands*/
-}ADBMS6830_CFGA2_s;
+}ADBMS6833_CFGA2_s;
 
 /**
  *  @brief Union for Configuration Group A Register 2
  */
 typedef union
 {
-	ADBMS6830_CFGA2_s B;
+	ADBMS6833_CFGA2_s B;
 	uint8_t U8;
-}ADBMS6830_CFGA2_t;
+}ADBMS6833_CFGA2_t;
 
 /**
  *  @brief Struct for Configuration Group A Register 3 \n
@@ -191,16 +191,16 @@ typedef struct
 		uint8_t 	GPO7		: 1;	/**< \brief Bit 6: GPO7 Output state control*/
 		uint8_t 	GPO8		: 1;	/**< \brief Bit 7: GPO8 Output state control*/
 
-}ADBMS6830_CFGA3_s;
+}ADBMS6833_CFGA3_s;
 
 /**
  *  @brief Union for Configuration Group A Register 3
  */
 typedef union
 {
-	ADBMS6830_CFGA3_s B;
+	ADBMS6833_CFGA3_s B;
 	uint8_t U8;
-}ADBMS6830_CFGA3_t;
+}ADBMS6833_CFGA3_t;
 
 /**
  *  @brief Struct for Configuration Group A Register 4 \n
@@ -219,16 +219,16 @@ typedef struct
 		uint8_t		reserved	: 6;	/**< \brief Bits 2-7: reserved*/
 
 
-}ADBMS6830_CFGA4_s;
+}ADBMS6833_CFGA4_s;
 
 /**
  *  @brief Union for Configuration Group A Register 4
  */
 typedef union
 {
-	ADBMS6830_CFGA4_s B;
+	ADBMS6833_CFGA4_s B;
 	uint8_t U8;
-}ADBMS6830_CFGA4_t;
+}ADBMS6833_CFGA4_t;
 
 /**
  *  @brief Struct for Configuration Group A Register 5
@@ -256,29 +256,29 @@ typedef struct
 												 0: snapshot is deactivated\n
 												 1: snapshot is activated. result registers are frozen.*/
 	uint8_t 	reserved	: 2;	/**< \brief Bit 6&7: reserved*/
-}ADBMS6830_CFGA5_s;
+}ADBMS6833_CFGA5_s;
 
 /**
  *  @brief Union for Configuration Group A Register 5
  */
 typedef union
 {
-	ADBMS6830_CFGA5_s B;
+	ADBMS6833_CFGA5_s B;
 	uint8_t U8;
-}ADBMS6830_CFGA5_t;
+}ADBMS6833_CFGA5_t;
 
 /**
  *  @brief Struct for Configuration Group A Register
  */
 typedef struct
 {
-	ADBMS6830_CFGA0_t	CFGA0 			;		/**< \brief Configuration Group A Register 0 */
-	ADBMS6830_CFGA1_t	CFGA1 			;		/**< \brief Configuration Group A Register 1 */
-	ADBMS6830_CFGA2_t	CFGA2 			;		/**< \brief Configuration Group A Register 2 */
-	ADBMS6830_CFGA3_t	CFGA3 			;		/**< \brief Configuration Group A Register 3 */
-	ADBMS6830_CFGA4_t	CFGA4 			;		/**< \brief Configuration Group A Register 4 */
-	ADBMS6830_CFGA5_t	CFGA5 			;		/**< \brief Configuration Group A Register 5 */
-} ADBMS6830_CFGA_t;
+	ADBMS6833_CFGA0_t	CFGA0 			;		/**< \brief Configuration Group A Register 0 */
+	ADBMS6833_CFGA1_t	CFGA1 			;		/**< \brief Configuration Group A Register 1 */
+	ADBMS6833_CFGA2_t	CFGA2 			;		/**< \brief Configuration Group A Register 2 */
+	ADBMS6833_CFGA3_t	CFGA3 			;		/**< \brief Configuration Group A Register 3 */
+	ADBMS6833_CFGA4_t	CFGA4 			;		/**< \brief Configuration Group A Register 4 */
+	ADBMS6833_CFGA5_t	CFGA5 			;		/**< \brief Configuration Group A Register 5 */
+} ADBMS6833_CFGA_t;
 
 /**
  *  @brief Struct for Configuration Group B Register 0
@@ -287,15 +287,15 @@ typedef struct
 {
 	uint8_t		VUV		: 8;	/**< \brief Bits 0 to 7: UV comparison voltage\n
 	 	 	 	 	 	 	 	 	 VUV[7:0] Cell undervoltage threshold = VUV[11:0] x 16 x 150uV + 1.5V*/
-}ADBMS6830_CFGB0_s;
+}ADBMS6833_CFGB0_s;
 /**
  *  @brief Union for Configuration Group B Register 0
  */
 typedef union
 {
-	ADBMS6830_CFGB0_s B;
+	ADBMS6833_CFGB0_s B;
 	uint8_t U8;
-}ADBMS6830_CFGB0_t;
+}ADBMS6833_CFGB0_t;
 
 /**
  *  @brief Struct for Configuration Group B Register 1
@@ -306,16 +306,16 @@ typedef struct
 	 	 	 	 	 	 	 	 	 VUV[11:8] Cell undervoltage threshold = VUV[11:0] x 16 x 150uV + 1.5V*/
 	uint8_t		VOV			: 4;	/**< \brief Bits 4 to 7: OV comparison voltage\n
 	 	 	 	 	 	 	 	 	 VOV[11:8] Cell overvoltage threshold = VOV[11:0] x 16 x 150uV + 1.5V*/
-}ADBMS6830_CFGB1_s;
+}ADBMS6833_CFGB1_s;
 
 /**
  *  @brief Union for Configuration Group B Register 1
  */
 typedef union
 {
-	ADBMS6830_CFGB1_s B;
+	ADBMS6833_CFGB1_s B;
 	uint8_t U8;
-}ADBMS6830_CFGB1_t;
+}ADBMS6833_CFGB1_t;
 
 /**
  *  @brief Struct for Configuration Group B Register 2
@@ -324,16 +324,16 @@ typedef struct
 {
 	uint8_t		VOV			: 8;	/**< \brief Bits 4 to 7: OV comparison voltage\n
 	 	 	 	 	 	 	 	 	 VOV[11:4] Cell overvoltage threshold = VOV[11:0] x 16 x 150uV + 1.5V*/
-}ADBMS6830_CFGB2_s;
+}ADBMS6833_CFGB2_s;
 
 /**
 *  @brief Union for Configuration Group B Register 2
 */
 typedef union
 {
-	ADBMS6830_CFGB2_s B;
+	ADBMS6833_CFGB2_s B;
 	uint8_t U8;
-}ADBMS6830_CFGB2_t;
+}ADBMS6833_CFGB2_t;
 
 /**
  *  @brief Struct for Configuration Group B Register 3
@@ -351,16 +351,16 @@ typedef struct
 	uint8_t		DTMEN		: 1;	/**< \brief Bit7 : Enable discharge timer monitor\n
 	 	 	 	 	 	 	 	 	 	 	 	 	 1 = Enables the discharge timer monitor function.\n
 	 	 	 	 	 	 	 	 	 	 	 	 	 0 = Disables the discharge timer monitor function.*/
-}ADBMS6830_CFGB3_s;
+}ADBMS6833_CFGB3_s;
 
 /**
  *  @brief Union for Configuration Group B Register 3
  */
 typedef union
 {
-	ADBMS6830_CFGB3_s B;
+	ADBMS6833_CFGB3_s B;
 	uint8_t U8;
-}ADBMS6830_CFGB3_t;
+}ADBMS6833_CFGB3_t;
 
 /**
  *  @brief Struct for Configuration Group B Register 4
@@ -379,16 +379,16 @@ typedef struct
 	uint8_t		DCC6	: 1;	/**< \brief Bit5 : Discharge Cell 6*/
 	uint8_t		DCC7	: 1;	/**< \brief Bit6 : Discharge Cell 7*/
 	uint8_t		DCC8	: 1;	/**< \brief Bit7 : Discharge Cell 8*/
-}ADBMS6830_CFGB4_s;
+}ADBMS6833_CFGB4_s;
 
 /**
  *  @brief Union for Configuration Group B Register 4
  */
 typedef union
 {
-	ADBMS6830_CFGB4_s B;
+	ADBMS6833_CFGB4_s B;
 	uint8_t U8;
-}ADBMS6830_CFGB4_t;
+}ADBMS6833_CFGB4_t;
 
 /**
  *  @brief Struct for Configuration Group B Register 5
@@ -407,29 +407,29 @@ typedef struct
 	uint8_t		DCC14	: 1;	/**< \brief Bit5 : Discharge Cell 14*/
 	uint8_t		DCC15	: 1;	/**< \brief Bit6 : Discharge Cell 15*/
 	uint8_t		DCC16	: 1;	/**< \brief Bit7 : Discharge Cell 16*/
-}ADBMS6830_CFGB5_s;
+}ADBMS6833_CFGB5_s;
 
 /**
  *  @brief Union for Configuration Group B Register 5
  */
 typedef union
 {
-	ADBMS6830_CFGB5_s B;
+	ADBMS6833_CFGB5_s B;
 	uint8_t U8;
-}ADBMS6830_CFGB5_t;
+}ADBMS6833_CFGB5_t;
 
 /**
  *  @brief Struct for Configuration Group B Register
  */
 typedef struct
 {
-	ADBMS6830_CFGB0_t	CFGB0 			;		/**< \brief Configuration Group A Register 0 */
-	ADBMS6830_CFGB1_t	CFGB1 			;		/**< \brief Configuration Group A Register 1 */
-	ADBMS6830_CFGB2_t	CFGB2 			;		/**< \brief Configuration Group A Register 2 */
-	ADBMS6830_CFGB3_t	CFGB3 			;		/**< \brief Configuration Group A Register 3 */
-	ADBMS6830_CFGB4_t	CFGB4 			;		/**< \brief Configuration Group A Register 4 */
-	ADBMS6830_CFGB5_t	CFGB5 			;		/**< \brief Configuration Group A Register 5 */
-} ADBMS6830_CFGB_t;
+	ADBMS6833_CFGB0_t	CFGB0 			;		/**< \brief Configuration Group A Register 0 */
+	ADBMS6833_CFGB1_t	CFGB1 			;		/**< \brief Configuration Group A Register 1 */
+	ADBMS6833_CFGB2_t	CFGB2 			;		/**< \brief Configuration Group A Register 2 */
+	ADBMS6833_CFGB3_t	CFGB3 			;		/**< \brief Configuration Group A Register 3 */
+	ADBMS6833_CFGB4_t	CFGB4 			;		/**< \brief Configuration Group A Register 4 */
+	ADBMS6833_CFGB5_t	CFGB5 			;		/**< \brief Configuration Group A Register 5 */
+} ADBMS6833_CFGB_t;
 
 /**
  *  @brief Struct for Cell Voltage Register Group A
@@ -446,7 +446,7 @@ typedef struct
 	uint8_t	CVAR3 			;		/**< \brief C2V bits[15:8] */
 	uint8_t	CVAR4 			;		/**< \brief C3V bits[7:0]  */
 	uint8_t	CVAR5 			;		/**< \brief C3V bits[15:8]  */
-} ADBMS6830_RDCVA_t;
+} ADBMS6833_RDCVA_t;
 
 /**
  *  @brief Struct for Cell Voltage Register Group B
@@ -463,7 +463,7 @@ typedef struct
 	uint8_t	CVBR3 			;		/**< \brief C5V bits[15:8] */
 	uint8_t	CVBR4 			;		/**< \brief C6V bits[7:0]  */
 	uint8_t	CVBR5 			;		/**< \brief C6V bits[15:8]  */
-} ADBMS6830_RDCVB_t;
+} ADBMS6833_RDCVB_t;
 
 /**
  *  @brief Struct for Cell Voltage Register Group C
@@ -480,7 +480,7 @@ typedef struct
 	uint8_t	CVCR3 			;		/**< \brief C8V bits[15:8] */
 	uint8_t	CVCR4 			;		/**< \brief C9V bits[7:0]  */
 	uint8_t	CVCR5 			;		/**< \brief C9V bits[15:8]  */
-} ADBMS6830_RDCVC_t;
+} ADBMS6833_RDCVC_t;
 
 /**
  *  @brief Struct for Cell Voltage Register Group D
@@ -497,7 +497,7 @@ typedef struct
 	uint8_t	CVDR3 			;		/**< \brief C11V bits[15:8] */
 	uint8_t	CVDR4 			;		/**< \brief C12V bits[7:0]  */
 	uint8_t	CVDR5 			;		/**< \brief C12V bits[15:8]  */
-} ADBMS6830_RDCVD_t;
+} ADBMS6833_RDCVD_t;
 
 /**
  *  @brief Struct for Cell Voltage Register Group E
@@ -514,7 +514,7 @@ typedef struct
 	uint8_t	CVER3 			;		/**< \brief C14V bits[15:8] */
 	uint8_t	CVER4 			;		/**< \brief C15V bits[7:0]  */
 	uint8_t	CVER5 			;		/**< \brief C15V bits[15:8]  */
-} ADBMS6830_RDCVE_t;
+} ADBMS6833_RDCVE_t;
 
 /**
  *  @brief Struct for Cell Voltage Register Group F
@@ -531,7 +531,7 @@ typedef struct
 	uint8_t	CVFR3 			;		/**< \brief reserved (0xff) */
 	uint8_t	CVFR4 			;		/**< \brief reserved (0xff) */
 	uint8_t	CVFR5 			;		/**< \brief reserved (0xff) */
-} ADBMS6830_RDCVF_t;
+} ADBMS6833_RDCVF_t;
 
 /**
  *  @brief Struct for Cell Voltage Registers
@@ -539,13 +539,13 @@ typedef struct
  */
 typedef struct
 {
-	ADBMS6830_RDCVA_t	RDCVA		;	/**< \brief Cell Voltage Group A */
-	ADBMS6830_RDCVB_t	RDCVB  		;	/**< \brief Cell Voltage Group B */
-	ADBMS6830_RDCVC_t	RDCVC		;	/**< \brief Cell Voltage Group C */
-	ADBMS6830_RDCVD_t	RDCVD		;	/**< \brief Cell Voltage Group D */
-	ADBMS6830_RDCVE_t	RDCVE		;	/**< \brief Cell Voltage Group E */
-	ADBMS6830_RDCVF_t	RDCVF		;	/**< \brief Cell Voltage Group F */
-} ADBMS6830_RDCV_t;
+	ADBMS6833_RDCVA_t	RDCVA		;	/**< \brief Cell Voltage Group A */
+	ADBMS6833_RDCVB_t	RDCVB  		;	/**< \brief Cell Voltage Group B */
+	ADBMS6833_RDCVC_t	RDCVC		;	/**< \brief Cell Voltage Group C */
+	ADBMS6833_RDCVD_t	RDCVD		;	/**< \brief Cell Voltage Group D */
+	ADBMS6833_RDCVE_t	RDCVE		;	/**< \brief Cell Voltage Group E */
+	ADBMS6833_RDCVF_t	RDCVF		;	/**< \brief Cell Voltage Group F */
+} ADBMS6833_RDCV_t;
 
 /**
  *  @brief Struct for Averaged Cell Voltage Register Group A
@@ -562,7 +562,7 @@ typedef struct
 	uint8_t	ACVAR3 			;		/**< \brief AC2V bits[15:8] */
 	uint8_t	ACVAR4 			;		/**< \brief AC3V bits[7:0]  */
 	uint8_t	ACVAR5 			;		/**< \brief AC3V bits[15:8]  */
-} ADBMS6830_RDACVA_t;
+} ADBMS6833_RDACVA_t;
 
 /**
  *  @brief Struct for Averaged Cell Voltage Register Group B
@@ -579,7 +579,7 @@ typedef struct
 	uint8_t	ACVBR3 			;		/**< \brief AC5V bits[15:8] */
 	uint8_t	ACVBR4 			;		/**< \brief AC6V bits[7:0]  */
 	uint8_t	ACVBR5 			;		/**< \brief AC6V bits[15:8]  */
-} ADBMS6830_RDACVB_t;
+} ADBMS6833_RDACVB_t;
 
 /**
  *  @brief Struct for Averaged Cell Voltage Register Group C
@@ -596,7 +596,7 @@ typedef struct
 	uint8_t	ACVCR3 			;		/**< \brief AC8V bits[15:8] */
 	uint8_t	ACVCR4 			;		/**< \brief AC9V bits[7:0]  */
 	uint8_t	ACVCR5 			;		/**< \brief AC9V bits[15:8]  */
-} ADBMS6830_RDACVC_t;
+} ADBMS6833_RDACVC_t;
 
 /**
  *  @brief Struct for Averaged Cell Voltage Register Group D
@@ -613,7 +613,7 @@ typedef struct
 	uint8_t	ACVDR3 			;		/**< \brief AC11V bits[15:8] */
 	uint8_t	ACVDR4 			;		/**< \brief AC12V bits[7:0]  */
 	uint8_t	ACVDR5 			;		/**< \brief AC12V bits[15:8]  */
-} ADBMS6830_RDACVD_t;
+} ADBMS6833_RDACVD_t;
 
 /**
  *  @brief Struct for Averaged Cell Voltage Register Group E
@@ -630,7 +630,7 @@ typedef struct
 	uint8_t	ACVER3 			;		/**< \brief AC14V bits[15:8] */
 	uint8_t	ACVER4 			;		/**< \brief AC15V bits[7:0]  */
 	uint8_t	ACVER5 			;		/**< \brief AC15V bits[15:8]  */
-} ADBMS6830_RDACVE_t;
+} ADBMS6833_RDACVE_t;
 
 /**
  *  @brief Struct for Averaged Cell Voltage Register Group F
@@ -647,7 +647,7 @@ typedef struct
 	uint8_t	ACVFR3 			;		/**< \brief reserved (0xff) */
 	uint8_t	ACVFR4 			;		/**< \brief reserved (0xff) */
 	uint8_t	ACVFR5 			;		/**< \brief reserved (0xff) */
-} ADBMS6830_RDACVF_t;
+} ADBMS6833_RDACVF_t;
 
 /**
  *  @brief Struct for Averaged Cell Voltage Registers
@@ -655,13 +655,13 @@ typedef struct
  */
 typedef struct
 {
-	ADBMS6830_RDACVA_t	RDACVA		;	/**< \brief Averaged Cell Voltage Group A */
-	ADBMS6830_RDACVB_t	RDACVB  	;	/**< \brief Averaged Cell Voltage Group B */
-	ADBMS6830_RDACVC_t	RDACVC		;	/**< \brief Averaged Cell Voltage Group C */
-	ADBMS6830_RDACVD_t	RDACVD		;	/**< \brief Averaged Cell Voltage Group D */
-	ADBMS6830_RDACVE_t	RDACVE		;	/**< \brief Averaged Cell Voltage Group E */
-	ADBMS6830_RDACVF_t	RDACVF		;	/**< \brief Averaged Cell Voltage Group F */
-} ADBMS6830_RDACV_t;
+	ADBMS6833_RDACVA_t	RDACVA		;	/**< \brief Averaged Cell Voltage Group A */
+	ADBMS6833_RDACVB_t	RDACVB  	;	/**< \brief Averaged Cell Voltage Group B */
+	ADBMS6833_RDACVC_t	RDACVC		;	/**< \brief Averaged Cell Voltage Group C */
+	ADBMS6833_RDACVD_t	RDACVD		;	/**< \brief Averaged Cell Voltage Group D */
+	ADBMS6833_RDACVE_t	RDACVE		;	/**< \brief Averaged Cell Voltage Group E */
+	ADBMS6833_RDACVF_t	RDACVF		;	/**< \brief Averaged Cell Voltage Group F */
+} ADBMS6833_RDACV_t;
 
 /**
  *  @brief Struct for Filtered Cell Voltage Register Group A
@@ -678,7 +678,7 @@ typedef struct
 	uint8_t	FCVAR3 			;		/**< \brief FC2V bits[15:8] */
 	uint8_t	FCVAR4 			;		/**< \brief FC3V bits[7:0]  */
 	uint8_t	FCVAR5 			;		/**< \brief FC3V bits[15:8]  */
-} ADBMS6830_RDFCVA_t;
+} ADBMS6833_RDFCVA_t;
 
 /**
  *  @brief Struct for Filtered Cell Voltage Register Group B
@@ -695,7 +695,7 @@ typedef struct
 	uint8_t	FCVBR3 			;		/**< \brief FC5V bits[15:8] */
 	uint8_t	FCVBR4 			;		/**< \brief FC6V bits[7:0]  */
 	uint8_t	FCVBR5 			;		/**< \brief FC6V bits[15:8]  */
-} ADBMS6830_RDFCVB_t;
+} ADBMS6833_RDFCVB_t;
 
 /**
  *  @brief Struct for Filtered Cell Voltage Register Group C
@@ -712,7 +712,7 @@ typedef struct
 	uint8_t	FCVCR3 			;		/**< \brief FC8V bits[15:8] */
 	uint8_t	FCVCR4 			;		/**< \brief FC9V bits[7:0]  */
 	uint8_t	FCVCR5 			;		/**< \brief FC9V bits[15:8]  */
-} ADBMS6830_RDFCVC_t;
+} ADBMS6833_RDFCVC_t;
 
 /**
  *  @brief Struct for Filtered Cell Voltage Register Group D
@@ -729,7 +729,7 @@ typedef struct
 	uint8_t	FCVDR3 			;		/**< \brief FC11V bits[15:8] */
 	uint8_t	FCVDR4 			;		/**< \brief FC12V bits[7:0]  */
 	uint8_t	FCVDR5 			;		/**< \brief FC12V bits[15:8]  */
-} ADBMS6830_RDFCVD_t;
+} ADBMS6833_RDFCVD_t;
 
 /**
  *  @brief Struct for Filtered Cell Voltage Register Group E
@@ -746,7 +746,7 @@ typedef struct
 	uint8_t	FCVER3 			;		/**< \brief FC14V bits[15:8] */
 	uint8_t	FCVER4 			;		/**< \brief FC15V bits[7:0]  */
 	uint8_t	FCVER5 			;		/**< \brief FC15V bits[15:8]  */
-} ADBMS6830_RDFCVE_t;
+} ADBMS6833_RDFCVE_t;
 
 /**
  *  @brief Struct for Filtered Cell Voltage Register Group F
@@ -763,7 +763,7 @@ typedef struct
 	uint8_t	FCVFR3 			;		/**< \brief reserved (0xff) */
 	uint8_t	FCVFR4 			;		/**< \brief reserved (0xff) */
 	uint8_t	FCVFR5 			;		/**< \brief reserved (0xff) */
-} ADBMS6830_RDFCVF_t;
+} ADBMS6833_RDFCVF_t;
 
 /**
  *  @brief Struct for Filtered Cell Voltage Registers
@@ -771,13 +771,13 @@ typedef struct
  */
 typedef struct
 {
-	ADBMS6830_RDFCVA_t	RDFCVA		;	/**< \brief Filtered Cell Voltage Group A */
-	ADBMS6830_RDFCVB_t	RDFCVB  	;	/**< \brief Filtered Cell Voltage Group B */
-	ADBMS6830_RDFCVC_t	RDFCVC		;	/**< \brief Filtered Cell Voltage Group C */
-	ADBMS6830_RDFCVD_t	RDFCVD		;	/**< \brief Filtered Cell Voltage Group D */
-	ADBMS6830_RDFCVE_t	RDFCVE		;	/**< \brief Filtered Cell Voltage Group E */
-	ADBMS6830_RDFCVF_t	RDFCVF		;	/**< \brief Filtered Cell Voltage Group F */
-} ADBMS6830_RDFCV_t;
+	ADBMS6833_RDFCVA_t	RDFCVA		;	/**< \brief Filtered Cell Voltage Group A */
+	ADBMS6833_RDFCVB_t	RDFCVB  	;	/**< \brief Filtered Cell Voltage Group B */
+	ADBMS6833_RDFCVC_t	RDFCVC		;	/**< \brief Filtered Cell Voltage Group C */
+	ADBMS6833_RDFCVD_t	RDFCVD		;	/**< \brief Filtered Cell Voltage Group D */
+	ADBMS6833_RDFCVE_t	RDFCVE		;	/**< \brief Filtered Cell Voltage Group E */
+	ADBMS6833_RDFCVF_t	RDFCVF		;	/**< \brief Filtered Cell Voltage Group F */
+} ADBMS6833_RDFCV_t;
 
 /**
  *  @brief Struct for S-Voltage Register Group A
@@ -794,7 +794,7 @@ typedef struct
 	uint8_t	SVAR3 			;		/**< \brief S2V bits[15:8] */
 	uint8_t	SVAR4 			;		/**< \brief S3V bits[7:0]  */
 	uint8_t	SVAR5 			;		/**< \brief S3V bits[15:8]  */
-} ADBMS6830_RDSVA_t;
+} ADBMS6833_RDSVA_t;
 
 /**
  *  @brief Struct for S-Voltage Register Group B
@@ -811,7 +811,7 @@ typedef struct
 	uint8_t	SVBR3 			;		/**< \brief S5V bits[15:8] */
 	uint8_t	SVBR4 			;		/**< \brief S6V bits[7:0]  */
 	uint8_t	SVBR5 			;		/**< \brief S6V bits[15:8]  */
-} ADBMS6830_RDSVB_t;
+} ADBMS6833_RDSVB_t;
 
 /**
  *  @brief Struct for S-Voltage Register Group C
@@ -828,7 +828,7 @@ typedef struct
 	uint8_t	SVCR3 			;		/**< \brief S8V bits[15:8] */
 	uint8_t	SVCR4 			;		/**< \brief S9V bits[7:0]  */
 	uint8_t	SVCR5 			;		/**< \brief S9V bits[15:8]  */
-} ADBMS6830_RDSVC_t;
+} ADBMS6833_RDSVC_t;
 
 /**
  *  @brief Struct for S-Voltage Register Group D
@@ -845,7 +845,7 @@ typedef struct
 	uint8_t	SVDR3 			;		/**< \brief S11V bits[15:8] */
 	uint8_t	SVDR4 			;		/**< \brief S12V bits[7:0]  */
 	uint8_t	SVDR5 			;		/**< \brief S12V bits[15:8]  */
-} ADBMS6830_RDSVD_t;
+} ADBMS6833_RDSVD_t;
 
 /**
  *  @brief Struct for S-Voltage Register Group E
@@ -862,7 +862,7 @@ typedef struct
 	uint8_t	SVER3 			;		/**< \brief S14V bits[15:8] */
 	uint8_t	SVER4 			;		/**< \brief S15V bits[7:0]  */
 	uint8_t	SVER5 			;		/**< \brief S15V bits[15:8]  */
-} ADBMS6830_RDSVE_t;
+} ADBMS6833_RDSVE_t;
 
 /**
  *  @brief Struct for S-Voltage Register Group F
@@ -879,7 +879,7 @@ typedef struct
 	uint8_t	SVFR3 			;		/**< \brief reserved (0xff) */
 	uint8_t	SVFR4 			;		/**< \brief reserved (0xff) */
 	uint8_t	SVFR5 			;		/**< \brief reserved (0xff) */
-} ADBMS6830_RDSVF_t;
+} ADBMS6833_RDSVF_t;
 
 /**
  *  @brief Struct for S-Voltage Registers
@@ -887,13 +887,13 @@ typedef struct
  */
 typedef struct
 {
-	ADBMS6830_RDSVA_t	RDSVA		;	/**< \brief S-Voltage Group A */
-	ADBMS6830_RDSVB_t	RDSVB  		;	/**< \brief S-Voltage Group B */
-	ADBMS6830_RDSVC_t	RDSVC		;	/**< \brief S-Voltage Group C */
-	ADBMS6830_RDSVD_t	RDSVD		;	/**< \brief S-Voltage Group D */
-	ADBMS6830_RDSVE_t	RDSVE		;	/**< \brief S-Voltage Group E */
-	ADBMS6830_RDSVF_t	RDSVF		;	/**< \brief S-Voltage Group F */
-} ADBMS6830_RDSV_t;
+	ADBMS6833_RDSVA_t	RDSVA		;	/**< \brief S-Voltage Group A */
+	ADBMS6833_RDSVB_t	RDSVB  		;	/**< \brief S-Voltage Group B */
+	ADBMS6833_RDSVC_t	RDSVC		;	/**< \brief S-Voltage Group C */
+	ADBMS6833_RDSVD_t	RDSVD		;	/**< \brief S-Voltage Group D */
+	ADBMS6833_RDSVE_t	RDSVE		;	/**< \brief S-Voltage Group E */
+	ADBMS6833_RDSVF_t	RDSVF		;	/**< \brief S-Voltage Group F */
+} ADBMS6833_RDSV_t;
 
 /**
  *  @brief Struct for Auxiliary Register Group A
@@ -910,7 +910,7 @@ typedef struct
 	uint8_t	GPAR3 			;		/**< \brief G2V bits[15:8] */
 	uint8_t	GPAR4 			;		/**< \brief G3V bits[7:0]  */
 	uint8_t	GPAR5 			;		/**< \brief G3V bits[15:8]  */
-} ADBMS6830_RDGPA_t;
+} ADBMS6833_RDGPA_t;
 
 /**
  *  @brief Struct for Auxiliary Register Group B
@@ -927,7 +927,7 @@ typedef struct
 	uint8_t	GPBR3 			;		/**< \brief G5V bits[15:8] */
 	uint8_t	GPBR4 			;		/**< \brief G6V bits[7:0]  */
 	uint8_t	GPBR5 			;		/**< \brief G6V bits[15:8]  */
-} ADBMS6830_RDGPB_t;
+} ADBMS6833_RDGPB_t;
 
 /**
  *  @brief Struct for Auxiliary Register Group C
@@ -944,7 +944,7 @@ typedef struct
 	uint8_t	GPCR3 			;		/**< \brief G8V bits[15:8] */
 	uint8_t	GPCR4 			;		/**< \brief G9V bits[7:0]  */
 	uint8_t	GPCR5 			;		/**< \brief G9V bits[15:8]  */
-} ADBMS6830_RDGPC_t;
+} ADBMS6833_RDGPC_t;
 
 /**
  *  @brief Struct for Auxiliary Register Group D
@@ -964,7 +964,7 @@ typedef struct
 	uint8_t	GPDR3 			;		/**< \brief VMV bits[15:8] */
 	uint8_t	GPDR4 			;		/**< \brief VPV bits[7:0]  */
 	uint8_t	GPDR5 			;		/**< \brief VPV bits[15:8]  */
-} ADBMS6830_RDGPD_t;
+} ADBMS6833_RDGPD_t;
 
 /**
  *  @brief Struct for Auxiliary Registers
@@ -972,11 +972,11 @@ typedef struct
  */
 typedef struct
 {
-	ADBMS6830_RDGPA_t	RDAUXA		;	/**< \brief Auxiliary Register Group A */
-	ADBMS6830_RDGPB_t	RDAUXB  	;	/**< \brief Auxiliary Register Group B */
-	ADBMS6830_RDGPC_t	RDAUXC		;	/**< \brief Auxiliary Register Group C */
-	ADBMS6830_RDGPD_t	RDAUXD		;	/**< \brief Auxiliary Register Group D */
-} ADBMS6830_RDAUX_t;
+	ADBMS6833_RDGPA_t	RDAUXA		;	/**< \brief Auxiliary Register Group A */
+	ADBMS6833_RDGPB_t	RDAUXB  	;	/**< \brief Auxiliary Register Group B */
+	ADBMS6833_RDGPC_t	RDAUXC		;	/**< \brief Auxiliary Register Group C */
+	ADBMS6833_RDGPD_t	RDAUXD		;	/**< \brief Auxiliary Register Group D */
+} ADBMS6833_RDAUX_t;
 
 /**
  *  @brief Struct for Redundant Auxiliary Register Group A
@@ -993,7 +993,7 @@ typedef struct
 	uint8_t	RGPAR3 			;		/**< \brief R_G2V bits[15:8] */
 	uint8_t	RGPAR4 			;		/**< \brief R_G3V bits[7:0]  */
 	uint8_t	RGPAR5 			;		/**< \brief R_G3V bits[15:8]  */
-} ADBMS6830_RDRGPA_t;
+} ADBMS6833_RDRGPA_t;
 
 /**
  *  @brief Struct for Redundant Auxiliary Register Group B
@@ -1010,7 +1010,7 @@ typedef struct
 	uint8_t	RGPBR3 			;		/**< \brief R_G5V bits[15:8] */
 	uint8_t	RGPBR4 			;		/**< \brief R_G6V bits[7:0]  */
 	uint8_t	RGPBR5 			;		/**< \brief R_G6V bits[15:8]  */
-} ADBMS6830_RDRGPB_t;
+} ADBMS6833_RDRGPB_t;
 
 /**
  *  @brief Struct for Redundant Auxiliary Register Group C
@@ -1027,7 +1027,7 @@ typedef struct
 	uint8_t	RGPCR3 			;		/**< \brief R_G8V bits[15:8] */
 	uint8_t	RGPCR4 			;		/**< \brief R_G9V bits[7:0]  */
 	uint8_t	RGPCR5 			;		/**< \brief R_G9V bits[15:8]  */
-} ADBMS6830_RDRGPC_t;
+} ADBMS6833_RDRGPC_t;
 
 /**
  *  @brief Struct for Redundant Auxiliary Register Group D
@@ -1044,7 +1044,7 @@ typedef struct
 	uint8_t	RGPDR3 			;		/**< \brief reserved (0xff) */
 	uint8_t	RGPDR4 			;		/**< \brief reserved (0xff) */
 	uint8_t	RGPDR5 			;		/**< \brief reserved (0xff) */
-} ADBMS6830_RDRGPD_t;
+} ADBMS6833_RDRGPD_t;
 
 /**
  *  @brief Struct for Redundant Auxiliary Registers
@@ -1052,11 +1052,11 @@ typedef struct
  */
 typedef struct
 {
-	ADBMS6830_RDRGPA_t	RDRAXA		;	/**< \brief Redundant Auxiliary Register Group A */
-	ADBMS6830_RDRGPB_t	RDRAXB  	;	/**< \brief Redundant Auxiliary Register Group B */
-	ADBMS6830_RDRGPC_t	RDRAXC		;	/**< \brief Redundant Auxiliary Register Group C */
-	ADBMS6830_RDRGPD_t	RDRAXD		;	/**< \brief Redundant Auxiliary Register Group D */
-} ADBMS6830_RDRAX_t;
+	ADBMS6833_RDRGPA_t	RDRAXA		;	/**< \brief Redundant Auxiliary Register Group A */
+	ADBMS6833_RDRGPB_t	RDRAXB  	;	/**< \brief Redundant Auxiliary Register Group B */
+	ADBMS6833_RDRGPC_t	RDRAXC		;	/**< \brief Redundant Auxiliary Register Group C */
+	ADBMS6833_RDRGPD_t	RDRAXD		;	/**< \brief Redundant Auxiliary Register Group D */
+} ADBMS6833_RDRAX_t;
 
 /**
  *  @brief Struct for Status Register Group A
@@ -1073,7 +1073,7 @@ typedef struct
 	uint8_t	STAR3 			;		/**< \brief ITMP bits[7:0] */
 	uint8_t	STAR4 			;		/**< \brief reserved  */
 	uint8_t	STAR5 			;		/**< \brief reserved  */
-} ADBMS6830_STATA_t;
+} ADBMS6833_STATA_t;
 
 /**
  *  @brief Struct for Status Register Group B
@@ -1092,7 +1092,7 @@ typedef struct
 	uint8_t	STBR4 			;		/**< \brief VRES bits[7:0]  VREF2 across series resistor for open wire check\n
 	 	 	 	 	 	 	 	 	 	 	 	VRES = VRES[15:0]x150uV + 1.5V\n*/
 	uint8_t	STBR5 			;		/**< \brief VRES bits[15:8]   */
-} ADBMS6830_STATB_t;
+} ADBMS6833_STATB_t;
 
 /**
  *  @brief Struct for Status Group C Register 0
@@ -1109,16 +1109,16 @@ typedef struct
 	uint8_t		CS6FLT		: 1;	/**< \brief Bit 5: C-ADC vs S-ADC fault of channel 6*/
 	uint8_t		CS7FLT		: 1;	/**< \brief Bit 6: C-ADC vs S-ADC fault of channel 7*/
 	uint8_t		CS8FLT		: 1;	/**< \brief Bit 7: C-ADC vs S-ADC fault of channel 8*/
-}ADBMS6830_STCR0_s;
+}ADBMS6833_STCR0_s;
 
 /**
  *  @brief Union for Configuration Group A Register 0
  */
 typedef union
 {
-	ADBMS6830_STCR0_s B;
+	ADBMS6833_STCR0_s B;
 	uint8_t U8;
-}ADBMS6830_STCR0_t;
+}ADBMS6833_STCR0_t;
 
 /**
  *  @brief Struct for Status Group C Register 1
@@ -1135,16 +1135,16 @@ typedef struct
 	uint8_t		CS14FLT		: 1;	/**< \brief Bit 5: C-ADC vs S-ADC fault of channel 14*/
 	uint8_t		CS15FLT		: 1;	/**< \brief Bit 6: C-ADC vs S-ADC fault of channel 15*/
 	uint8_t		CS16FLT		: 1;	/**< \brief Bit 7: C-ADC vs S-ADC fault of channel 16*/
-}ADBMS6830_STCR1_s;
+}ADBMS6833_STCR1_s;
 
 /**
  *  @brief Union for Configuration Group A Register 1
  */
 typedef union
 {
-	ADBMS6830_STCR1_s B;
+	ADBMS6833_STCR1_s B;
 	uint8_t U8;
-}ADBMS6830_STCR1_t;
+}ADBMS6833_STCR1_t;
 
 /**
  *  @brief Struct for Status Group C Register 2
@@ -1153,16 +1153,16 @@ typedef struct
 {
 	uint8_t		CT_HI		: 5;	/**< \brief Bits 0-4: CT[10:6]Free running C-ADC Conversion counter\n Resets with every ADCV command.  Rolls over maximum value.  */
 	uint8_t		reserved	: 3;	/**< \brief Bits 5-7: reserved*/
-}ADBMS6830_STCR2_s;
+}ADBMS6833_STCR2_s;
 
 /**
  *  @brief Union for Configuration Group A Register 2
  */
 typedef union
 {
-	ADBMS6830_STCR2_s B;
+	ADBMS6833_STCR2_s B;
 	uint8_t U8;
-}ADBMS6830_STCR2_t;
+}ADBMS6833_STCR2_t;
 
 /**
  *  @brief Struct for Status Group C Register 3
@@ -1171,16 +1171,16 @@ typedef struct
 {
 	uint8_t 	CTS			: 2;	/**< \brief Bits 0&1: Free running C-ADC subsample conversion counter.\n 4 increments per sample*/
 	uint8_t		CT_LO		: 6;	/**< \brief Bits 2-7: CT[5:0]Free running C-ADC Conversion counter\n Resets with every ADCV command.  Rolls over maximum value.  */
-}ADBMS6830_STCR3_s;
+}ADBMS6833_STCR3_s;
 
 /**
  *  @brief Union for Configuration Group A Register 3
  */
 typedef union
 {
-	ADBMS6830_STCR3_s B;
+	ADBMS6833_STCR3_s B;
 	uint8_t U8;
-}ADBMS6830_STCR3_t;
+}ADBMS6833_STCR3_t;
 
 /**
  *  @brief Struct for Status Group C Register 4
@@ -1195,16 +1195,16 @@ typedef struct
 	uint8_t		VD_OV		: 1;	/**< \brief Bit 5: 3V digital rail over voltage\n  This bit can be cleared using CLRFLAG command with CL_VDOV=1*/
 	uint8_t		VA_UV		: 1;	/**< \brief Bit 6: 5V digital rail under voltage\n  This bit can be cleared using CLRFLAG command with CL_VAUV=1*/
 	uint8_t		VA_OV		: 1;	/**< \brief Bit 7: 5V digital rail over voltage\n  This bit can be cleared using CLRFLAG command with CL_VAOV=1*/
-}ADBMS6830_STCR4_s;
+}ADBMS6833_STCR4_s;
 
 /**
  *  @brief Union for Configuration Group C Register 4
  */
 typedef union
 {
-	ADBMS6830_STCR4_s B;
+	ADBMS6833_STCR4_s B;
 	uint8_t U8;
-}ADBMS6830_STCR4_t;
+}ADBMS6833_STCR4_t;
 
 /**
  *  @brief Struct for Status Group C Register 5
@@ -1219,29 +1219,29 @@ typedef struct
 	uint8_t		COMP		: 1;	/**< \brief Bit 5: Comparison between C-ADC and S-ADC results is active\n  This allows latent fault detection.  Please refer to the safety manual*/
 	uint8_t		VDE			: 1;	/**< \brief Bit 6: Supply rail delta\n 1 = all the 5V supplies differed from Vreg by more than 0.5V*/
 	uint8_t		VDEL		: 1;	/**< \brief Bit 7: Supply rail delta latent.  Allows to check supply rail monitors for latent fault.*/
-}ADBMS6830_STCR5_s;
+}ADBMS6833_STCR5_s;
 
 /**
  *  @brief Union for Configuration Group C Register 5
  */
 typedef union
 {
-	ADBMS6830_STCR5_s B;
+	ADBMS6833_STCR5_s B;
 	uint8_t U8;
-}ADBMS6830_STCR5_t;
+}ADBMS6833_STCR5_t;
 
 /**
  *  @brief Struct for Status Group C Register
  */
 typedef struct
 {
-	ADBMS6830_STCR0_t	STCR0 			;		/**< \brief Status Group C Register 0 */
-	ADBMS6830_STCR1_t	STCR1 			;		/**< \brief Status Group C Register 1 */
-	ADBMS6830_STCR2_t	STCR2 			;		/**< \brief Status Group C Register 2 */
-	ADBMS6830_STCR3_t	STCR3 			;		/**< \brief Status Group C Register 3 */
-	ADBMS6830_STCR4_t	STCR4 			;		/**< \brief Status Group C Register 4 */
-	ADBMS6830_STCR5_t	STCR5 			;		/**< \brief Status Group C Register 5 */
-} ADBMS6830_STATC_t;
+	ADBMS6833_STCR0_t	STCR0 			;		/**< \brief Status Group C Register 0 */
+	ADBMS6833_STCR1_t	STCR1 			;		/**< \brief Status Group C Register 1 */
+	ADBMS6833_STCR2_t	STCR2 			;		/**< \brief Status Group C Register 2 */
+	ADBMS6833_STCR3_t	STCR3 			;		/**< \brief Status Group C Register 3 */
+	ADBMS6833_STCR4_t	STCR4 			;		/**< \brief Status Group C Register 4 */
+	ADBMS6833_STCR5_t	STCR5 			;		/**< \brief Status Group C Register 5 */
+} ADBMS6833_STATC_t;
 
 
 /**
@@ -1257,16 +1257,16 @@ typedef struct
 	uint8_t		C3OV		: 1;	/**< \brief Bit 5: Cell 3 Over voltage flag*/
 	uint8_t		C4UV		: 1;	/**< \brief Bit 6: Cell 4 Under voltage flag*/
 	uint8_t		C4OV		: 1;	/**< \brief Bit 7: Cell 4 Over voltage flag*/
-}ADBMS6830_STDR0_s;
+}ADBMS6833_STDR0_s;
 
 /**
  *  @brief Union for Configuration Group D Register 0
  */
 typedef union
 {
-	ADBMS6830_STDR0_s B;
+	ADBMS6833_STDR0_s B;
 	uint8_t U8;
-}ADBMS6830_STDR0_t;
+}ADBMS6833_STDR0_t;
 
 /**
  *  @brief Struct for Status Group D Register 1
@@ -1281,16 +1281,16 @@ typedef struct
 	uint8_t		C7OV		: 1;	/**< \brief Bit 5: Cell 7 Over voltage flag*/
 	uint8_t		C8UV		: 1;	/**< \brief Bit 6: Cell 8 Under voltage flag*/
 	uint8_t		C8OV		: 1;	/**< \brief Bit 7: Cell 8 Over voltage flag*/
-}ADBMS6830_STDR1_s;
+}ADBMS6833_STDR1_s;
 
 /**
  *  @brief Union for Configuration Group D Register 1
  */
 typedef union
 {
-	ADBMS6830_STDR1_s B;
+	ADBMS6833_STDR1_s B;
 	uint8_t U8;
-}ADBMS6830_STDR1_t;
+}ADBMS6833_STDR1_t;
 
 /**
  *  @brief Struct for Status Group D Register 2
@@ -1305,16 +1305,16 @@ typedef struct
 	uint8_t		C11OV		: 1;	/**< \brief Bit 5: Cell 11 Over voltage flag*/
 	uint8_t		C12UV		: 1;	/**< \brief Bit 6: Cell 12 Under voltage flag*/
 	uint8_t		C12OV		: 1;	/**< \brief Bit 7: Cell 12 Over voltage flag*/
-}ADBMS6830_STDR2_s;
+}ADBMS6833_STDR2_s;
 
 /**
  *  @brief Union for Configuration Group D Register 2
  */
 typedef union
 {
-	ADBMS6830_STDR2_s B;
+	ADBMS6833_STDR2_s B;
 	uint8_t U8;
-}ADBMS6830_STDR2_t;
+}ADBMS6833_STDR2_t;
 
 /**
  *  @brief Struct for Status Group D Register 3
@@ -1329,16 +1329,16 @@ typedef struct
 	uint8_t		C15OV		: 1;	/**< \brief Bit 5: Cell 15 Over voltage flag*/
 	uint8_t		C16UV		: 1;	/**< \brief Bit 6: Cell 16 Under voltage flag*/
 	uint8_t		C16OV		: 1;	/**< \brief Bit 7: Cell 16 Over voltage flag*/
-}ADBMS6830_STDR3_s;
+}ADBMS6833_STDR3_s;
 
 /**
  *  @brief Union for Configuration Group D Register 3
  */
 typedef union
 {
-	ADBMS6830_STDR3_s B;
+	ADBMS6833_STDR3_s B;
 	uint8_t U8;
-}ADBMS6830_STDR3_t;
+}ADBMS6833_STDR3_t;
 
 /**
  *  @brief Struct for Status Group D Register 4
@@ -1346,7 +1346,7 @@ typedef union
 typedef struct
 {
 	uint8_t		reserved	: 8;	/**< \brief Bits 0-7: reserved*/
-}ADBMS6830_STDR4_t;
+}ADBMS6833_STDR4_t;
 
 
 /**
@@ -1355,29 +1355,29 @@ typedef struct
 typedef struct
 {
 	uint8_t		OC_CNTR		: 8;	/**< \brief Bits 0-7: Oscillator check counter.\n Stores the results of the oscillator counter check.*/
-}ADBMS6830_STDR5_s;
+}ADBMS6833_STDR5_s;
 
 /**
  *  @brief Union for Configuration Group D Register 5
  */
 typedef union
 {
-	ADBMS6830_STDR5_s B;
+	ADBMS6833_STDR5_s B;
 	uint8_t U8;
-}ADBMS6830_STDR5_t;
+}ADBMS6833_STDR5_t;
 
 /**
  *  @brief Struct for Status Group D Register
  */
 typedef struct
 {
-	ADBMS6830_STDR0_t	STDR0 			;		/**< \brief Status Group D Register 0 */
-	ADBMS6830_STDR1_t	STDR1 			;		/**< \brief Status Group D Register 1 */
-	ADBMS6830_STDR2_t	STDR2 			;		/**< \brief Status Group D Register 2 */
-	ADBMS6830_STDR3_t	STDR3 			;		/**< \brief Status Group D Register 3 */
-	ADBMS6830_STDR4_t	STDR4 			;		/**< \brief Status Group D Register 4 */
-	ADBMS6830_STDR5_t	STDR5 			;		/**< \brief Status Group D Register 5 */
-} ADBMS6830_STATD_t;
+	ADBMS6833_STDR0_t	STDR0 			;		/**< \brief Status Group D Register 0 */
+	ADBMS6833_STDR1_t	STDR1 			;		/**< \brief Status Group D Register 1 */
+	ADBMS6833_STDR2_t	STDR2 			;		/**< \brief Status Group D Register 2 */
+	ADBMS6833_STDR3_t	STDR3 			;		/**< \brief Status Group D Register 3 */
+	ADBMS6833_STDR4_t	STDR4 			;		/**< \brief Status Group D Register 4 */
+	ADBMS6833_STDR5_t	STDR5 			;		/**< \brief Status Group D Register 5 */
+} ADBMS6833_STATD_t;
 
 /**
  *  @brief Struct for Status Group E Register 0
@@ -1385,7 +1385,7 @@ typedef struct
 typedef struct
 {
 	uint8_t		reserved	: 8;	/**< \brief Bits 0-7: reserved*/
-}ADBMS6830_STER0_t;
+}ADBMS6833_STER0_t;
 
 /**
  *  @brief Struct for Status Group E Register 1
@@ -1393,7 +1393,7 @@ typedef struct
 typedef struct
 {
 	uint8_t		reserved	: 8;	/**< \brief Bits 0-7: reserved*/
-}ADBMS6830_STER1_t;
+}ADBMS6833_STER1_t;
 
 /**
  *  @brief Struct for Status Group E Register 2
@@ -1401,7 +1401,7 @@ typedef struct
 typedef struct
 {
 	uint8_t		reserved	: 8;	/**< \brief Bits 0-7: reserved*/
-}ADBMS6830_STER2_t;
+}ADBMS6833_STER2_t;
 
 /**
  *  @brief Struct for Status Group E Register 3
@@ -1409,7 +1409,7 @@ typedef struct
 typedef struct
 {
 	uint8_t		reserved	: 8;	/**< \brief Bits 0-7: reserved*/
-}ADBMS6830_STER3_t;
+}ADBMS6833_STER3_t;
 
 /**
  *  @brief Struct for Status Group E Register 4
@@ -1424,16 +1424,16 @@ typedef struct
 	uint8_t		GPI6		: 1;	/**< \brief Bit 5: GPIO 6 Pin state*/
 	uint8_t		GPI7		: 1;	/**< \brief Bit 6: GPIO 7 Pin state*/
 	uint8_t		GPI8		: 1;	/**< \brief Bit 7: GPIO 8 Pin state*/
-}ADBMS6830_STER4_s;
+}ADBMS6833_STER4_s;
 
 /**
  *  @brief Union for Configuration Group E Register 4
  */
 typedef union
 {
-	ADBMS6830_STER4_s B;
+	ADBMS6833_STER4_s B;
 	uint8_t U8;
-}ADBMS6830_STER4_t;
+}ADBMS6833_STER4_t;
 
 /**
  *  @brief Struct for Status Group E Register 5
@@ -1444,41 +1444,41 @@ typedef struct
 	uint8_t		GPI10		: 1;	/**< \brief Bit 1: GPIO 2 Pin state*/
 	uint8_t		reserved	: 2;	/**< \brief Bits 2&3: reserved*/
 	uint8_t		REV			: 4;	/**< \brief Bits 4-7: Device Revision Code*/
-}ADBMS6830_STER5_s;
+}ADBMS6833_STER5_s;
 
 /**
  *  @brief Union for Configuration Group E Register 5
  */
 typedef union
 {
-	ADBMS6830_STER5_s B;
+	ADBMS6833_STER5_s B;
 	uint8_t U8;
-}ADBMS6830_STER5_t;
+}ADBMS6833_STER5_t;
 
 /**
  *  @brief Struct for Status Group E Register
  */
 typedef struct
 {
-	ADBMS6830_STER0_t	STER0 			;		/**< \brief Status Group E Register 0 */
-	ADBMS6830_STER1_t	STER1 			;		/**< \brief Status Group E Register 1 */
-	ADBMS6830_STER2_t	STER2 			;		/**< \brief Status Group E Register 2 */
-	ADBMS6830_STER3_t	STER3 			;		/**< \brief Status Group E Register 3 */
-	ADBMS6830_STER4_t	STER4 			;		/**< \brief Status Group E Register 4 */
-	ADBMS6830_STER5_t	STER5 			;		/**< \brief Status Group E Register 5 */
-} ADBMS6830_STATE_t;
+	ADBMS6833_STER0_t	STER0 			;		/**< \brief Status Group E Register 0 */
+	ADBMS6833_STER1_t	STER1 			;		/**< \brief Status Group E Register 1 */
+	ADBMS6833_STER2_t	STER2 			;		/**< \brief Status Group E Register 2 */
+	ADBMS6833_STER3_t	STER3 			;		/**< \brief Status Group E Register 3 */
+	ADBMS6833_STER4_t	STER4 			;		/**< \brief Status Group E Register 4 */
+	ADBMS6833_STER5_t	STER5 			;		/**< \brief Status Group E Register 5 */
+} ADBMS6833_STATE_t;
 
 /**
  *  @brief Struct for Status Group RegisterS
  */
 typedef struct
 {
-	ADBMS6830_STATA_t	STATA 			;		/**< \brief Status Group A Register */
-	ADBMS6830_STATB_t	STATB 			;		/**< \brief Status Group B Register */
-	ADBMS6830_STATC_t	STATC 			;		/**< \brief Status Group C Register */
-	ADBMS6830_STATD_t	STATD 			;		/**< \brief Status Group D Register */
-	ADBMS6830_STATE_t	STATE 			;		/**< \brief Status Group E Register */
-} ADBMS6830_STAT_t;
+	ADBMS6833_STATA_t	STATA 			;		/**< \brief Status Group A Register */
+	ADBMS6833_STATB_t	STATB 			;		/**< \brief Status Group B Register */
+	ADBMS6833_STATC_t	STATC 			;		/**< \brief Status Group C Register */
+	ADBMS6833_STATD_t	STATD 			;		/**< \brief Status Group D Register */
+	ADBMS6833_STATE_t	STATE 			;		/**< \brief Status Group E Register */
+} ADBMS6833_STAT_t;
 
 /**
  *  @brief Struct for COMM group register 0
@@ -1510,16 +1510,16 @@ typedef struct
 	 	 	 	 	 	 	 	 	 	 1010 = CSB falling edge\n
 	 	 	 	 	 	 	 	 	 	 1001 = CSB high\n
 	 	 	 	 	 	 	 	 	 	 1111 = no transmit*/
-}ADBMS6830_COMM0_s;
+}ADBMS6833_COMM0_s;
 
 /**
  *  @brief Union for COMM group register 0
  */
 typedef union
 {
-	ADBMS6830_COMM0_s B;
+	ADBMS6833_COMM0_s B;
 	uint8_t U8;
-}ADBMS6830_COMM0_t;
+}ADBMS6833_COMM0_t;
 
 /**
  *  @brief Struct for COMM group register 1
@@ -1527,7 +1527,7 @@ typedef union
 typedef struct
 {
 	uint8_t		D0			: 8;	/**< \brief Bits 0-7: I2C/SPI communication data byte*/
-}ADBMS6830_COMM1_t;
+}ADBMS6833_COMM1_t;
 
 
 /**
@@ -1560,16 +1560,16 @@ typedef struct
 	 	 	 	 	 	 	 	 	 	 1010 = CSB falling edge\n
 	 	 	 	 	 	 	 	 	 	 1001 = CSB high\n
 	 	 	 	 	 	 	 	 	 	 1111 = no transmit*/
-}ADBMS6830_COMM2_s;
+}ADBMS6833_COMM2_s;
 
 /**
  *  @brief Union for COMM group register 2
  */
 typedef union
 {
-	ADBMS6830_COMM2_s B;
+	ADBMS6833_COMM2_s B;
 	uint8_t U8;
-}ADBMS6830_COMM2_t;
+}ADBMS6833_COMM2_t;
 
 /**
  *  @brief Struct for COMM group register 3
@@ -1577,7 +1577,7 @@ typedef union
 typedef struct
 {
 	uint8_t		D1			: 8;	/**< \brief Bits 0-7: I2C/SPI communication data byte*/
-}ADBMS6830_COMM3_t;
+}ADBMS6833_COMM3_t;
 
 /**
  *  @brief Struct for COMM group register 4
@@ -1609,16 +1609,16 @@ typedef struct
 	 	 	 	 	 	 	 	 	 	 1010 = CSB falling edge\n
 	 	 	 	 	 	 	 	 	 	 1001 = CSB high\n
 	 	 	 	 	 	 	 	 	 	 1111 = no transmit*/
-}ADBMS6830_COMM4_s;
+}ADBMS6833_COMM4_s;
 
 /**
  *  @brief Union for COMM group register 4
  */
 typedef union
 {
-	ADBMS6830_COMM4_s B;
+	ADBMS6833_COMM4_s B;
 	uint8_t U8;
-}ADBMS6830_COMM4_t;
+}ADBMS6833_COMM4_t;
 
 /**
  *  @brief Struct for COMM group register 5
@@ -1626,20 +1626,20 @@ typedef union
 typedef struct
 {
 	uint8_t		D2			: 8;	/**< \brief Bits 0-7: I2C/SPI communication data byte*/
-}ADBMS6830_COMM5_t;
+}ADBMS6833_COMM5_t;
 
 /**
  *  @brief Struct for COMM register group
  */
 typedef struct
 {
-	ADBMS6830_COMM0_t	COMM0 			;		/**< \brief COMM Group Register 0 */
-	ADBMS6830_COMM1_t	COMM1 			;		/**< \brief COMM Group Register 1 */
-	ADBMS6830_COMM2_t	COMM2 			;		/**< \brief COMM Group Register 2 */
-	ADBMS6830_COMM3_t	COMM3 			;		/**< \brief COMM Group Register 3 */
-	ADBMS6830_COMM4_t	COMM4 			;		/**< \brief COMM Group Register 4 */
-	ADBMS6830_COMM5_t	COMM5 			;		/**< \brief COMM Group Register 5 */
-} ADBMS6830_COMM_t;
+	ADBMS6833_COMM0_t	COMM0 			;		/**< \brief COMM Group Register 0 */
+	ADBMS6833_COMM1_t	COMM1 			;		/**< \brief COMM Group Register 1 */
+	ADBMS6833_COMM2_t	COMM2 			;		/**< \brief COMM Group Register 2 */
+	ADBMS6833_COMM3_t	COMM3 			;		/**< \brief COMM Group Register 3 */
+	ADBMS6833_COMM4_t	COMM4 			;		/**< \brief COMM Group Register 4 */
+	ADBMS6833_COMM5_t	COMM5 			;		/**< \brief COMM Group Register 5 */
+} ADBMS6833_COMM_t;
 
 /**
  *  @brief Struct for PWM group A register 0
@@ -1654,16 +1654,16 @@ typedef struct
 	 	 	 	 	 	 	 	 	 	 	 1111 - 100% duty cycle\n
 	 	 	 	 	 	 	 	 	 	 	 0001 - 6.6% duty cycle\n
 	 	 	 	 	 	 	 	 	 	 	 0000 - disabled (default)*/
-}ADBMS6830_PWMR0_s;
+}ADBMS6833_PWMR0_s;
 
 /**
  *  @brief Union for PWM group A register 0
  */
 typedef union
 {
-	ADBMS6830_PWMR0_s B;
+	ADBMS6833_PWMR0_s B;
 	uint8_t U8;
-}ADBMS6830_PWMR0_t;
+}ADBMS6833_PWMR0_t;
 
 /**
  *  @brief Struct for PWM group A register 1
@@ -1678,16 +1678,16 @@ typedef struct
 	 	 	 	 	 	 	 	 	 	 	 1111 - 100% duty cycle\n
 	 	 	 	 	 	 	 	 	 	 	 0001 - 6.6% duty cycle\n
 	 	 	 	 	 	 	 	 	 	 	 0000 - disabled (default)*/
-}ADBMS6830_PWMR1_s;
+}ADBMS6833_PWMR1_s;
 
 /**
  *  @brief Union for PWM group A register 1
  */
 typedef union
 {
-	ADBMS6830_PWMR1_s B;
+	ADBMS6833_PWMR1_s B;
 	uint8_t U8;
-}ADBMS6830_PWMR1_t;
+}ADBMS6833_PWMR1_t;
 
 /**
  *  @brief Struct for PWM group A register 2
@@ -1702,16 +1702,16 @@ typedef struct
 	 	 	 	 	 	 	 	 	 	 	 1111 - 100% duty cycle\n
 	 	 	 	 	 	 	 	 	 	 	 0001 - 6.6% duty cycle\n
 	 	 	 	 	 	 	 	 	 	 	 0000 - disabled (default)*/
-}ADBMS6830_PWMR2_s;
+}ADBMS6833_PWMR2_s;
 
 /**
  *  @brief Union for PWM group A register 2
  */
 typedef union
 {
-	ADBMS6830_PWMR2_s B;
+	ADBMS6833_PWMR2_s B;
 	uint8_t U8;
-}ADBMS6830_PWMR2_t;
+}ADBMS6833_PWMR2_t;
 
 /**
  *  @brief Struct for PWM group A register 3
@@ -1726,16 +1726,16 @@ typedef struct
 	 	 	 	 	 	 	 	 	 	 	 1111 - 100% duty cycle\n
 	 	 	 	 	 	 	 	 	 	 	 0001 - 6.6% duty cycle\n
 	 	 	 	 	 	 	 	 	 	 	 0000 - disabled (default)*/
-}ADBMS6830_PWMR3_s;
+}ADBMS6833_PWMR3_s;
 
 /**
  *  @brief Union for PWM group A register 3
  */
 typedef union
 {
-	ADBMS6830_PWMR3_s B;
+	ADBMS6833_PWMR3_s B;
 	uint8_t U8;
-}ADBMS6830_PWMR3_t;
+}ADBMS6833_PWMR3_t;
 
 /**
  *  @brief Struct for PWM group A register 4
@@ -1750,16 +1750,16 @@ typedef struct
 	 	 	 	 	 	 	 	 	 	 	 1111 - 100% duty cycle\n
 	 	 	 	 	 	 	 	 	 	 	 0001 - 6.6% duty cycle\n
 	 	 	 	 	 	 	 	 	 	 	 0000 - disabled (default)*/
-}ADBMS6830_PWMR4_s;
+}ADBMS6833_PWMR4_s;
 
 /**
  *  @brief Union for PWM group A register 4
  */
 typedef union
 {
-	ADBMS6830_PWMR4_s B;
+	ADBMS6833_PWMR4_s B;
 	uint8_t U8;
-}ADBMS6830_PWMR4_t;
+}ADBMS6833_PWMR4_t;
 
 /**
  *  @brief Struct for PWM group A register 5
@@ -1774,29 +1774,29 @@ typedef struct
 	 	 	 	 	 	 	 	 	 	 	 1111 - 100% duty cycle\n
 	 	 	 	 	 	 	 	 	 	 	 0001 - 6.6% duty cycle\n
 	 	 	 	 	 	 	 	 	 	 	 0000 - disabled (default)*/
-}ADBMS6830_PWMR5_s;
+}ADBMS6833_PWMR5_s;
 
 /**
  *  @brief Union for PWM group A register 5
  */
 typedef union
 {
-	ADBMS6830_PWMR5_s B;
+	ADBMS6833_PWMR5_s B;
 	uint8_t U8;
-}ADBMS6830_PWMR5_t;
+}ADBMS6833_PWMR5_t;
 
 /**
  *  @brief Struct for PWMA Register group
  */
 typedef struct
 {
-	ADBMS6830_PWMR0_t 	PWMR0;			/**< \brief PWMA Group Register 0 */
-	ADBMS6830_PWMR1_t 	PWMR1;			/**< \brief PWMA Group Register 1 */
-	ADBMS6830_PWMR2_t 	PWMR2;			/**< \brief PWMA Group Register 2 */
-	ADBMS6830_PWMR3_t 	PWMR3;			/**< \brief PWMA Group Register 3 */
-	ADBMS6830_PWMR4_t 	PWMR4;			/**< \brief PWMA Group Register 4 */
-	ADBMS6830_PWMR5_t 	PWMR5;			/**< \brief PWMA Group Register 5 */
-}ADBMS6830_PWMA_t;
+	ADBMS6833_PWMR0_t 	PWMR0;			/**< \brief PWMA Group Register 0 */
+	ADBMS6833_PWMR1_t 	PWMR1;			/**< \brief PWMA Group Register 1 */
+	ADBMS6833_PWMR2_t 	PWMR2;			/**< \brief PWMA Group Register 2 */
+	ADBMS6833_PWMR3_t 	PWMR3;			/**< \brief PWMA Group Register 3 */
+	ADBMS6833_PWMR4_t 	PWMR4;			/**< \brief PWMA Group Register 4 */
+	ADBMS6833_PWMR5_t 	PWMR5;			/**< \brief PWMA Group Register 5 */
+}ADBMS6833_PWMA_t;
 
 /**
  *  @brief Struct for PWM group B register 0
@@ -1811,16 +1811,16 @@ typedef struct
 	 	 	 	 	 	 	 	 	 	 	 1111 - 100% duty cycle\n
 	 	 	 	 	 	 	 	 	 	 	 0001 - 6.6% duty cycle\n
 	 	 	 	 	 	 	 	 	 	 	 0000 - disabled (default)*/
-}ADBMS6830_PSR0_s;
+}ADBMS6833_PSR0_s;
 
 /**
  *  @brief Union for PWM group B register 0
  */
 typedef union
 {
-	ADBMS6830_PSR0_s B;
+	ADBMS6833_PSR0_s B;
 	uint8_t U8;
-}ADBMS6830_PSR0_t;
+}ADBMS6833_PSR0_t;
 
 /**
  *  @brief Struct for PWM group B register 1
@@ -1835,16 +1835,16 @@ typedef struct
 	 	 	 	 	 	 	 	 	 	 	 1111 - 100% duty cycle\n
 	 	 	 	 	 	 	 	 	 	 	 0001 - 6.6% duty cycle\n
 	 	 	 	 	 	 	 	 	 	 	 0000 - disabled (default)*/
-}ADBMS6830_PSR1_s;
+}ADBMS6833_PSR1_s;
 
 /**
  *  @brief Union for PWM group B register 1
  */
 typedef union
 {
-	ADBMS6830_PSR1_s B;
+	ADBMS6833_PSR1_s B;
 	uint8_t U8;
-}ADBMS6830_PSR1_t;
+}ADBMS6833_PSR1_t;
 
 /**
  *  @brief Struct for PWM group B register 2
@@ -1853,7 +1853,7 @@ typedef struct
 {
 	uint8_t		reserved		: 4;	/**< \brief Bits 0-7: reserved*/
 
-}ADBMS6830_PSR2_t;
+}ADBMS6833_PSR2_t;
 
 /**
  *  @brief Struct for PWM group B register 3
@@ -1862,7 +1862,7 @@ typedef struct
 {
 	uint8_t		reserved		: 4;	/**< \brief Bits 0-7: reserved*/
 
-}ADBMS6830_PSR3_t;
+}ADBMS6833_PSR3_t;
 
 /**
  *  @brief Struct for PWM group B register 4
@@ -1871,7 +1871,7 @@ typedef struct
 {
 	uint8_t		reserved		: 4;	/**< \brief Bits 0-7: reserved*/
 
-}ADBMS6830_PSR4_t;
+}ADBMS6833_PSR4_t;
 
 /**
  *  @brief Struct for PWM group B register 5
@@ -1880,25 +1880,25 @@ typedef struct
 {
 	uint8_t		reserved		: 4;	/**< \brief Bits 0-7: reserved*/
 
-}ADBMS6830_PSR5_t;
+}ADBMS6833_PSR5_t;
 
 /**
  *  @brief Struct for PWMB Register group
  */
 typedef struct
 {
-	ADBMS6830_PSR0_t 	PSR0;			/**< \brief PWMB Group Register 0 */
-	ADBMS6830_PSR1_t 	PSR1;			/**< \brief PWMB Group Register 1 */
-	ADBMS6830_PSR2_t 	PSR2;			/**< \brief PWMB Group Register 2 */
-	ADBMS6830_PSR3_t 	PSR3;			/**< \brief PWMB Group Register 3 */
-	ADBMS6830_PSR4_t 	PSR4;			/**< \brief PWMB Group Register 4 */
-	ADBMS6830_PSR5_t 	PSR5;			/**< \brief PWMB Group Register 5 */
-}ADBMS6830_PWMB_t;
+	ADBMS6833_PSR0_t 	PSR0;			/**< \brief PWMB Group Register 0 */
+	ADBMS6833_PSR1_t 	PSR1;			/**< \brief PWMB Group Register 1 */
+	ADBMS6833_PSR2_t 	PSR2;			/**< \brief PWMB Group Register 2 */
+	ADBMS6833_PSR3_t 	PSR3;			/**< \brief PWMB Group Register 3 */
+	ADBMS6833_PSR4_t 	PSR4;			/**< \brief PWMB Group Register 4 */
+	ADBMS6833_PSR5_t 	PSR5;			/**< \brief PWMB Group Register 5 */
+}ADBMS6833_PWMB_t;
 
 /**
  *  @brief Struct for Retention Register
  *
- *  The ADBMS6830 retains 6 bytes of data in the retention register even during sleep mode.\n
+ *  The ADBMS6833 retains 6 bytes of data in the retention register even during sleep mode.\n
  *  To write to this register, send an unlock retention register command (ULRR) followed by a write retention\n
  *  command (WRRR) with 6 bytes of RR data followed by the data PEC.  Any other commands sent after a ULRR command\n
  *  locks the writing to the retention group.
@@ -1911,7 +1911,7 @@ typedef struct
 	uint8_t	RRR3 			;		/**< \brief RR3 bits[15:8] */
 	uint8_t	RRR4 			;		/**< \brief RR4 bits[7:0]  */
 	uint8_t	RRR5 			;		/**< \brief RR5 bits[15:8]  */
-} ADBMS6830_RDRR_t;
+} ADBMS6833_RDRR_t;
 
 /**
  *  @brief Struct for Serial ID Register Group
@@ -1926,7 +1926,7 @@ typedef struct
 	uint8_t	SIDR3 			;		/**< \brief SID bits[31:24] */
 	uint8_t	SIDR4 			;		/**< \brief SID bits[39:32]  */
 	uint8_t	SIDR5 			;		/**< \brief SID bits[47:40]  */
-} ADBMS6830_RDSID_t;
+} ADBMS6833_RDSID_t;
 
 /**
  * @brief Structure that contains the raw cell voltage combined measurements from all the voltages
@@ -1949,7 +1949,7 @@ typedef struct
 	uint16_t	C14V;								/**< \brief C1V raw*/
 	uint16_t	C15V;								/**< \brief C1V raw*/
 	uint16_t	C16V;								/**< \brief C1V raw*/
-}RAW_CELL_t;
+}ADBMS6833_RAW_CELL_t;
 
 /**
  * @brief Structure that contains the raw cell voltage combined measurements from all the voltages
@@ -1972,7 +1972,7 @@ typedef struct
 	uint16_t	AC14V;								/**< \brief AC14V raw*/
 	uint16_t	AC15V;								/**< \brief AC15V raw*/
 	uint16_t	AC16V;								/**< \brief AC16V raw*/
-}RAW_AVERAGED_CELL_t;
+}ADBMS6833_RAW_AVERAGED_CELL_t;
 
 /**
  * @brief Structure that contains the raw filtered cell voltage combined measurements from all the voltages
@@ -1995,7 +1995,7 @@ typedef struct
 	uint16_t	FC14V;								/**< \brief FC14V raw*/
 	uint16_t	FC15V;								/**< \brief FC15V raw*/
 	uint16_t	FC16V;								/**< \brief FC16V raw*/
-}RAW_FILTERED_CELL_t;
+}ADBMS6833_RAW_FILTERED_CELL_t;
 
 /**
  * @brief Structure that contains the raw s-voltage combined measurements from all the voltages
@@ -2018,7 +2018,7 @@ typedef struct
 	uint16_t	S14V;								/**< \brief S14V raw*/
 	uint16_t	S15V;								/**< \brief S15V raw*/
 	uint16_t	S16V;								/**< \brief S16V raw*/
-}RAW_S_VOLTAGE_t;
+}ADBMS6833_RAW_S_VOLTAGE_t;
 
 /**
  * @brief Structure that contains the raw AUX combined measurements from all the GPIOs
@@ -2037,7 +2037,7 @@ typedef struct
 	uint16_t	G10V;								/**< \brief G10V raw*/
 	uint16_t	VMV;								/**< \brief V- to V- raw measurement*/
 	uint16_t	VPV;								/**< \brief V+ to V- raw measurement*/
-}RAW_AUX_t;
+}ADBMS6833_RAW_AUX_t;
 
 /**
  * @brief Structure that contains the raw redundant AUX combined measurements from all the GPIOs
@@ -2054,7 +2054,7 @@ typedef struct
 	uint16_t	R_G8V;								/**< \brief redundant G8V raw*/
 	uint16_t	R_G9V;								/**< \brief redundant G9V raw*/
 	uint16_t	R_G10V;								/**< \brief redundant G10V raw*/
-}RAW_RAXA_t;
+}ADBMS6833_RAW_RAXA_t;
 
 /**
  * @brief Structure that contains the raw Status Voltage combined measurements
@@ -2066,21 +2066,21 @@ typedef struct
 	uint16_t	VD;									/**< \brief Digital power supply voltage raw*/
 	uint16_t	VA;									/**< \brief Analog power supply voltage raw*/
 	uint16_t	VRES;								/**< \brief Vref2 across resistor raw*/
-}RAW_STATV_t;
+}ADBMS6833_RAW_STATV_t;
 
 /**
  * @brief Structure that contains the raw cell voltage combined measurements from all the voltages
  * */
 typedef struct
 {
-	RAW_CELL_t	Cell;								/***< \brief Structure that contains the raw cell voltages*/
-	RAW_AVERAGED_CELL_t	AvCell;						/***< \brief Structure that contains the raw averaged cell voltages*/
-	RAW_FILTERED_CELL_t FiltCell;					/***< \brief Structure that contains the raw filtered cell voltages*/
-	RAW_S_VOLTAGE_t	S_Volt;							/***< \brief Structure that contains the raw s pin voltages*/
-	RAW_AUX_t Aux;									/***< \brief Structure that contains the GPIOs voltages*/
-	RAW_RAXA_t R_Aux;								/***< \brief Structure that contains the redundant GPIOs voltages*/
-	RAW_STATV_t Status_Voltages;					/***< \brief Structure that contains the Status voltages*/
-}RAW_DATA_t;
+	ADBMS6833_RAW_CELL_t Cell;						/***< \brief Structure that contains the raw cell voltages*/
+	ADBMS6833_RAW_AVERAGED_CELL_t AvCell;			/***< \brief Structure that contains the raw averaged cell voltages*/
+	ADBMS6833_RAW_FILTERED_CELL_t FiltCell;			/***< \brief Structure that contains the raw filtered cell voltages*/
+	ADBMS6833_RAW_S_VOLTAGE_t S_Volt;				/***< \brief Structure that contains the raw s pin voltages*/
+	ADBMS6833_RAW_AUX_t Aux;						/***< \brief Structure that contains the GPIOs voltages*/
+	ADBMS6833_RAW_RAXA_t R_Aux;						/***< \brief Structure that contains the redundant GPIOs voltages*/
+	ADBMS6833_RAW_STATV_t Status_Voltages;			/***< \brief Structure that contains the Status voltages*/
+}ADBMS6833_RAW_DATA_t;
 
 /**
  * @brief Structure that is used to clear the CS-mismatch faults from Status C register
@@ -2095,16 +2095,16 @@ typedef struct
 	uint8_t	CL_CS6FLT			:1;					/**< \brief Bit 5: Clear CS6FLT in STCR0*/
 	uint8_t	CL_CS7FLT			:1;					/**< \brief Bit 6: Clear CS7FLT in STCR0*/
 	uint8_t	CL_CS8FLT			:1;					/**< \brief Bit 7: Clear CS8FLT in STCR0*/
-}ADBMS6830_CFD0_s;
+}ADBMS6833_CFD0_s;
 
 /**
  *  @brief Union for CFD0
  */
 typedef union
 {
-	ADBMS6830_CFD0_s B;
+	ADBMS6833_CFD0_s B;
 	uint8_t U8;
-}ADBMS6830_CFD0_t;
+}ADBMS6833_CFD0_t;
 
 /**
  * @brief Structure that is used to clear the the CS-mismatch faults from Status C register
@@ -2119,16 +2119,16 @@ typedef struct
 	uint8_t	CL_CS14FLT			:1;					/**< \brief Bit 5: Clear CS14FLT in STCR1*/
 	uint8_t	CL_CS15FLT			:1;					/**< \brief Bit 6: Clear CS15FLT in STCR1*/
 	uint8_t	CL_CS16FLT			:1;					/**< \brief Bit 7: Clear CS16FLT in STCR1*/
-}ADBMS6830_CFD1_s;
+}ADBMS6833_CFD1_s;
 
 /**
  *  @brief Union for CFD1
  */
 typedef union
 {
-	ADBMS6830_CFD1_s B;
+	ADBMS6833_CFD1_s B;
 	uint8_t U8;
-}ADBMS6830_CFD1_t;
+}ADBMS6833_CFD1_t;
 
 /**
  * @brief Structure that is used to clear the faults from Status C register STCR4\n
@@ -2146,16 +2146,16 @@ typedef struct
 	uint8_t	CL_VDOV				:1;					/**< \brief Bit 5: Clear VDOV in STCR4*/
 	uint8_t	CL_VAUV				:1;					/**< \brief Bit 6: Clear VAUV in STCR4*/
 	uint8_t	CL_VAOV				:1;					/**< \brief Bit 7: Clear VAOV in STCR4*/
-}ADBMS6830_CFD4_s;
+}ADBMS6833_CFD4_s;
 
 /**
  *  @brief Union for CFD4
  */
 typedef union
 {
-	ADBMS6830_CFD4_s B;
+	ADBMS6833_CFD4_s B;
 	uint8_t U8;
-}ADBMS6830_CFD4_t;
+}ADBMS6833_CFD4_t;
 
 /**
  * @brief Structure that is used to clear the faults from Status C register STCR5\n
@@ -2173,16 +2173,16 @@ typedef struct
 	uint8_t	reserved			:1;					/**< \brief Bit 5: reserved*/
 	uint8_t	CL_VDE				:1;					/**< \brief Bit 6: Clear VDE in STCR5*/
 	uint8_t	CL_VDEL				:1;					/**< \brief Bit 7: Clear VDEL in STCR5*/
-}ADBMS6830_CFD5_s;
+}ADBMS6833_CFD5_s;
 
 /**
  *  @brief Union for CFD5
  */
 typedef union
 {
-	ADBMS6830_CFD5_s B;
+	ADBMS6833_CFD5_s B;
 	uint8_t U8;
-}ADBMS6830_CFD5_t;
+}ADBMS6833_CFD5_t;
 
 /**
  *
@@ -2191,13 +2191,13 @@ typedef union
  * */
 typedef struct
 {
-	ADBMS6830_CFD0_t CFDO;							/**< \brief Clear fault flags for STCR0*/
-	ADBMS6830_CFD1_t CFD1;							/**< \brief Clear fault flags for STCR1*/
+	ADBMS6833_CFD0_t CFDO;							/**< \brief Clear fault flags for STCR0*/
+	ADBMS6833_CFD1_t CFD1;							/**< \brief Clear fault flags for STCR1*/
 	uint8_t		 CFD2;							/**< \brief reserved*/
 	uint8_t		 CFD3;							/**< \brief reserved*/
-	ADBMS6830_CFD4_t CFD4;							/**< \brief Clear fault flags for STCR4*/
-	ADBMS6830_CFD5_t CFD5;							/**< \brief Clear fault flags for STCR5*/
-} ADBMS6830_CL_FLT_t;
+	ADBMS6833_CFD4_t CFD4;							/**< \brief Clear fault flags for STCR4*/
+	ADBMS6833_CFD5_t CFD5;							/**< \brief Clear fault flags for STCR5*/
+} ADBMS6833_CL_FLT_t;
 
 /**
  * @brief Structure that is used to clear the OV/UV faults from Status D register STDR0
@@ -2212,16 +2212,16 @@ typedef struct
 	uint8_t	CL_C3OV				:1;					/**< \brief Bit 5: Clear C3OV in STDR0*/
 	uint8_t	CL_C4UV				:1;					/**< \brief Bit 6: Clear C4UV in STDR0*/
 	uint8_t	CL_C4OV				:1;					/**< \brief Bit 7: Clear C4OV in STDR0*/
-}ADBMS6830_CL_STDR0_s;
+}ADBMS6833_CL_STDR0_s;
 
 /**
  *  @brief Union for CL_STDR0
  */
 typedef union
 {
-	ADBMS6830_CL_STDR0_s B;
+	ADBMS6833_CL_STDR0_s B;
 	uint8_t U8;
-}ADBMS6830_CL_STDR0_T;
+}ADBMS6833_CL_STDR0_T;
 
 /**
  * @brief Structure that is used to clear the OV/UV faults from Status D register STDR1
@@ -2236,16 +2236,16 @@ typedef struct
 	uint8_t	CL_C7OV				:1;					/**< \brief Bit 5: Clear C7OV in STDR1*/
 	uint8_t	CL_C8UV				:1;					/**< \brief Bit 6: Clear C8UV in STDR1*/
 	uint8_t	CL_C8OV				:1;					/**< \brief Bit 7: Clear C8OV in STDR1*/
-}ADBMS6830_CL_STDR1_s;
+}ADBMS6833_CL_STDR1_s;
 
 /**
  *  @brief Union for CL_STDR1
  */
 typedef union
 {
-	ADBMS6830_CL_STDR1_s B;
+	ADBMS6833_CL_STDR1_s B;
 	uint8_t U8;
-}ADBMS6830_CL_STDR1_T;
+}ADBMS6833_CL_STDR1_T;
 
 /**
  * @brief Structure that is used to clear the OV/UV faults from Status D register STDR2
@@ -2260,16 +2260,16 @@ typedef struct
 	uint8_t	CL_C11OV			:1;					/**< \brief Bit 5: Clear C11OV in STDR2*/
 	uint8_t	CL_C12UV			:1;					/**< \brief Bit 6: Clear C12UV in STDR2*/
 	uint8_t	CL_C12OV			:1;					/**< \brief Bit 7: Clear C12OV in STDR2*/
-}ADBMS6830_CL_STDR2_s;
+}ADBMS6833_CL_STDR2_s;
 
 /**
  *  @brief Union for CL_STDR2
  */
 typedef union
 {
-	ADBMS6830_CL_STDR2_s B;
+	ADBMS6833_CL_STDR2_s B;
 	uint8_t U8;
-}ADBMS6830_CL_STDR2_T;
+}ADBMS6833_CL_STDR2_T;
 
 /**
  * @brief Structure that is used to clear the OV/UV faults from Status D register STDR3
@@ -2284,16 +2284,16 @@ typedef struct
 	uint8_t	CL_C15OV			:1;					/**< \brief Bit 5: Clear C15OV in STDR3*/
 	uint8_t	CL_C16UV			:1;					/**< \brief Bit 6: Clear C16UV in STDR3*/
 	uint8_t	CL_C16OV			:1;					/**< \brief Bit 7: Clear C16OV in STDR3*/
-}ADBMS6830_CL_STDR3_s;
+}ADBMS6833_CL_STDR3_s;
 
 /**
  *  @brief Union for CL_STDR3
  */
 typedef union
 {
-	ADBMS6830_CL_STDR3_s B;
+	ADBMS6833_CL_STDR3_s B;
 	uint8_t U8;
-}ADBMS6830_CL_STDR3_T;
+}ADBMS6833_CL_STDR3_T;
 
 /**
  *
@@ -2302,13 +2302,13 @@ typedef union
  * */
 typedef struct
 {
-	ADBMS6830_CL_STDR0_T CL_STDR0;						/**< \brief Clear fault flags for STDR0*/
-	ADBMS6830_CL_STDR1_T CL_STDR1;						/**< \brief Clear fault flags for STDR1*/
-	ADBMS6830_CL_STDR2_T CL_STDR2;						/**< \brief Clear fault flags for STDR2*/
-	ADBMS6830_CL_STDR3_T CL_STDR3;						/**< \brief Clear fault flags for STDR3*/
+	ADBMS6833_CL_STDR0_T CL_STDR0;						/**< \brief Clear fault flags for STDR0*/
+	ADBMS6833_CL_STDR1_T CL_STDR1;						/**< \brief Clear fault flags for STDR1*/
+	ADBMS6833_CL_STDR2_T CL_STDR2;						/**< \brief Clear fault flags for STDR2*/
+	ADBMS6833_CL_STDR3_T CL_STDR3;						/**< \brief Clear fault flags for STDR3*/
 	uint8_t 			 CL_STDR4;						/**< \brief reserved*/
 	uint8_t				 CL_STDR5;						/**< \brief reserved*/
-} ADBMS6830_CL_OVUV_t;
+} ADBMS6833_CL_OVUV_t;
 
 /**
  * @brief Structure that contains all the data registers
@@ -2316,23 +2316,23 @@ typedef struct
 typedef struct
 {
 	uint8_t				command_Counter;			/**< \brief upper bits from PEC0 on a read.*/
-	ADBMS6830_CFGA_t 	CFGA;						/**< \brief Configuration Group A Registers */
-	ADBMS6830_CFGB_t	CFGB;						/**< \brief Configuration Group B Registers */
-	ADBMS6830_RDCV_t	RDCV;						/**< \brief Cell Voltage Registers */
-	ADBMS6830_RDACV_t 	RDACV;						/**< \brief Averaged Cell Voltage Registers */
-	ADBMS6830_RDFCV_t	RDFCV;						/**< \brief Filtered Cell Voltage Registers */
-	ADBMS6830_RDSV_t	RDSV;						/**< \brief S-Voltage Registers */
-	ADBMS6830_RDAUX_t	RDAUX;						/**< \brief Auxiliary Registers */
-	ADBMS6830_RDRAX_t   RDRAX;						/**< \brief Redundant Auxiliary Registers */
-	ADBMS6830_STAT_t    RDSTAT;						/**< \brief Status Registers */
-	ADBMS6830_COMM_t    RDCOMM;						/**< \brief COMM registers */
-	ADBMS6830_PWMA_t	PWMA;						/**< \brief PWMA registers */
-	ADBMS6830_PWMB_t	PWMB;						/**< \brief PWMB registers */
-	ADBMS6830_RDRR_t	RDRR;						/**< \brief Retention registers*/
-	ADBMS6830_RDSID_t	RDSID;						/**< \brief Serial ID registers*/
-	ADBMS6830_CL_FLT_t	CLR_FLT;					/**< \brief Clear fault flags*/
-	ADBMS6830_CL_OVUV_t CLR_OVUV;					/**< \brief Clear OV/UV fault*/
-}ADBMS6830_REGISTERS_t;
+	ADBMS6833_CFGA_t 	CFGA;						/**< \brief Configuration Group A Registers */
+	ADBMS6833_CFGB_t	CFGB;						/**< \brief Configuration Group B Registers */
+	ADBMS6833_RDCV_t	RDCV;						/**< \brief Cell Voltage Registers */
+	ADBMS6833_RDACV_t 	RDACV;						/**< \brief Averaged Cell Voltage Registers */
+	ADBMS6833_RDFCV_t	RDFCV;						/**< \brief Filtered Cell Voltage Registers */
+	ADBMS6833_RDSV_t	RDSV;						/**< \brief S-Voltage Registers */
+	ADBMS6833_RDAUX_t	RDAUX;						/**< \brief Auxiliary Registers */
+	ADBMS6833_RDRAX_t   RDRAX;						/**< \brief Redundant Auxiliary Registers */
+	ADBMS6833_STAT_t    RDSTAT;						/**< \brief Status Registers */
+	ADBMS6833_COMM_t    RDCOMM;						/**< \brief COMM registers */
+	ADBMS6833_PWMA_t	PWMA;						/**< \brief PWMA registers */
+	ADBMS6833_PWMB_t	PWMB;						/**< \brief PWMB registers */
+	ADBMS6833_RDRR_t	RDRR;						/**< \brief Retention registers*/
+	ADBMS6833_RDSID_t	RDSID;						/**< \brief Serial ID registers*/
+	ADBMS6833_CL_FLT_t	CLR_FLT;					/**< \brief Clear fault flags*/
+	ADBMS6833_CL_OVUV_t CLR_OVUV;					/**< \brief Clear OV/UV fault*/
+}ADBMS6833_REGISTERS_t;
 
 /**
  * @brief Structure that contains all the fault bits
@@ -2357,24 +2357,24 @@ typedef struct
 	uint32_t  	CxOV				: 1;			/**< \brief Bit 15: Cell overvoltage detected  */
 	uint32_t  	CxUV				: 1;			/**< \brief Bit 16: Cell undervoltage detected  */
 	uint32_t	reserved			:15;			/**< \brief Bit 17-31: reserved*/
-}ADBMS6830_FAULTS_s;
+}ADBMS6833_FAULTS_s;
 
 /**
  * @brief Union that contains all the fault bits
  * */
 typedef union
 {
-	ADBMS6830_FAULTS_s B;
+	ADBMS6833_FAULTS_s B;
 	uint32_t 	U32;
-}ADBMS6830_FAULTS_t;
+}ADBMS6833_FAULTS_t;
 
 typedef struct
 {
 	bool	 				isInitialized;
-	ADBMS6830_FAULTS_t 		faults[ADBMS6830_NUMBER_OF_NODES];
-	RAW_DATA_t  			rawData[ADBMS6830_NUMBER_OF_NODES];
-	ADBMS6830_REGISTERS_t 	reg[ADBMS6830_NUMBER_OF_NODES];
-}ADBMS6830_FUELCELL_INFO_t;
+	ADBMS6833_FAULTS_t 		faults[ADBMS6833_NUMBER_OF_NODES];
+	ADBMS6833_RAW_DATA_t   rawData[ADBMS6833_NUMBER_OF_NODES];
+	ADBMS6833_REGISTERS_t 	reg[ADBMS6833_NUMBER_OF_NODES];
+}ADBMS6833_FUELCELL_INFO_t;
 
 typedef struct
 {
@@ -2386,80 +2386,80 @@ typedef struct
 	uint32_t SM_TRIGGER_ADSV	:1;				/**< \brief Bit 4: Failed to trigger ADSV*/
 	uint32_t SM_CELL_OWD		:1; 			/**< \brief Bit 5: Failed open wire detection*/
 
-}SM_FAULT_s;
+}ADBMS6833_SM_FAULT_s;
 
 typedef union
 {
-	SM_FAULT_s 	B;
+	ADBMS6833_SM_FAULT_s B;
 	uint32_t	U32;
-}ADBMS6830_SM_FAULT_t;
+}ADBMS6833_SM_FAULT_t;
 /*----- Private Functions Prototypes ----------------------------------------------------*/
-static uint64_t adbms6830_Micros(void);
-static bool adbms6830_ReadSID(void);
-static bool adbms6830_read( uint16_t addr, uint8_t *pRxBuff, uint16_t rd_len);
-static bool adbms6830_muteDischarge(void);
-extern bool adbms6830_SNAP(void);
-extern bool adbms6830_UNSNAP(void);
-static bool adbms6830_VerifyFaultStatC(void);
-extern ADBMS6830_FUELCELL_INFO_t adbms6830Info;
-extern ADBMS6830_SM_FAULT_t adbms6830Faults;
+static uint64_t adbms6833_Micros(void);
+static bool adbms6833_ReadSID(void);
+static bool adbms6833_read( uint16_t addr, uint8_t *pRxBuff, uint16_t rd_len);
+static bool adbms6833_muteDischarge(void);
+extern bool adbms6833_SNAP(void);
+extern bool adbms6833_UNSNAP(void);
+static bool adbms6833_VerifyFaultStatC(void);
+extern ADBMS6833_FUELCELL_INFO_t adbms6833Info;
+extern ADBMS6833_SM_FAULT_t adbms6833Faults;
 
 /***************************** Source File Types ******************************/
-extern bool adbms6830_write(uint16_t addr, uint8_t* pData, uint16_t len );
-extern bool adbms6830_Config(void);
-extern bool adbms6830_ReadCFGA(void);
-extern bool adbms6830_ReadCFGB(void);
-extern uint8_t adbms6830_ReadStatA(void);
-extern uint8_t adbms6830_ReadStatB(void);
-extern uint8_t adbms6830_ReadStatC(void);
-extern uint8_t adbms6830_ReadStatD(void);
-extern uint8_t adbms6830_ReadStatE(void);
-extern uint8_t adbms6830_ReadCVA(void);
-extern uint8_t adbms6830_ReadCVB(void);
-extern uint8_t adbms6830_ReadCVC(void);
-extern uint8_t adbms6830_ReadCVD(void);
-extern uint8_t adbms6830_ReadCVE(void);
-extern uint8_t adbms6830_ReadCVF(void);
-extern uint8_t adbms6830_ReadACVA(void);
-extern uint8_t adbms6830_ReadACVB(void);
-extern uint8_t adbms6830_ReadACVC(void);
-extern uint8_t adbms6830_ReadACVD(void);
-extern uint8_t adbms6830_ReadACVE(void);
-extern uint8_t adbms6830_ReadACVF(void);
-extern uint8_t adbms6830_ReadFCA(void);
-extern uint8_t adbms6830_ReadFCB(void);
-extern uint8_t adbms6830_ReadFCC(void);
-extern uint8_t adbms6830_ReadFCD(void);
-extern uint8_t adbms6830_ReadFCE(void);
-extern uint8_t adbms6830_ReadFCF(void);
-extern uint8_t adbms6830_ReadSVA(void);
-extern uint8_t adbms6830_ReadSVB(void);
-extern uint8_t adbms6830_ReadSVC(void);
-extern uint8_t adbms6830_ReadSVD(void);
-extern uint8_t adbms6830_ReadSVE(void);
-extern uint8_t adbms6830_ReadSVF(void);
-extern bool adbms6830_ReadAUXA(void);
-extern bool adbms6830_ReadAUXB(void);
-extern bool adbms6830_ReadAUXC(void);
-extern bool adbms6830_ReadAUXD(void);
-extern bool adbms6830_ReadRAXA(void);
-extern bool adbms6830_ReadRAXB(void);
-extern bool adbms6830_ReadRAXC(void);
-extern bool adbms6830_ReadRAXD(void);
-extern bool adbms6830_WriteCFGA(void);
-extern bool adbms6830_WriteCFGB(void);
-extern bool adbms6830_ReadCOMM(void);
-extern bool adbms6830_ReadPWMA(void);
-extern bool adbms6830_ReadPWMB(void);
-extern bool adbms6830_ReadRR(void);
-extern bool adbms6830_WriteCOMM(void);
-extern bool adbms6830_WritePWMA(void);
-extern bool adbms6830_WritePWMB(void);
-extern bool adbms6830_WriteRR(void);
-extern bool adbms6830_clearFaultFlags(void);
-extern bool adbms6830_clearOVUV(void);
-extern bool adbms6830_ConfigureOVUVthresholds(void);
-extern bool adbms6830_TrigAuxMeasurement(void);
-extern bool adbms6830_checkStatC_Faults(void);
-extern bool adbms6830_checkStatD_Faults(void);
-#endif /* ADBMS6830_H */
+extern bool adbms6833_write(uint16_t addr, uint8_t* pData, uint16_t len );
+extern bool adbms6833_Config(void);
+extern bool adbms6833_ReadCFGA(void);
+extern bool adbms6833_ReadCFGB(void);
+extern uint8_t adbms6833_ReadStatA(void);
+extern uint8_t adbms6833_ReadStatB(void);
+extern uint8_t adbms6833_ReadStatC(void);
+extern uint8_t adbms6833_ReadStatD(void);
+extern uint8_t adbms6833_ReadStatE(void);
+extern uint8_t adbms6833_ReadCVA(void);
+extern uint8_t adbms6833_ReadCVB(void);
+extern uint8_t adbms6833_ReadCVC(void);
+extern uint8_t adbms6833_ReadCVD(void);
+extern uint8_t adbms6833_ReadCVE(void);
+extern uint8_t adbms6833_ReadCVF(void);
+extern uint8_t adbms6833_ReadACVA(void);
+extern uint8_t adbms6833_ReadACVB(void);
+extern uint8_t adbms6833_ReadACVC(void);
+extern uint8_t adbms6833_ReadACVD(void);
+extern uint8_t adbms6833_ReadACVE(void);
+extern uint8_t adbms6833_ReadACVF(void);
+extern uint8_t adbms6833_ReadFCA(void);
+extern uint8_t adbms6833_ReadFCB(void);
+extern uint8_t adbms6833_ReadFCC(void);
+extern uint8_t adbms6833_ReadFCD(void);
+extern uint8_t adbms6833_ReadFCE(void);
+extern uint8_t adbms6833_ReadFCF(void);
+extern uint8_t adbms6833_ReadSVA(void);
+extern uint8_t adbms6833_ReadSVB(void);
+extern uint8_t adbms6833_ReadSVC(void);
+extern uint8_t adbms6833_ReadSVD(void);
+extern uint8_t adbms6833_ReadSVE(void);
+extern uint8_t adbms6833_ReadSVF(void);
+extern bool adbms6833_ReadAUXA(void);
+extern bool adbms6833_ReadAUXB(void);
+extern bool adbms6833_ReadAUXC(void);
+extern bool adbms6833_ReadAUXD(void);
+extern bool adbms6833_ReadRAXA(void);
+extern bool adbms6833_ReadRAXB(void);
+extern bool adbms6833_ReadRAXC(void);
+extern bool adbms6833_ReadRAXD(void);
+extern bool adbms6833_WriteCFGA(void);
+extern bool adbms6833_WriteCFGB(void);
+extern bool adbms6833_ReadCOMM(void);
+extern bool adbms6833_ReadPWMA(void);
+extern bool adbms6833_ReadPWMB(void);
+extern bool adbms6833_ReadRR(void);
+extern bool adbms6833_WriteCOMM(void);
+extern bool adbms6833_WritePWMA(void);
+extern bool adbms6833_WritePWMB(void);
+extern bool adbms6833_WriteRR(void);
+extern bool adbms6833_clearFaultFlags(void);
+extern bool adbms6833_clearOVUV(void);
+extern bool adbms6833_ConfigureOVUVthresholds(void);
+extern bool adbms6833_TrigAuxMeasurement(void);
+extern bool adbms6833_checkStatC_Faults(void);
+extern bool adbms6833_checkStatD_Faults(void);
+#endif /* ADBMS6833_H */

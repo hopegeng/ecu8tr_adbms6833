@@ -11,10 +11,9 @@
 #include <queue.h>
 #include "shell.h"
 #include "ecu8tr_cmd.h"
+#include "../../../drivers/adbms/adbms_family_select.h"
 
 ECU8TR_UPGRADE_STATUS_e bootloader_get_upgradeStatus( void );
-
-extern ECU8TR_ADBMS6830_State_t adbms6830_getState( void );
 
 
 /* Task which runs the LED1 app */
@@ -76,12 +75,12 @@ static void task_r_g_led(void *arg)
 		}
 
 #if 1
-		if( adbms6830_getState() == ECU8TR_ADBMS6830_ERROR  )
+		if( ADBMS_GET_STATE_FN() == ECU8TR_ADBMS6830_ERROR  )
 		{
 			IfxPort_setPinLow( &MODULE_P33, 14 );
 			IfxPort_togglePin( &MODULE_P34, 4 );
 		}
-		else if( adbms6830_getState() == ECU8TR_ADBMS6830_OK  )
+		else if( ADBMS_GET_STATE_FN() == ECU8TR_ADBMS6830_OK  )
 		{
 			IfxPort_togglePin( &MODULE_P33, 14 );	//Green
 			IfxPort_setPinLow( &MODULE_P34, 4 );	//RED OFF

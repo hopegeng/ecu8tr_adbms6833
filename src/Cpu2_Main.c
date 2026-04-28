@@ -29,10 +29,10 @@
 #include "IfxScuWdt.h"
 #include "tools.h"
 #include "shell.h"
+#include "drivers/adbms/adbms_family_select.h"
 
 
 extern IfxCpu_syncEvent g_cpuSyncEvent;
-extern void adbms_main_on_core2(void);
 
 void core2_main(void)
 {
@@ -47,6 +47,6 @@ void core2_main(void)
     IfxCpu_emitEvent(&g_cpuSyncEvent);
     IfxCpu_waitEvent(&g_cpuSyncEvent, 1);
     
-    adbms_main_on_core2();
+    ADBMS_CORE2_MAIN_FN();
 
 }

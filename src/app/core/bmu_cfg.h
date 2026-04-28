@@ -2,7 +2,7 @@
 #define BMU_CFG_H
 
 #include <stdint.h>
-#include "../../drivers/adbms/adbms_on_core2/adbms6830_shared.h"
+#include "../../drivers/adbms/adbms_family_select.h"
 
 /* BMU topology for the current ADBMS6830 platform:
  * one BMU controls one battery module
@@ -27,7 +27,7 @@
 /* DBC timing */
 
 #define BMU_CELLMESSAGE_CYCLE_MS        (1000u)
-#define BMU_SAMPLE_PERIOD_MS            (ADBMS6830_SHARED_SAMPLE_PERIOD_MS)
+#define BMU_SAMPLE_PERIOD_MS            (ADBMS_SHARED_SAMPLE_PERIOD_MS)
 
 /* Scheduler tick used by CellMessage publisher */
 #define BMU_CELL_TX_TASK_PERIOD_MS      (10u)
