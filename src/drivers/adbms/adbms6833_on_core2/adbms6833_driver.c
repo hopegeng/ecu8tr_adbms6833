@@ -1,6 +1,7 @@
 #include "adbms6833_driver.h"
 #include "adbms6833_reg.h"
 #include "adbms6833_pec.h"
+#include "adbms6833_shared.h"
 
 #include <string.h>
 #include "shell.h"
@@ -14,6 +15,11 @@
 #define ADBMS6833_MEASUREMENT_TIME			(8)				//1ms needed to a averaged measurement; tested, 1ms just read out 0x8000, only 8ms works
 #define ADBMS6833_AVG_MEASUREMENT_TIME		(8)				//8ms for averged measured time
 #define ADBMS6833_CELL_CONVERSION_OFFSET	(1500U)			//Table 106: Result registes bit description
+#if ADBMS6833_ENABLE_DEBUG_PRINTF
+#define ADBMS6833_DEBUG_PRINTF(...)      PRINTF(__VA_ARGS__)
+#else
+#define ADBMS6833_DEBUG_PRINTF(...)      ((void)0)
+#endif
 
 #define ENABLE_PRECAUTION_WAKEUP			 0			//We may not need so many wakeup call
 
@@ -745,8 +751,6 @@ Adbms6833_Status_t Adbms6833_FullInitialize(Adbms6833_Context_t *ctx,
         return st;
     }
 
-	//memcpy( ray_buffer, readCfga, 16 );
-
 #if 0
     for (ic = 0U; ic < ctx->icCount; ic++)
     {
@@ -866,14 +870,14 @@ Adbms6833_Status_t Adbms6833_FullInitialize(Adbms6833_Context_t *ctx,
 
         for (byteIdx = 0U; byteIdx < ADBMS6833_REG_GROUP_DATA_LEN; byteIdx++)
         {
-        	PRINTF( "The SID %d = 0x%x ", byteIdx, readSid[byteIdx+ic*ADBMS6833_REG_GROUP_DATA_LEN] );
+        	ADBMS6833_DEBUG_PRINTF( "The SID %d = 0x%x ", byteIdx, readSid[byteIdx+ic*ADBMS6833_REG_GROUP_DATA_LEN] );
             if (readSid[(uint16_t)ic * ADBMS6833_REG_GROUP_DATA_LEN + byteIdx] != 0U)
             {
                 sidIsAllZero = false;
             }
         }
 
-        PRINTF( "\r\n" );
+        ADBMS6833_DEBUG_PRINTF( "\r\n" );
         if (sidIsAllZero == true)
         {
         	adbms6833_ray_err = 13;
@@ -997,11 +1001,11 @@ Adbms6833_Status_t Adbms6833_Task(Adbms6833_Context_t *ctx,
                 {
                     ctx->svcState = ADBMS6833_SVC_START_MEASURE;
                 }
-                PRINTF( "Start Wake @%d\r\n", ctx->tickMs );
+                ADBMS6833_DEBUG_PRINTF( "Start Wake @%d\r\n", ctx->tickMs );
             }
             else
             {
-            	PRINTF( "********* Wake up failed\r\n" );
+            	ADBMS6833_DEBUG_PRINTF( "********* Wake up failed\r\n" );
                 ctx->commErrorCount++;
                 ctx->linkState = ADBMS6833_LINK_ERROR;
                 ctx->svcState  = ADBMS6833_SVC_FAULT;
@@ -1017,12 +1021,12 @@ Adbms6833_Status_t Adbms6833_Task(Adbms6833_Context_t *ctx,
                 ctx->lastCommMs   = ctx->tickMs;
                 ctx->stateEntryMs = ctx->tickMs;
                 ctx->svcState     = ADBMS6833_SVC_START_MEASURE;
-                PRINTF( "Start Configure @%d\r\n", ctx->tickMs );
+                ADBMS6833_DEBUG_PRINTF( "Start Configure @%d\r\n", ctx->tickMs );
 
             }
             else
             {
-            	PRINTF( "********************Configuration is failed\r\n" );
+            	ADBMS6833_DEBUG_PRINTF( "********************Configuration is failed\r\n" );
                 ctx->configured = false;
                 ctx->commErrorCount++;
                 ctx->linkState = ADBMS6833_LINK_ERROR;
@@ -1058,11 +1062,11 @@ Adbms6833_Status_t Adbms6833_Task(Adbms6833_Context_t *ctx,
                 ctx->stateEntryMs = ctx->tickMs;
                 ctx->measureCount++;
                 ctx->svcState     = ADBMS6833_SVC_WAIT_MEASURE;
-                PRINTF( "Start Measure @%d\r\n", ctx->tickMs );
+                ADBMS6833_DEBUG_PRINTF( "Start Measure @%d\r\n", ctx->tickMs );
             }
             else
             {
-            	PRINTF( "Failed to start measument ***********\r\n" );
+            	ADBMS6833_DEBUG_PRINTF( "Failed to start measument ***********\r\n" );
                 ctx->commErrorCount++;
                 ctx->linkState = ADBMS6833_LINK_ERROR;
                 ctx->svcState  = ADBMS6833_SVC_FAULT;
@@ -1120,7 +1124,7 @@ Adbms6833_Status_t Adbms6833_Task(Adbms6833_Context_t *ctx,
                     ctx->commErrorCount++;
                     ctx->linkState = ADBMS6833_LINK_ERROR;
                     ctx->svcState  = ADBMS6833_SVC_FAULT;
-                    PRINTF( "***&&Start wake line 796 @%d\r\n", ctx->tickMs );
+                    ADBMS6833_DEBUG_PRINTF( "***&&Start wake line 796 @%d\r\n", ctx->tickMs );
                     return ADBMS6833_ERR_COMM;
                 }
 
@@ -1128,7 +1132,7 @@ Adbms6833_Status_t Adbms6833_Task(Adbms6833_Context_t *ctx,
                 ctx->lastCommMs = ctx->tickMs;
             }
 
-            PRINTF( "Start Read Result @%d\r\n", ctx->tickMs );
+            ADBMS6833_DEBUG_PRINTF( "Start Read Result @%d\r\n", ctx->tickMs );
 
 #if ADBMS6833_USE_RDCVALL
             if (Adbms6833_ReadCellVoltagesAll(ctx, hal, cmds) == ADBMS6833_OK)
@@ -1140,12 +1144,12 @@ Adbms6833_Status_t Adbms6833_Task(Adbms6833_Context_t *ctx,
                 ctx->lastCommMs    = ctx->tickMs;
                 ctx->lastMeasureMs = ctx->tickMs;
                 ctx->svcState      = ADBMS6833_SVC_PROCESS_RESULTS;
-                PRINTF( "Start Read @%d\r\n", ctx->tickMs );
+                ADBMS6833_DEBUG_PRINTF( "Start Read @%d\r\n", ctx->tickMs );
 
             }
             else
             {
-            	PRINTF( "****************** Read Result failed\r\n" );
+            	ADBMS6833_DEBUG_PRINTF( "****************** Read Result failed\r\n" );
             	hal->delayMs( 3000 );
 
                 ctx->commErrorCount++;

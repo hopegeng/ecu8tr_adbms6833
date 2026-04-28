@@ -28,6 +28,17 @@
 #define ISR_PRIORITY_STM2_TICK  12
 #define ADBMS6833_CORE2_DEMO_MODE       (0u)
 #define ADBMS6833_AUX_PRINT_PERIOD_MS   (10000u)
+#if ADBMS6833_ENABLE_AUX_PRINTF
+#define ADBMS6833_AUX_PRINTF(...)       PRINTF(__VA_ARGS__)
+#else
+#define ADBMS6833_AUX_PRINTF(...)       ((void)0)
+#endif
+
+#if ADBMS6833_ENABLE_MAIN_DEBUG_PRINTF
+#define ADBMS6833_MAIN_DEBUG_PRINTF(...) PRINTF(__VA_ARGS__)
+#else
+#define ADBMS6833_MAIN_DEBUG_PRINTF(...) ((void)0)
+#endif
 
 /* =========================================================
  * Project globals
@@ -383,25 +394,25 @@ static void App_PrintAuxMeasurements(void)
 
     for (afeIdx = 0u; afeIdx < g_bmsDrv.icCount; afeIdx++)
     {
-        PRINTF("ADBMS6833 AUX IC%u @%lu ms:", (uint32_t)afeIdx, (uint32_t)g_sysTickMs);
-        PRINTF(" GPIO1=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[0]);
-        PRINTF(" GPIO2=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[1]);
-        PRINTF(" GPIO3=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[2]);
-        PRINTF(" GPIO4=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[3]);
-        PRINTF(" GPIO5=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[4]);
-        PRINTF(" GPIO6=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[5]);
-        PRINTF(" GPIO7=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[6]);
-        PRINTF(" GPIO8=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[7]);
-        PRINTF(" GPIO9=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[8]);
-        PRINTF(" GPIO10=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[9]);
-        PRINTF(" VMV=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[10]);
-        PRINTF(" VPV=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[11]);
-        PRINTF(" VREF2=%lumV", (uint32_t)g_bmsDrv.auxStatus[afeIdx].vref2mV);
-        PRINTF(" ITMP=%ldC", (int32_t)g_bmsDrv.auxStatus[afeIdx].itmpDegC);
-        PRINTF(" VD=%lumV", (uint32_t)g_bmsDrv.auxStatus[afeIdx].vdmV);
-        PRINTF(" VA=%lumV", (uint32_t)g_bmsDrv.auxStatus[afeIdx].vamV);
-        PRINTF(" VRES=%lumV", (uint32_t)g_bmsDrv.auxStatus[afeIdx].vresmV);
-        PRINTF("\r\n");
+        ADBMS6833_AUX_PRINTF("ADBMS6833 AUX IC%u @%lu ms:", (uint32_t)afeIdx, (uint32_t)g_sysTickMs);
+        ADBMS6833_AUX_PRINTF(" GPIO1=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[0]);
+        ADBMS6833_AUX_PRINTF(" GPIO2=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[1]);
+        ADBMS6833_AUX_PRINTF(" GPIO3=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[2]);
+        ADBMS6833_AUX_PRINTF(" GPIO4=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[3]);
+        ADBMS6833_AUX_PRINTF(" GPIO5=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[4]);
+        ADBMS6833_AUX_PRINTF(" GPIO6=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[5]);
+        ADBMS6833_AUX_PRINTF(" GPIO7=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[6]);
+        ADBMS6833_AUX_PRINTF(" GPIO8=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[7]);
+        ADBMS6833_AUX_PRINTF(" GPIO9=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[8]);
+        ADBMS6833_AUX_PRINTF(" GPIO10=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[9]);
+        ADBMS6833_AUX_PRINTF(" VMV=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[10]);
+        ADBMS6833_AUX_PRINTF(" VPV=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[11]);
+        ADBMS6833_AUX_PRINTF(" VREF2=%lumV", (uint32_t)g_bmsDrv.auxStatus[afeIdx].vref2mV);
+        ADBMS6833_AUX_PRINTF(" ITMP=%ldC", (int32_t)g_bmsDrv.auxStatus[afeIdx].itmpDegC);
+        ADBMS6833_AUX_PRINTF(" VD=%lumV", (uint32_t)g_bmsDrv.auxStatus[afeIdx].vdmV);
+        ADBMS6833_AUX_PRINTF(" VA=%lumV", (uint32_t)g_bmsDrv.auxStatus[afeIdx].vamV);
+        ADBMS6833_AUX_PRINTF(" VRES=%lumV", (uint32_t)g_bmsDrv.auxStatus[afeIdx].vresmV);
+        ADBMS6833_AUX_PRINTF("\r\n");
     }
 }
 

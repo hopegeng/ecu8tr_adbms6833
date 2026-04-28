@@ -28,6 +28,17 @@
 #define ISR_PRIORITY_STM2_TICK  12
 #define ADBMS6830_CORE2_DEMO_MODE       (0u)
 #define ADBMS6830_AUX_PRINT_PERIOD_MS   (1000u)
+#if ADBMS6830_ENABLE_AUX_PRINTF
+#define ADBMS6830_AUX_PRINTF(...)       PRINTF(__VA_ARGS__)
+#else
+#define ADBMS6830_AUX_PRINTF(...)       ((void)0)
+#endif
+
+#if ADBMS6830_ENABLE_MAIN_DEBUG_PRINTF
+#define ADBMS6830_MAIN_DEBUG_PRINTF(...) PRINTF(__VA_ARGS__)
+#else
+#define ADBMS6830_MAIN_DEBUG_PRINTF(...) ((void)0)
+#endif
 
 /* =========================================================
  * Project globals
@@ -383,25 +394,25 @@ static void App_PrintAuxMeasurements(void)
 
     for (afeIdx = 0u; afeIdx < g_bmsDrv.icCount; afeIdx++)
     {
-        PRINTF("ADBMS6830 AUX IC%u @%lu ms:", (uint32_t)afeIdx, (uint32_t)g_sysTickMs);
-        PRINTF(" GPIO1=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[0]);
-        PRINTF(" GPIO2=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[1]);
-        PRINTF(" GPIO3=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[2]);
-        PRINTF(" GPIO4=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[3]);
-        PRINTF(" GPIO5=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[4]);
-        PRINTF(" GPIO6=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[5]);
-        PRINTF(" GPIO7=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[6]);
-        PRINTF(" GPIO8=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[7]);
-        PRINTF(" GPIO9=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[8]);
-        PRINTF(" GPIO10=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[9]);
-        PRINTF(" VMV=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[10]);
-        PRINTF(" VPV=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[11]);
-        PRINTF(" VREF2=%lumV", (uint32_t)g_bmsDrv.auxStatus[afeIdx].vref2mV);
-        PRINTF(" ITMP=%ldC", (int32_t)g_bmsDrv.auxStatus[afeIdx].itmpDegC);
-        PRINTF(" VD=%lumV", (uint32_t)g_bmsDrv.auxStatus[afeIdx].vdmV);
-        PRINTF(" VA=%lumV", (uint32_t)g_bmsDrv.auxStatus[afeIdx].vamV);
-        PRINTF(" VRES=%lumV", (uint32_t)g_bmsDrv.auxStatus[afeIdx].vresmV);
-        PRINTF("\r\n");
+        ADBMS6830_AUX_PRINTF("ADBMS6830 AUX IC%u @%lu ms:", (uint32_t)afeIdx, (uint32_t)g_sysTickMs);
+        ADBMS6830_AUX_PRINTF(" GPIO1=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[0]);
+        ADBMS6830_AUX_PRINTF(" GPIO2=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[1]);
+        ADBMS6830_AUX_PRINTF(" GPIO3=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[2]);
+        ADBMS6830_AUX_PRINTF(" GPIO4=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[3]);
+        ADBMS6830_AUX_PRINTF(" GPIO5=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[4]);
+        ADBMS6830_AUX_PRINTF(" GPIO6=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[5]);
+        ADBMS6830_AUX_PRINTF(" GPIO7=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[6]);
+        ADBMS6830_AUX_PRINTF(" GPIO8=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[7]);
+        ADBMS6830_AUX_PRINTF(" GPIO9=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[8]);
+        ADBMS6830_AUX_PRINTF(" GPIO10=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[9]);
+        ADBMS6830_AUX_PRINTF(" VMV=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[10]);
+        ADBMS6830_AUX_PRINTF(" VPV=%lumV", (uint32_t)g_bmsDrv.aux[afeIdx].mV[11]);
+        ADBMS6830_AUX_PRINTF(" VREF2=%lumV", (uint32_t)g_bmsDrv.auxStatus[afeIdx].vref2mV);
+        ADBMS6830_AUX_PRINTF(" ITMP=%ldC", (int32_t)g_bmsDrv.auxStatus[afeIdx].itmpDegC);
+        ADBMS6830_AUX_PRINTF(" VD=%lumV", (uint32_t)g_bmsDrv.auxStatus[afeIdx].vdmV);
+        ADBMS6830_AUX_PRINTF(" VA=%lumV", (uint32_t)g_bmsDrv.auxStatus[afeIdx].vamV);
+        ADBMS6830_AUX_PRINTF(" VRES=%lumV", (uint32_t)g_bmsDrv.auxStatus[afeIdx].vresmV);
+        ADBMS6830_AUX_PRINTF("\r\n");
     }
 }
 
@@ -413,6 +424,7 @@ void adbms6830_main_on_core2(void)
     uint32_t lastDemoPublishMs = 0u;
 
     App_InitCore2BmsRuntime();
+    adbms_DelayMs( 4000U );			//Wait for Core0 to be ready
 
 #if (ADBMS6830_CORE2_DEMO_MODE == 1u)
     while (1)
@@ -500,7 +512,7 @@ void adbms6830_main_on_core2(void)
             if( isStandbyValid == true )
             //if ((g_sysTickMs - g_lastAuxPrintMs) >= ADBMS6830_AUX_PRINT_PERIOD_MS)
             {
-            	PRINTF( "Start Aux @%d\r\n", g_bmsDrv.tickMs );
+            	ADBMS6830_MAIN_DEBUG_PRINTF( "Start Aux @%d\r\n", g_bmsDrv.tickMs );
                 if (Adbms6830_StartAuxConversion(&g_bmsHal, &g_bmsCmds) == ADBMS6830_OK)
                 {
                     g_bmsHal.delayMs(10u);

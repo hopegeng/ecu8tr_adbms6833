@@ -53,16 +53,12 @@ StaticSemaphore_t xTxMutexBuffer;
 SemaphoreHandle_t xTxMutexH = NULL_PTR;
 
 static uint8_t u8LinkUp[2] = { 0x00, 0x00 };
-static uint8 ray_Debug_TX[64];
 static err_t GETH_OS_link_output( struct netif* pNetIf, struct pbuf* pBuff )
 {
 	uint16 txDescIdx;
 	uint8_t	gethIdx;
 	uint8 chanIdx;
 	GETH_CONFIG_t *pGethConfig;
-
-
-	memcpy( ray_Debug_TX, pBuff->payload, (pBuff->len>64)? 64: pBuff->len );
 
 	pGethConfig = (GETH_CONFIG_t*)pNetIf->state;
 	gethIdx = (uint8_t)IfxGeth_getIndex( pGethConfig->pGeth );
@@ -348,14 +344,10 @@ void GETH_OS_unlock( void )
 	}
 }
 
-
-static uint8 ray_Debug_RX[30];
 boolean GETH_OS_rx_process( uint8 gethIdx, uint8 *pFrame, uint16 u16FrameLen  )
 {
 	struct pbuf *pEthBuf;
 	uint32 frameLen = u16FrameLen;
-
-	memmove( ray_Debug_RX, pFrame, (u16FrameLen>30)? 30: u16FrameLen );
 
 	if( 1 )
 	{

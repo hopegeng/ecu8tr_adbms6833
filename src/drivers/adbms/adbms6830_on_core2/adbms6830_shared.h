@@ -16,6 +16,18 @@ extern "C" {
 #define ADBMS6830_SHARED_SAMPLE_PERIOD_MS       (5000u)
 #endif
 
+#ifndef ADBMS6830_ENABLE_DEBUG_PRINTF
+#define ADBMS6830_ENABLE_DEBUG_PRINTF           (0u)
+#endif
+
+#ifndef ADBMS6830_ENABLE_MAIN_DEBUG_PRINTF
+#define ADBMS6830_ENABLE_MAIN_DEBUG_PRINTF      (0u)
+#endif
+
+#ifndef ADBMS6830_ENABLE_AUX_PRINTF
+#define ADBMS6830_ENABLE_AUX_PRINTF             (1u)
+#endif
+
 typedef struct
 {
     uint32_t sample_counter;

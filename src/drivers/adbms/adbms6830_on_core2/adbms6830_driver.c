@@ -1,6 +1,7 @@
 #include "adbms6830_driver.h"
 #include "adbms6830_reg.h"
 #include "adbms6830_pec.h"
+#include "adbms6830_shared.h"
 
 #include <string.h>
 #include "shell.h"
@@ -14,11 +15,14 @@
 #define ADBMS6830_MEASUREMENT_TIME			(8)				//1ms needed to a averaged measurement; tested, 1ms just read out 0x8000, only 8ms works
 #define ADBMS6830_AVG_MEASUREMENT_TIME		(8)				//8ms for averged measured time
 #define ADBMS6830_CELL_CONVERSION_OFFSET	(1500U)			//Table 106: Result registes bit description
+#if ADBMS6830_ENABLE_DEBUG_PRINTF
+#define ADBMS6830_DEBUG_PRINTF(...)      PRINTF(__VA_ARGS__)
+#else
+#define ADBMS6830_DEBUG_PRINTF(...)      ((void)0)
+#endif
 
 #define ENABLE_PRECAUTION_WAKEUP			 0			//We may not need so many wakeup call
 
-volatile uint32_t ray_err = 0;
-volatile uint8_t ray_buffer[72] = {0};
 
 static Adbms6830_Status_t Adbms6830_ReadRegisterGroup(const Adbms6830_Hal_t *hal,
                                                       uint16_t cmd,
@@ -153,12 +157,6 @@ static Adbms6830_Status_t Adbms6830_ReadRegisterGroup(const Adbms6830_Hal_t *hal
     }
 
     offset = ADBMS6830_CMD_FRAME_SIZE;
-
-    if( cmd == 0x19 )
-    {
-		memset( ray_buffer, 0, 72 );
-		memcpy( ray_buffer, rx, totalLen );
-    }
 
     for (ic = 0U; ic < icCount; ic++)
     {
@@ -625,7 +623,7 @@ Adbms6830_Status_t Adbms6830_ReadAuxVoltagesByGroup(Adbms6830_Context_t *ctx,
                                          ctx->icCount);
         if (st != ADBMS6830_OK)
         {
-        	PRINTF( "Aux reading failed group %d, st = %d\r\n", group, st );
+        	ADBMS6830_DEBUG_PRINTF( "Aux reading failed group %d, st = %d\r\n", group, st );
             if (st == ADBMS6830_ERR_PEC)
             {
                 ctx->pecErrorCount++;
@@ -730,7 +728,6 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
     st = Adbms6830_WriteCfga(ctx, hal, cmds);
     if (st != ADBMS6830_OK)
     {
-    	ray_err = 1;
         return st;
     }
 
@@ -739,12 +736,10 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
     {
     	if( st == ADBMS6830_ERR_PEC )
     	{
-    		ray_err = 2;
     		ctx->pecErrorCount++;
     	}
     	if( st == ADBMS6830_ERR_COMM )
     	{
-    		ray_err = 3;
     		ctx->commErrorCount++;
     	}
         return st;
@@ -756,8 +751,6 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
     {
         if (memcmp(&ctx->cfga[ic].data[0], &readCfga[(uint16_t)ic * ADBMS6830_REG_GROUP_DATA_LEN], ADBMS6830_REG_GROUP_DATA_LEN) != 0)
         {
-        	ray_err = 4;
-        	__debug();
     		ctx->commErrorCount++;
             return ADBMS6830_ERR_COMM;
         }
@@ -770,12 +763,10 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
     {
     	if( st == ADBMS6830_ERR_PEC )
     	{
-    		ray_err = 5;
     		ctx->pecErrorCount++;
     	}
     	if( st == ADBMS6830_ERR_COMM )
     	{
-    		ray_err = 6;
     		ctx->commErrorCount++;
     	}
         return st;
@@ -784,7 +775,6 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
     st = Adbms6830_ReadRegisterGroup(hal, cmds->RDCFGB, readCfgb, ADBMS6830_REG_GROUP_DATA_LEN, ctx->icCount);
     if (st != ADBMS6830_OK)
     {
-    	ray_err = 7;
         return st;
     }
 
@@ -792,7 +782,6 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
     {
         if (memcmp(&ctx->cfgb[ic].data[0], &readCfgb[(uint16_t)ic * ADBMS6830_REG_GROUP_DATA_LEN], ADBMS6830_REG_GROUP_DATA_LEN) != 0)
         {
-        	ray_err = 8;
     		ctx->commErrorCount++;
             return ADBMS6830_ERR_COMM;
         }
@@ -832,7 +821,6 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
 
         if (hal->spiTransfer(tx, rx, idx) != ADBMS6830_OK)
         {
-        	ray_err = 9;
             return ADBMS6830_ERR_COMM;
         }
     }
@@ -840,7 +828,6 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
     st = Adbms6830_ReadRegisterGroup(hal, cmds->RDSTATC, readStatc, ADBMS6830_REG_GROUP_DATA_LEN, ctx->icCount);
     if (st != ADBMS6830_OK)
     {
-    	ray_err = 10;
         return st;
     }
 
@@ -851,7 +838,6 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
             (readStatc[(uint16_t)ic * ADBMS6830_REG_GROUP_DATA_LEN + 4U] != 0U) ||
             (readStatc[(uint16_t)ic * ADBMS6830_REG_GROUP_DATA_LEN + 5U] != 0U))
         {
-        	ray_err = 11;
             return ADBMS6830_ERR_COMM;
         }
     }
@@ -859,7 +845,6 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
     st = Adbms6830_ReadRegisterGroup(hal, cmds->RDSID, readSid, ADBMS6830_REG_GROUP_DATA_LEN, ctx->icCount);
     if (st != ADBMS6830_OK)
     {
-    	ray_err = 12;
         return st;
     }
 
@@ -870,17 +855,16 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
 
         for (byteIdx = 0U; byteIdx < ADBMS6830_REG_GROUP_DATA_LEN; byteIdx++)
         {
-        	PRINTF( "The SID %d = 0x%x ", byteIdx, readSid[byteIdx+ic*ADBMS6830_REG_GROUP_DATA_LEN] );
+        	ADBMS6830_DEBUG_PRINTF( "The SID %d = 0x%x ", byteIdx, readSid[byteIdx+ic*ADBMS6830_REG_GROUP_DATA_LEN] );
             if (readSid[(uint16_t)ic * ADBMS6830_REG_GROUP_DATA_LEN + byteIdx] != 0U)
             {
                 sidIsAllZero = false;
             }
         }
 
-        PRINTF( "\r\n" );
+        ADBMS6830_DEBUG_PRINTF( "\r\n" );
         if (sidIsAllZero == true)
         {
-        	ray_err = 13;
             return ADBMS6830_ERR_COMM;
         }
 
@@ -890,7 +874,6 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
     st = Adbms6830_SendMute(hal, cmds);
     if (st != ADBMS6830_OK)
     {
-    	ray_err = 14;
         return st;
     }
 
@@ -1001,11 +984,11 @@ Adbms6830_Status_t Adbms6830_Task(Adbms6830_Context_t *ctx,
                 {
                     ctx->svcState = ADBMS6830_SVC_START_MEASURE;
                 }
-                PRINTF( "Start Wake @%d\r\n", ctx->tickMs );
+                ADBMS6830_DEBUG_PRINTF( "Start Wake @%d\r\n", ctx->tickMs );
             }
             else
             {
-            	PRINTF( "********* Wake up failed\r\n" );
+            	ADBMS6830_DEBUG_PRINTF( "********* Wake up failed\r\n" );
                 ctx->commErrorCount++;
                 ctx->linkState = ADBMS6830_LINK_ERROR;
                 ctx->svcState  = ADBMS6830_SVC_FAULT;
@@ -1021,12 +1004,12 @@ Adbms6830_Status_t Adbms6830_Task(Adbms6830_Context_t *ctx,
                 ctx->lastCommMs   = ctx->tickMs;
                 ctx->stateEntryMs = ctx->tickMs;
                 ctx->svcState     = ADBMS6830_SVC_START_MEASURE;
-                PRINTF( "Start Configure @%d\r\n", ctx->tickMs );
+                ADBMS6830_DEBUG_PRINTF( "Start Configure @%d\r\n", ctx->tickMs );
 
             }
             else
             {
-            	PRINTF( "********************Configuration is failed\r\n" );
+            	ADBMS6830_DEBUG_PRINTF( "********************Configuration is failed\r\n" );
                 ctx->configured = false;
                 ctx->commErrorCount++;
                 ctx->linkState = ADBMS6830_LINK_ERROR;
@@ -1062,11 +1045,11 @@ Adbms6830_Status_t Adbms6830_Task(Adbms6830_Context_t *ctx,
                 ctx->stateEntryMs = ctx->tickMs;
                 ctx->measureCount++;
                 ctx->svcState     = ADBMS6830_SVC_WAIT_MEASURE;
-                PRINTF( "Start Measure @%d\r\n", ctx->tickMs );
+                ADBMS6830_DEBUG_PRINTF( "Start Measure @%d\r\n", ctx->tickMs );
             }
             else
             {
-            	PRINTF( "Failed to start measument ***********\r\n" );
+            	ADBMS6830_DEBUG_PRINTF( "Failed to start measument ***********\r\n" );
                 ctx->commErrorCount++;
                 ctx->linkState = ADBMS6830_LINK_ERROR;
                 ctx->svcState  = ADBMS6830_SVC_FAULT;
@@ -1124,7 +1107,7 @@ Adbms6830_Status_t Adbms6830_Task(Adbms6830_Context_t *ctx,
                     ctx->commErrorCount++;
                     ctx->linkState = ADBMS6830_LINK_ERROR;
                     ctx->svcState  = ADBMS6830_SVC_FAULT;
-                    PRINTF( "***&&Start wake line 796 @%d\r\n", ctx->tickMs );
+                    ADBMS6830_DEBUG_PRINTF( "***&&Start wake line 796 @%d\r\n", ctx->tickMs );
                     return ADBMS6830_ERR_COMM;
                 }
 
@@ -1132,7 +1115,7 @@ Adbms6830_Status_t Adbms6830_Task(Adbms6830_Context_t *ctx,
                 ctx->lastCommMs = ctx->tickMs;
             }
 
-            PRINTF( "Start Read Result @%d\r\n", ctx->tickMs );
+            ADBMS6830_DEBUG_PRINTF( "Start Read Result @%d\r\n", ctx->tickMs );
 
 #if ADBMS6830_USE_RDCVALL
             if (Adbms6830_ReadCellVoltagesAll(ctx, hal, cmds) == ADBMS6830_OK)
@@ -1144,12 +1127,12 @@ Adbms6830_Status_t Adbms6830_Task(Adbms6830_Context_t *ctx,
                 ctx->lastCommMs    = ctx->tickMs;
                 ctx->lastMeasureMs = ctx->tickMs;
                 ctx->svcState      = ADBMS6830_SVC_PROCESS_RESULTS;
-                PRINTF( "Start Read @%d\r\n", ctx->tickMs );
+                ADBMS6830_DEBUG_PRINTF( "Start Read @%d\r\n", ctx->tickMs );
 
             }
             else
             {
-            	PRINTF( "****************** Read Result failed\r\n" );
+            	ADBMS6830_DEBUG_PRINTF( "****************** Read Result failed\r\n" );
             	hal->delayMs( 3000 );
 
                 ctx->commErrorCount++;
