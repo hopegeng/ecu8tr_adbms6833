@@ -27,7 +27,7 @@
 // Define a priority for the interrupt
 #define ISR_PRIORITY_STM2_TICK  12
 #define ADBMS6830_CORE2_DEMO_MODE       (0u)
-#define ADBMS6830_AUX_PRINT_PERIOD_MS   (10000u)
+#define ADBMS6830_AUX_PRINT_PERIOD_MS   (1000u)
 
 /* =========================================================
  * Project globals
@@ -439,6 +439,7 @@ void adbms6830_main_on_core2(void)
 
     while (1)
     {
+    	static bool isStandbyValid = false;
     	Adbms6830_Status_t status;
         /* keep driver time base updated */
         g_bmsDrv.tickMs = g_sysTickMs;
@@ -484,13 +485,14 @@ void adbms6830_main_on_core2(void)
                 g_lastPublishedMeasureMs = g_bmsDrv.lastMeasureMs;
             }
 
-            /*
-            if ((g_sysTickMs - g_lastAuxPrintMs) >= ADBMS6830_AUX_PRINT_PERIOD_MS)
+            if( isStandbyValid == true )
+            //if ((g_sysTickMs - g_lastAuxPrintMs) >= ADBMS6830_AUX_PRINT_PERIOD_MS)
             {
+            	PRINTF( "Start Aux @%d\r\n", g_bmsDrv.tickMs );
                 if (Adbms6830_StartAuxConversion(&g_bmsHal, &g_bmsCmds) == ADBMS6830_OK)
                 {
-                    g_bmsHal.delayMs(8u);
-
+                    g_bmsHal.delayMs(10u);
+                    Adbms6830_WakeUp( &g_bmsDrv, &g_bmsHal );
                     if (Adbms6830_ReadAuxVoltagesByGroup(&g_bmsDrv, &g_bmsHal, &g_bmsCmds) == ADBMS6830_OK)
                     {
                         App_PrintAuxMeasurements();
@@ -498,8 +500,12 @@ void adbms6830_main_on_core2(void)
                 }
 
                 g_lastAuxPrintMs = g_sysTickMs;
+                isStandbyValid = false;
             }
-            */
+        }
+        else
+        {
+        	isStandbyValid = true;
         }
 
         /* optional: other application work */

@@ -150,6 +150,11 @@ static Adbms6830_Status_t Adbms6830_ReadRegisterGroup(const Adbms6830_Hal_t *hal
 
     offset = ADBMS6830_CMD_FRAME_SIZE;
 
+    if( cmd == 0x19 )
+    {
+		memset( ray_buffer, 0, 72 );
+		memcpy( ray_buffer, rx, totalLen );
+    }
 
     for (ic = 0U; ic < icCount; ic++)
     {
@@ -452,7 +457,6 @@ Adbms6830_Status_t Adbms6830_ReadCellVoltagesAll(Adbms6830_Context_t *ctx,
 
     offset = ADBMS6830_CMD_FRAME_SIZE;
 
-    memcpy(ray_buffer, rx, totalLen);
 
     for (ic = (int32_t)ctx->icCount - 1; ic >= 0; ic--)
     {
@@ -542,6 +546,20 @@ Adbms6830_Status_t Adbms6830_ReadAuxVoltagesByGroup(Adbms6830_Context_t *ctx,
     groupCmds[2] = cmds->RDAUXC;
     groupCmds[3] = cmds->RDAUXD;
 
+    if ((ctx->tickMs - ctx->lastCommMs) >= ADBMS6830_LINK_IDLE_TIMEOUT)
+    {
+        st = Adbms6830_WakeUp(ctx, hal);
+        if (st != ADBMS6830_OK)
+        {
+            ctx->commErrorCount++;
+            ctx->linkState = ADBMS6830_LINK_ERROR;
+            return st;
+        }
+
+        ctx->linkState  = ADBMS6830_LINK_READY;
+        ctx->lastCommMs = ctx->tickMs;
+    }
+
     for (group = 0U; group < 4U; group++)
     {
         st = Adbms6830_ReadRegisterGroup(hal,
@@ -551,12 +569,16 @@ Adbms6830_Status_t Adbms6830_ReadAuxVoltagesByGroup(Adbms6830_Context_t *ctx,
                                          ctx->icCount);
         if (st != ADBMS6830_OK)
         {
+        	PRINTF( "Aux reading failed group %d, st = %d\r\n", group, st );
             if (st == ADBMS6830_ERR_PEC)
             {
                 ctx->pecErrorCount++;
             }
             return st;
         }
+
+        ctx->linkState  = ADBMS6830_LINK_READY;
+        ctx->lastCommMs = ctx->tickMs;
 
         for (ic = 0U; ic < ctx->icCount; ic++)
         {
@@ -626,7 +648,6 @@ Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
         return st;
     }
 
-	//memcpy( ray_buffer, readCfga, 16 );
 
 #if 0
     for (ic = 0U; ic < ctx->icCount; ic++)

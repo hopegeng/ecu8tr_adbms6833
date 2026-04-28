@@ -542,6 +542,20 @@ Adbms6833_Status_t Adbms6833_ReadAuxVoltagesByGroup(Adbms6833_Context_t *ctx,
     groupCmds[2] = cmds->RDAUXC;
     groupCmds[3] = cmds->RDAUXD;
 
+    if ((ctx->tickMs - ctx->lastCommMs) >= ADBMS6833_LINK_IDLE_TIMEOUT)
+    {
+        st = Adbms6833_WakeUp(ctx, hal);
+        if (st != ADBMS6833_OK)
+        {
+            ctx->commErrorCount++;
+            ctx->linkState = ADBMS6833_LINK_ERROR;
+            return st;
+        }
+
+        ctx->linkState  = ADBMS6833_LINK_READY;
+        ctx->lastCommMs = ctx->tickMs;
+    }
+
     for (group = 0U; group < 4U; group++)
     {
         st = Adbms6833_ReadRegisterGroup(hal,
@@ -557,6 +571,9 @@ Adbms6833_Status_t Adbms6833_ReadAuxVoltagesByGroup(Adbms6833_Context_t *ctx,
             }
             return st;
         }
+
+        ctx->linkState  = ADBMS6833_LINK_READY;
+        ctx->lastCommMs = ctx->tickMs;
 
         for (ic = 0U; ic < ctx->icCount; ic++)
         {
