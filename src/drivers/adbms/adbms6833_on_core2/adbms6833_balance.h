@@ -7,6 +7,13 @@
 extern "C" {
 #endif
 
+typedef enum
+{
+    ADBMS6833_BALANCE_PARITY_NONE = 0,
+    ADBMS6833_BALANCE_PARITY_ODD,
+    ADBMS6833_BALANCE_PARITY_EVEN
+} Adbms6833_BalanceParity_t;
+
 typedef struct
 {
     bool chargingActive;
@@ -26,6 +33,7 @@ typedef struct
     uint16_t delta_mV;
     uint16_t avg_mV;
     uint16_t dccMask;
+    Adbms6833_BalanceParity_t selectedParity;
 } Adbms6833_BalanceResult_t;
 
 typedef struct

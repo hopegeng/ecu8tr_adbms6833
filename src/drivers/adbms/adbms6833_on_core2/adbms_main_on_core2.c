@@ -40,6 +40,8 @@
 #define ADBMS6833_MAIN_DEBUG_PRINTF(...) ((void)0)
 #endif
 
+static const char *App_BalanceParityToString(Adbms6833_BalanceParity_t parity);
+
 /* =========================================================
  * Project globals
  * ========================================================= */
@@ -416,6 +418,19 @@ static void App_PrintAuxMeasurements(void)
     }
 }
 
+static const char *App_BalanceParityToString(Adbms6833_BalanceParity_t parity)
+{
+    switch (parity)
+    {
+        case ADBMS6833_BALANCE_PARITY_ODD:
+            return "odd";
+        case ADBMS6833_BALANCE_PARITY_EVEN:
+            return "even";
+        default:
+            return "none";
+    }
+}
+
 /* =========================================================
  * Example main
  * ========================================================= */
@@ -499,6 +514,18 @@ void adbms6833_main_on_core2(void)
                 (void)Adbms6833_SendMute(&g_bmsHal, &g_bmsCmds);
                 (void)Adbms6833_BalanceApplyDcc(&g_bmsBal, &g_bmsDrv, &g_bmsHal, &g_bmsCmds);
                 (void)Adbms6833_SendUnmute(&g_bmsHal, &g_bmsCmds);
+
+                {
+                    uint8_t afeIdx;
+                    for (afeIdx = 0u; afeIdx < g_bmsDrv.icCount; afeIdx++)
+                    {
+                        ADBMS6833_MAIN_DEBUG_PRINTF("AFE%u balance parity=%s dccMask=0x%04X delta=%umV\r\n",
+                                                    (uint32_t)afeIdx,
+                                                    App_BalanceParityToString(g_bmsBal.result[afeIdx].selectedParity),
+                                                    (uint32_t)g_bmsBal.result[afeIdx].dccMask,
+                                                    (uint32_t)g_bmsBal.result[afeIdx].delta_mV);
+                    }
+                }
             }
 
             if ((g_bmsDrv.lastMeasureMs != 0u) && (g_bmsDrv.lastMeasureMs != g_lastPublishedMeasureMs))

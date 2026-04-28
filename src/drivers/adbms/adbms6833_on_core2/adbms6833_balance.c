@@ -2,6 +2,86 @@
 
 #include <string.h>
 
+static uint16_t Adbms6833_SelectParityConstrainedMask(const uint16_t *cellMilliVolt,
+                                                      uint16_t requestedMask,
+                                                      uint16_t thresholdMilliVolt,
+                                                      Adbms6833_BalanceParity_t *selectedParity)
+{
+    uint16_t oddMask = 0U;
+    uint16_t evenMask = 0U;
+    uint8_t oddCount = 0U;
+    uint8_t evenCount = 0U;
+    uint32_t oddScore = 0U;
+    uint32_t evenScore = 0U;
+    uint8_t cellIdx;
+
+    if (cellMilliVolt == NULL)
+    {
+        if (selectedParity != NULL)
+        {
+            *selectedParity = ADBMS6833_BALANCE_PARITY_NONE;
+        }
+        return 0U;
+    }
+
+    for (cellIdx = 0U; cellIdx < ADBMS6833_CELLS_PER_IC; cellIdx++)
+    {
+        uint16_t cellBit = (uint16_t)(1U << cellIdx);
+
+        if ((requestedMask & cellBit) == 0U)
+        {
+            continue;
+        }
+
+        /* 0-based index 0 maps to cell 1, so even index means odd-numbered cell. */
+        if ((cellIdx & 1U) == 0U)
+        {
+            oddMask |= cellBit;
+            oddCount++;
+            oddScore += (uint32_t)(cellMilliVolt[cellIdx] - thresholdMilliVolt);
+        }
+        else
+        {
+            evenMask |= cellBit;
+            evenCount++;
+            evenScore += (uint32_t)(cellMilliVolt[cellIdx] - thresholdMilliVolt);
+        }
+    }
+
+    if (oddCount > evenCount)
+    {
+        if (selectedParity != NULL)
+        {
+            *selectedParity = ADBMS6833_BALANCE_PARITY_ODD;
+        }
+        return oddMask;
+    }
+
+    if (evenCount > oddCount)
+    {
+        if (selectedParity != NULL)
+        {
+            *selectedParity = ADBMS6833_BALANCE_PARITY_EVEN;
+        }
+        return evenMask;
+    }
+
+    if (oddScore >= evenScore)
+    {
+        if (selectedParity != NULL)
+        {
+            *selectedParity = ADBMS6833_BALANCE_PARITY_ODD;
+        }
+        return oddMask;
+    }
+
+    if (selectedParity != NULL)
+    {
+        *selectedParity = ADBMS6833_BALANCE_PARITY_EVEN;
+    }
+    return evenMask;
+}
+
 static uint16_t Adbms_Min(const uint16_t *data, uint8_t len)
 {
     uint8_t i;
@@ -74,6 +154,7 @@ void Adbms6833_BalanceEvaluate(Adbms6833_BalanceContext_t *bal,
         res->avg_mV = Adbms_Avg(drv->cell[ic].mV, ADBMS6833_CELLS_PER_IC);
         res->delta_mV = (uint16_t)(res->cellMax_mV - res->cellMin_mV);
         res->dccMask = 0U;
+        res->selectedParity = ADBMS6833_BALANCE_PARITY_NONE;
 
         if (res->delta_mV > globalDelta)
         {
@@ -107,6 +188,7 @@ void Adbms6833_BalanceEvaluate(Adbms6833_BalanceContext_t *bal,
     {
         uint8_t cell;
         uint16_t threshold = (uint16_t)(bal->result[ic].cellMin_mV + bal->cfg.balanceMargin_mV);
+        uint16_t requestedMask = 0U;
 
         if (bal->result[ic].cellMax_mV < bal->cfg.minCellForBalance_mV)
         {
@@ -117,8 +199,18 @@ void Adbms6833_BalanceEvaluate(Adbms6833_BalanceContext_t *bal,
         {
             if (drv->cell[ic].mV[cell] > threshold)
             {
-                bal->result[ic].dccMask |= (uint16_t)(1U << cell);
+                requestedMask |= (uint16_t)(1U << cell);
             }
+        }
+
+        bal->result[ic].dccMask = Adbms6833_SelectParityConstrainedMask(drv->cell[ic].mV,
+                                                                        requestedMask,
+                                                                        threshold,
+                                                                        &bal->result[ic].selectedParity);
+
+        if (bal->result[ic].dccMask == 0U)
+        {
+            bal->result[ic].selectedParity = ADBMS6833_BALANCE_PARITY_NONE;
         }
     }
 }
