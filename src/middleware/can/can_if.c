@@ -34,6 +34,9 @@ Bmu_ReturnType CanIf_Transmit(const CanIf_MsgType *msg)
 {
 	uint32 low;
 	uint32 high;
+    TickType_t startTicks;
+    BaseType_t semResult;
+    IfxCan_Status txStatus;
 
     if( msg == 0 )
     {
@@ -43,12 +46,32 @@ Bmu_ReturnType CanIf_Transmit(const CanIf_MsgType *msg)
     low = bytes_to_u32_le( msg->data );
     high = bytes_to_u32_le( msg->data+4 );
 
-    if( can_transmitCanMessage( msg->id, low, high ) != IfxCan_Status_ok )
+    startTicks = xTaskGetTickCount();
+
+    do
     {
-    	return BMU_E_BUSY;
+        txStatus = can_transmitCanMessage( msg->id, low, high );
+
+        if( txStatus == IfxCan_Status_ok )
+        {
+            break;
+        }
+
+        if( txStatus != IfxCan_Status_notSentBusy )
+        {
+            return BMU_E_BUSY;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(1));
+    } while( (xTaskGetTickCount() - startTicks) < pdMS_TO_TICKS(50) );
+
+    if( txStatus != IfxCan_Status_ok )
+    {
+        return BMU_E_BUSY;
     }
 
-    if( pdFALSE == xSemaphoreTake( canTxSemaphore, pdMS_TO_TICKS(400) ) )
+    semResult = xSemaphoreTake( canTxSemaphore, pdMS_TO_TICKS(400) );
+    if( semResult == pdFALSE )
     {
     	return BMU_E_BUSY;
     }

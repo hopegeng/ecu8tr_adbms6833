@@ -19,6 +19,11 @@
  * ...
  * BO_ 2415922536 C360_CellMessage: 8 Vector__XXX
  *
+ * Note:
+ * DBC stores extended-frame IDs with bit 31 set. For example:
+ * - DBC stored value: 0x90000C01
+ * - Actual 29-bit CAN ID on the bus: 0x10000C01
+ *
  * Signals:
  *   Vxxx_act_U_CellVoltage_mV  :  0|16@1+  (0.1, 0)
  *   Txxx_act_T_CellTemp_C      : 16|16@1-  (0.01, 0)
@@ -37,8 +42,14 @@ extern "C" {
 #define DBC_CELLMESSAGE_LAST_INDEX_1BASED      (360u)
 #define DBC_CELLMESSAGE_COUNT                  (360u)
 
-#define DBC_CELLMESSAGE_FIRST_ID              (0x90000C01UL)
-#define DBC_CELLMESSAGE_LAST_ID               (0x90000D68UL)
+#define DBC_CAN_EXTENDED_ID_FLAG              (0x80000000UL)
+#define DBC_CAN_EXTENDED_ID_MASK              (0x1FFFFFFFUL)
+
+#define DBC_CELLMESSAGE_FIRST_ID_DBC          (0x90000C01UL)
+#define DBC_CELLMESSAGE_LAST_ID_DBC           (0x90000D68UL)
+
+#define DBC_CELLMESSAGE_FIRST_ID              (DBC_CELLMESSAGE_FIRST_ID_DBC & DBC_CAN_EXTENDED_ID_MASK)
+#define DBC_CELLMESSAGE_LAST_ID               (DBC_CELLMESSAGE_LAST_ID_DBC & DBC_CAN_EXTENDED_ID_MASK)
 
 #define DBC_CELLMESSAGE_DLC                   (8u)
 #define DBC_CELLMESSAGE_CYCLE_MS              (1000u)
@@ -69,6 +80,10 @@ extern "C" {
 #define DBC_CELLMESSAGE_INVALID_BALANCING           (0u)
 
 /* Compile-time sanity */
+#if ((DBC_CELLMESSAGE_FIRST_ID_DBC & DBC_CAN_EXTENDED_ID_FLAG) == 0u)
+# error "Cxxx_CellMessage is expected to be an extended-frame DBC ID."
+#endif
+
 #if ((DBC_CELLMESSAGE_FIRST_ID + (DBC_CELLMESSAGE_COUNT - 1u)) != DBC_CELLMESSAGE_LAST_ID)
 # error "Cxxx_CellMessage ID range is inconsistent."
 #endif
