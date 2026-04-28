@@ -27,6 +27,7 @@
 // Define a priority for the interrupt
 #define ISR_PRIORITY_STM2_TICK  12
 #define ADBMS6833_CORE2_DEMO_MODE       (0u)
+#define ADBMS6833_AUX_PRINT_PERIOD_MS   (10000u)
 
 /* =========================================================
  * Project globals
@@ -50,6 +51,7 @@ static bool g_core2BmsRuntimeInit = false;
 static ECU8TR_ADBMS6830_State_t adbms6833_state = ECU8TR_ADBMS6830_IDLE;
 static uint32_t g_lastPublishedMeasureMs = 0u;
 static uint32_t g_sampleCounter = 0u;
+static uint32_t g_lastAuxPrintMs = 0u;
 
 /* =========================================================
  * Platform-specific hooks you must provide
@@ -65,6 +67,7 @@ static uint16_t App_EncodeCellThreshold_mV(int16_t threshold_mV);
 static void App_InitCore2BmsRuntime(void);
 static void App_PublishSharedSnapshot(void);
 static void App_PublishDemoSnapshot(void);
+static void App_PrintAuxMeasurements(void);
 static void Adbms6833_SharedMemoryBarrier(void);
 
 static void Adbms6833_SharedMemoryBarrier(void)
@@ -374,6 +377,22 @@ static void App_PublishDemoSnapshot(void)
     Adbms6833_SharedPublish(&snapshot);
 }
 
+static void App_PrintAuxMeasurements(void)
+{
+    uint8_t afeIdx;
+    uint8_t auxIdx;
+
+    for (afeIdx = 0u; afeIdx < g_bmsDrv.icCount; afeIdx++)
+    {
+        PRINTF("ADBMS6833 AUX IC%u @%lu ms:", (uint32_t)afeIdx, (uint32_t)g_sysTickMs);
+        for (auxIdx = 0u; auxIdx < ADBMS6833_AUX_CHANNELS_PER_IC; auxIdx++)
+        {
+            PRINTF(" A%u=%umV", (uint32_t)(auxIdx + 1u), (uint32_t)g_bmsDrv.aux[afeIdx].mV[auxIdx]);
+        }
+        PRINTF("\r\n");
+    }
+}
+
 /* =========================================================
  * Example main
  * ========================================================= */
@@ -463,6 +482,21 @@ void adbms6833_main_on_core2(void)
             {
                 App_PublishSharedSnapshot();
                 g_lastPublishedMeasureMs = g_bmsDrv.lastMeasureMs;
+            }
+
+            if ((g_sysTickMs - g_lastAuxPrintMs) >= ADBMS6833_AUX_PRINT_PERIOD_MS)
+            {
+                if (Adbms6833_StartAuxConversion(&g_bmsHal, &g_bmsCmds) == ADBMS6833_OK)
+                {
+                    g_bmsHal.delayMs(8u);
+
+                    if (Adbms6833_ReadAuxVoltagesByGroup(&g_bmsDrv, &g_bmsHal, &g_bmsCmds) == ADBMS6833_OK)
+                    {
+                        App_PrintAuxMeasurements();
+                    }
+                }
+
+                g_lastAuxPrintMs = g_sysTickMs;
             }
         }
 

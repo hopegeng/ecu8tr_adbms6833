@@ -31,6 +31,10 @@ static void Adbms6833_ParseCellGroup(Adbms6833_CellData_t *cell,
                                      const uint8_t *block,
                                      uint8_t startCellIndex,
                                      uint8_t cellCount);
+static void Adbms6833_ParseAuxGroup(Adbms6833_AuxData_t *aux,
+                                    const uint8_t *block,
+                                    uint8_t startAuxIndex,
+                                    uint8_t auxCount);
 
 static Adbms6833_Status_t Adbms6833_BuildCmdFrame(uint16_t cmd, uint8_t frame[ADBMS6833_CMD_FRAME_SIZE])
 {
@@ -204,6 +208,28 @@ static void Adbms6833_ParseCellGroup(Adbms6833_CellData_t *cell,
     }
 }
 
+static void Adbms6833_ParseAuxGroup(Adbms6833_AuxData_t *aux,
+                                    const uint8_t *block,
+                                    uint8_t startAuxIndex,
+                                    uint8_t auxCount)
+{
+    uint8_t i;
+
+    if ((aux == NULL) || (block == NULL))
+    {
+        return;
+    }
+
+    for (i = 0U; i < auxCount; i++)
+    {
+        uint16_t raw = (uint16_t)(((uint16_t)block[(uint16_t)(2U * i) + 1U] << 8U) |
+                                   (uint16_t)block[(uint16_t)(2U * i)]);
+
+        aux->raw[(uint8_t)(startAuxIndex + i)] = raw;
+        aux->mV[(uint8_t)(startAuxIndex + i)]  = Adbms6833_RawTo_mV(raw);
+    }
+}
+
 void Adbms6833_Init(Adbms6833_Context_t *ctx, uint8_t icCount)
 {
     if (ctx == NULL)
@@ -249,6 +275,11 @@ void Adbms6833_SetDefaultCommands(Adbms6833_CommandSet_t *cmds)
     cmds->RDCVF = ADBMS6833_RDCVF_REG;
     cmds->RDCVALL = ADBMS6833_RDCVALL_REG;
     cmds->ADCV = (uint16_t)(ADBMS6833_ADCV_BASE_REG);		// 0x260 = MD = 1(normal speed), DCP = 0( no discharge ), CH = 0(all cells )
+    cmds->ADAX = ADBMS6833_ADAX_BASE_REG;
+    cmds->RDAUXA = ADBMS6833_RDAUXA_REG;
+    cmds->RDAUXB = ADBMS6833_RDAUXB_REG;
+    cmds->RDAUXC = ADBMS6833_RDAUXC_REG;
+    cmds->RDAUXD = ADBMS6833_RDAUXD_REG;
     cmds->MUTE = ADBMS6833_MUTE_REG;
     cmds->UNMUTE = ADBMS6833_UNMUTE_REG;
 }
@@ -297,6 +328,17 @@ Adbms6833_Status_t Adbms6833_StartCellConversion(const Adbms6833_Hal_t *hal,
     }
 
     return Adbms6833_SendCommandOnly(hal, cmds->ADCV);
+}
+
+Adbms6833_Status_t Adbms6833_StartAuxConversion(const Adbms6833_Hal_t *hal,
+                                                const Adbms6833_CommandSet_t *cmds)
+{
+    if (cmds == NULL)
+    {
+        return ADBMS6833_ERR_PARAM;
+    }
+
+    return Adbms6833_SendCommandOnly(hal, cmds->ADAX);
 }
 
 Adbms6833_Status_t Adbms6833_WriteCfga(Adbms6833_Context_t *ctx,
@@ -473,6 +515,55 @@ Adbms6833_Status_t Adbms6833_ReadCellVoltagesByGroup(Adbms6833_Context_t *ctx,
                                      &groupData[(uint16_t)ic * ADBMS6833_CELL_GROUP_DATA_BYTES],
                                      groupStartIndex[group],
                                      groupCellCount[group]);
+        }
+    }
+
+    return ADBMS6833_OK;
+}
+
+Adbms6833_Status_t Adbms6833_ReadAuxVoltagesByGroup(Adbms6833_Context_t *ctx,
+                                                    const Adbms6833_Hal_t *hal,
+                                                    const Adbms6833_CommandSet_t *cmds)
+{
+    static const uint8_t groupStartIndex[4] = { 0U, 3U, 6U, 9U };
+    uint8_t groupData[ADBMS6833_MAX_ICS * ADBMS6833_CELL_GROUP_DATA_BYTES];
+    uint16_t groupCmds[4];
+    uint8_t group;
+    uint8_t ic;
+    Adbms6833_Status_t st;
+
+    if ((ctx == NULL) || (hal == NULL) || (cmds == NULL) || (hal->spiTransfer == NULL))
+    {
+        return ADBMS6833_ERR_PARAM;
+    }
+
+    groupCmds[0] = cmds->RDAUXA;
+    groupCmds[1] = cmds->RDAUXB;
+    groupCmds[2] = cmds->RDAUXC;
+    groupCmds[3] = cmds->RDAUXD;
+
+    for (group = 0U; group < 4U; group++)
+    {
+        st = Adbms6833_ReadRegisterGroup(hal,
+                                         groupCmds[group],
+                                         groupData,
+                                         ADBMS6833_CELL_GROUP_DATA_BYTES,
+                                         ctx->icCount);
+        if (st != ADBMS6833_OK)
+        {
+            if (st == ADBMS6833_ERR_PEC)
+            {
+                ctx->pecErrorCount++;
+            }
+            return st;
+        }
+
+        for (ic = 0U; ic < ctx->icCount; ic++)
+        {
+            Adbms6833_ParseAuxGroup(&ctx->aux[ic],
+                                    &groupData[(uint16_t)ic * ADBMS6833_CELL_GROUP_DATA_BYTES],
+                                    groupStartIndex[group],
+                                    3U);
         }
     }
 

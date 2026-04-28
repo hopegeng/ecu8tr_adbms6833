@@ -16,6 +16,7 @@ extern "C" {
 #define ADBMS6830_DATA_PEC_SIZE      (2U)
 #define ADBMS6830_RDCVALL_DATA_BYTES (32U)
 #define ADBMS6830_CELL_GROUP_DATA_BYTES (6U)
+#define ADBMS6830_AUX_CHANNELS_PER_IC (12U)
 
 #ifndef ADBMS6830_USE_RDCVALL
 #define ADBMS6830_USE_RDCVALL        (0U)
@@ -69,6 +70,12 @@ typedef struct
 
 typedef struct
 {
+    uint16_t raw[ADBMS6830_AUX_CHANNELS_PER_IC];
+    uint16_t mV[ADBMS6830_AUX_CHANNELS_PER_IC];
+} Adbms6830_AuxData_t;
+
+typedef struct
+{
     uint8_t icCount;
 
     Adbms6830_LinkState_t    linkState;
@@ -88,6 +95,7 @@ typedef struct
     Adbms6830_CfgReg_t cfga[ADBMS6830_MAX_ICS];
     Adbms6830_CfgReg_t cfgb[ADBMS6830_MAX_ICS];
     Adbms6830_CellData_t cell[ADBMS6830_MAX_ICS];
+    Adbms6830_AuxData_t aux[ADBMS6830_MAX_ICS];
 
 } Adbms6830_Context_t;
 
@@ -116,6 +124,11 @@ typedef struct
     uint16_t RDCVF;
     uint16_t RDCVALL;
     uint16_t ADCV;
+    uint16_t ADAX;
+    uint16_t RDAUXA;
+    uint16_t RDAUXB;
+    uint16_t RDAUXC;
+    uint16_t RDAUXD;
     uint16_t MUTE;
     uint16_t UNMUTE;
 } Adbms6830_CommandSet_t;
@@ -129,6 +142,8 @@ uint32_t Adbms6830_RawTo_uV(uint16_t raw);
 Adbms6830_Status_t Adbms6830_WakeUp(const Adbms6830_Context_t *ctx, const Adbms6830_Hal_t *hal);
 Adbms6830_Status_t Adbms6830_StartCellConversion(const Adbms6830_Hal_t *hal,
                                                  const Adbms6830_CommandSet_t *cmds);
+Adbms6830_Status_t Adbms6830_StartAuxConversion(const Adbms6830_Hal_t *hal,
+                                                const Adbms6830_CommandSet_t *cmds);
 Adbms6830_Status_t Adbms6830_WriteCfga(Adbms6830_Context_t *ctx,
                                        const Adbms6830_Hal_t *hal,
                                        const Adbms6830_CommandSet_t *cmds);
@@ -144,6 +159,9 @@ Adbms6830_Status_t Adbms6830_ReadCellVoltagesAll(Adbms6830_Context_t *ctx,
 Adbms6830_Status_t Adbms6830_ReadCellVoltagesByGroup(Adbms6830_Context_t *ctx,
                                                      const Adbms6830_Hal_t *hal,
                                                      const Adbms6830_CommandSet_t *cmds);
+Adbms6830_Status_t Adbms6830_ReadAuxVoltagesByGroup(Adbms6830_Context_t *ctx,
+                                                    const Adbms6830_Hal_t *hal,
+                                                    const Adbms6830_CommandSet_t *cmds);
 Adbms6830_Status_t Adbms6830_SendMute(const Adbms6830_Hal_t *hal,
                                       const Adbms6830_CommandSet_t *cmds);
 Adbms6830_Status_t Adbms6830_SendUnmute(const Adbms6830_Hal_t *hal,
