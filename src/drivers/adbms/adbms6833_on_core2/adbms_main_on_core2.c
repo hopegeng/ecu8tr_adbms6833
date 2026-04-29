@@ -82,10 +82,79 @@ static void App_PublishSharedSnapshot(void);
 static void App_PublishDemoSnapshot(void);
 static void App_PrintAuxMeasurements(void);
 static void Adbms6833_SharedMemoryBarrier(void);
+static int16_t App_NtcVoltage_mV_ToTempRaw_0p01C(uint32_t ntcVoltage_mV);
+static int16_t App_CellTempRawFromAux(uint8_t afeIdx, uint8_t usedCellIdx);
 
 static void Adbms6833_SharedMemoryBarrier(void)
 {
     __dsync();
+}
+
+static int16_t App_NtcVoltage_mV_ToTempRaw_0p01C(uint32_t ntcVoltage_mV)
+{
+    typedef struct
+    {
+        uint16_t voltage_mV;
+        int16_t temp_raw_0p01C;
+    } App_NtcPointType;
+
+    /* GEN3.0 schematic, NCU15WB473 47k NTC with 22k bias, 0.5% example:
+     * -40 C = 2.9615 V, 25 C = 2.0435 V, 80 C = 0.5285 V, 125 C = 0.1838 V.
+     * Voltage falls as temperature rises.
+     */
+    static const App_NtcPointType ntcTable[] =
+    {
+        { 2962u, -4000 },
+        { 2044u,  2500 },
+        {  529u,  8000 },
+        {  184u, 12500 }
+    };
+    uint8_t i;
+
+    if (ntcVoltage_mV >= ntcTable[0].voltage_mV)
+    {
+        return ntcTable[0].temp_raw_0p01C;
+    }
+
+    for (i = 0u; i < ((uint8_t)(sizeof(ntcTable) / sizeof(ntcTable[0])) - 1u); i++)
+    {
+        const App_NtcPointType *hi = &ntcTable[i];
+        const App_NtcPointType *lo = &ntcTable[i + 1u];
+
+        if (ntcVoltage_mV >= lo->voltage_mV)
+        {
+            int32_t voltageSpan_mV = (int32_t)hi->voltage_mV - (int32_t)lo->voltage_mV;
+            int32_t tempSpan_raw = (int32_t)lo->temp_raw_0p01C - (int32_t)hi->temp_raw_0p01C;
+            int32_t voltageDrop_mV = (int32_t)hi->voltage_mV - (int32_t)ntcVoltage_mV;
+
+            return (int16_t)((int32_t)hi->temp_raw_0p01C +
+                             ((voltageDrop_mV * tempSpan_raw) / voltageSpan_mV));
+        }
+    }
+
+    return ntcTable[(sizeof(ntcTable) / sizeof(ntcTable[0])) - 1u].temp_raw_0p01C;
+}
+
+static int16_t App_CellTempRawFromAux(uint8_t afeIdx, uint8_t usedCellIdx)
+{
+    static const uint8_t cellTempAuxIndex[ADBMS6833_SHARED_USED_CELLS_PER_AFE] =
+    {
+        2u, 2u,  /* GPIO3: SideLeft/SideRight1 */
+        5u, 5u,  /* GPIO6: SideLeft/SideRight2 */
+        6u, 6u,  /* GPIO7: SideLeft/SideRight3 */
+        7u, 7u,  /* GPIO8: SideLeft/SideRight4 */
+        8u, 8u   /* GPIO9: SideLeft/SideRight5 */
+    };
+    uint8_t auxIndex;
+
+    if ((afeIdx >= ADBMS6833_SHARED_AFE_COUNT) ||
+        (usedCellIdx >= ADBMS6833_SHARED_USED_CELLS_PER_AFE))
+    {
+        return 0;
+    }
+
+    auxIndex = cellTempAuxIndex[usedCellIdx];
+    return App_NtcVoltage_mV_ToTempRaw_0p01C(g_bmsDrv.aux[afeIdx].mV[auxIndex]);
 }
 
 void Adbms6833_SharedInit(void)
@@ -348,8 +417,8 @@ static void App_PublishSharedSnapshot(void)
             uint16_t dccMask = g_bmsBal.result[afeIdx].dccMask;
 
             snapshot.cell_voltage_mV[afeIdx][usedCellIdx] = g_bmsDrv.cell[afeIdx].mV[driverCellIdx];
-            //TODO: will implement the real code to read NTC values from ADBMS6833 CSC board
-            snapshot.cell_temp_raw_0p01C[afeIdx][usedCellIdx] = (afeIdx == 0)?2500:3000;
+            snapshot.cell_temp_raw_0p01C[afeIdx][usedCellIdx] =
+                App_CellTempRawFromAux(afeIdx, usedCellIdx);
             snapshot.balancing[afeIdx][usedCellIdx] =
                 ((dccMask & ((uint16_t)1u << driverCellIdx)) != 0u) ? 1u : 0u;
         }
