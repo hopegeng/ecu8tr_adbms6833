@@ -18,6 +18,8 @@
 #include "bmu_main.h"
 
 #include "../bmu/bmu_cell_can.h"
+#include "../../middleware/can/can_if.h"
+#include "../dbc/dbc_trace_interface.h"
 #include "bmu_cell_db.h"
 #include "bmu_cell_mapping.h"
 #include "bmu_csc_acq.h"
@@ -30,6 +32,31 @@
 #ifndef pdTICKS_TO_MS
     #define pdTICKS_TO_MS( xTimeInTicks )    ( ( TickType_t ) ( ( ( uint64_t ) ( xTimeInTicks ) * ( uint64_t ) 1000U ) / ( uint64_t ) configTICK_RATE_HZ ) )
 #endif
+
+static void Bmu_SendDemoTraceMessages(uint32_t now_ms);
+
+static void Bmu_SendDemoTraceMessages(uint32_t now_ms)
+{
+    static uint32_t demoSequence = 0u;
+    uint16_t i;
+
+    demoSequence++;
+
+    for (i = 0u; i < DBC_TRACE_MESSAGE_COUNT; i++)
+    {
+        CanIf_MsgType msg;
+
+        if (!Dbc_TraceMessage_ShouldDemoTransmit(&g_dbcTraceMessages[i]))
+        {
+            continue;
+        }
+
+        Dbc_TraceMessage_BuildDemoPayload(&g_dbcTraceMessages[i],
+                                          (demoSequence ^ now_ms),
+                                          &msg);
+        (void)CanIf_Transmit(&msg);
+    }
+}
 
 static void Bmu_Task_10ms_FreeRTOS(void *pvParameters)
 {
@@ -113,8 +140,13 @@ void Bmu_Task_100ms(uint32_t now_ms)
 
 void Bmu_Task_1000ms(uint32_t now_ms)
 {
-    (void)now_ms;
+#if 0
     (void)Bmu_CellCan_SendAll();
+    Bmu_SendDemoTraceMessages(now_ms);
+#else
+    void run_can_simulation(void);
+    run_can_simulation();
+#endif
 }
 
 

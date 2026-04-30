@@ -22,6 +22,7 @@
 #include <FreeRTOS.h>
 #include <semphr.h>
 #include "tools.h"
+#include "can_if.h"
 
 /*----- Constant members -----------------------------------------------------*/
 
@@ -107,7 +108,8 @@ void canIsrTxHandler(void)
 void canIsrRxHandler(void)
 {
 	CanPkt_t canPkt;
-	portBASE_TYPE xHigherPriorityTaskWoken;
+    CanIf_MsgType canIfMsg;
+	portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 
     /* Clear the "Message stored to Dedicated RX Buffer" interrupt flag */
     IfxCan_Node_clearInterruptFlag(g_mcmcan.canSrcNode.node, IfxCan_Interrupt_messageStoredToDedicatedRxBuffer);
@@ -137,6 +139,20 @@ void canIsrRxHandler(void)
 
 	canPkt.msg.messageId = rxMsgID;
 	canPkt.data = g_mcmcan.rxData;
+
+    canIfMsg.id = (rxMsgID & 0x1FFFFFFFUL);
+    canIfMsg.dlc = 8u;
+    canIfMsg.is_extended = (g_mcmcan.rxMsg.messageIdLength == IfxCan_MessageIdLength_extended) ? true : false;
+    canIfMsg.data[0] = (uint8_t)(g_mcmcan.rxData[0] & 0xFFu);
+    canIfMsg.data[1] = (uint8_t)((g_mcmcan.rxData[0] >> 8u) & 0xFFu);
+    canIfMsg.data[2] = (uint8_t)((g_mcmcan.rxData[0] >> 16u) & 0xFFu);
+    canIfMsg.data[3] = (uint8_t)((g_mcmcan.rxData[0] >> 24u) & 0xFFu);
+    canIfMsg.data[4] = (uint8_t)(g_mcmcan.rxData[1] & 0xFFu);
+    canIfMsg.data[5] = (uint8_t)((g_mcmcan.rxData[1] >> 8u) & 0xFFu);
+    canIfMsg.data[6] = (uint8_t)((g_mcmcan.rxData[1] >> 16u) & 0xFFu);
+    canIfMsg.data[7] = (uint8_t)((g_mcmcan.rxData[1] >> 24u) & 0xFFu);
+
+    CanIf_RxIndication(&canIfMsg);
 
 	if( (rxMsgID & 0x1FFFFFFF) == 0x18DA0B0A )
 	{
@@ -235,7 +251,7 @@ void CanDrv_initCan(void)
 
 	g_mcmcan.canNodeConfig.filterConfig.standardListSize = 11;
 	g_mcmcan.canNodeConfig.filterConfig.messageIdLength = IfxCan_MessageIdLength_both; //IfxCan_MessageIdLength_standard;
-	g_mcmcan.canNodeConfig.filterConfig.extendedListSize = 1;
+	g_mcmcan.canNodeConfig.filterConfig.extendedListSize = 6;
 
 	//g_mcmcan.canNodeConfig.messageRAM.standardFilterListStartAddress = 0x0;
 	//g_mcmcan.canNodeConfig.messageRAM.rxBuffersStartAddress          = 0x100;
@@ -330,13 +346,33 @@ void CanDrv_initCan(void)
 	g_mcmcan.canFilter.rxBufferOffset = IfxCan_RxBufferId_0;
 	IfxCan_Can_setStandardFilter(&g_mcmcan.canSrcNode, &g_mcmcan.canFilter);
 
-	g_mcmcan.canFilter.number = 0;
 	g_mcmcan.canFilter.elementConfiguration = IfxCan_FilterElementConfiguration_storeInRxBuffer;
 	g_mcmcan.canFilter.type = IfxCan_FilterType_classic;
-
-	g_mcmcan.canFilter.id1 = 0x18DA0B0A;
 	g_mcmcan.canFilter.id2 = 0x00;
 	g_mcmcan.canFilter.rxBufferOffset = IfxCan_RxBufferId_0;
+
+	g_mcmcan.canFilter.number = 0;
+	g_mcmcan.canFilter.id1 = 0x18DA0B0A;
+	IfxCan_Can_setExtendedFilter(&g_mcmcan.canSrcNode, &g_mcmcan.canFilter);
+
+	g_mcmcan.canFilter.number = 1;
+	g_mcmcan.canFilter.id1 = 0x0A181400;
+	IfxCan_Can_setExtendedFilter(&g_mcmcan.canSrcNode, &g_mcmcan.canFilter);
+
+	g_mcmcan.canFilter.number = 2;
+	g_mcmcan.canFilter.id1 = 0x10087801;
+	IfxCan_Can_setExtendedFilter(&g_mcmcan.canSrcNode, &g_mcmcan.canFilter);
+
+	g_mcmcan.canFilter.number = 3;
+	g_mcmcan.canFilter.id1 = 0x10088801;
+	IfxCan_Can_setExtendedFilter(&g_mcmcan.canSrcNode, &g_mcmcan.canFilter);
+
+	g_mcmcan.canFilter.number = 4;
+	g_mcmcan.canFilter.id1 = 0x1808D801;
+	IfxCan_Can_setExtendedFilter(&g_mcmcan.canSrcNode, &g_mcmcan.canFilter);
+
+	g_mcmcan.canFilter.number = 5;
+	g_mcmcan.canFilter.id1 = 0x12182401;
 	IfxCan_Can_setExtendedFilter(&g_mcmcan.canSrcNode, &g_mcmcan.canFilter);
 
 	while (IfxCan_Can_isNodeSynchronized(&g_mcmcan.canSrcNode) != TRUE)

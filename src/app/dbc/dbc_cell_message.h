@@ -11,13 +11,14 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "can_if.h"
 
 /* ============================================================================
  * DBC-verified Cxxx_CellMessage definition
  *
  * BO_ 2415922177 C001_CellMessage: 8 Vector__XXX
  * ...
- * BO_ 2415922536 C360_CellMessage: 8 Vector__XXX
+ * BO_ 2415922196 C020_CellMessage: 8 Vector__XXX
  *
  * Note:
  * DBC stores extended-frame IDs with bit 31 set. For example:
@@ -39,14 +40,14 @@ extern "C" {
 #endif
 
 #define DBC_CELLMESSAGE_FIRST_INDEX_1BASED     (1u)
-#define DBC_CELLMESSAGE_LAST_INDEX_1BASED      (360u)
-#define DBC_CELLMESSAGE_COUNT                  (360u)
+#define DBC_CELLMESSAGE_LAST_INDEX_1BASED      (20u)
+#define DBC_CELLMESSAGE_COUNT                  (20u)
 
 #define DBC_CAN_EXTENDED_ID_FLAG              (0x80000000UL)
 #define DBC_CAN_EXTENDED_ID_MASK              (0x1FFFFFFFUL)
 
 #define DBC_CELLMESSAGE_FIRST_ID_DBC          (0x90000C01UL)
-#define DBC_CELLMESSAGE_LAST_ID_DBC           (0x90000D68UL)
+#define DBC_CELLMESSAGE_LAST_ID_DBC           (0x90000C14UL)
 
 #define DBC_CELLMESSAGE_FIRST_ID              (DBC_CELLMESSAGE_FIRST_ID_DBC & DBC_CAN_EXTENDED_ID_MASK)
 #define DBC_CELLMESSAGE_LAST_ID               (DBC_CELLMESSAGE_LAST_ID_DBC & DBC_CAN_EXTENDED_ID_MASK)
