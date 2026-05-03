@@ -25,6 +25,12 @@ extern "C" {
 #define DBC_M001_START_LTC_TRANSMISSION_ID           (0x10088801UL)
 #define DBC_M001_CONFIGURATION_MESSAGE_ID            (0x1808D801UL)
 #define DBC_SCU1_HS_SWITCH_REQ_ID                    (0x12182401UL)
+#define DBC_BMU_DIAG_COMMAND_ID                      (0x1E05D401UL)
+#define DBC_M001_WRITE_EEPROM_DATA_LTC_ID            (0x1E093801UL)
+#define DBC_M001_READ_EEPROM_DATA_LTC_ID             (0x1E093901UL)
+#define DBC_SCU1_LIMIT_CONFIG_INFO_ID                (0x12013401UL)
+#define DBC_BMM_DIAG_REQ_ID                          DBC_BMU_DIAG_COMMAND_ID
+#define DBC_THRESHOLD_SETTINGS_ID                    DBC_SCU1_LIMIT_CONFIG_INFO_ID
 
 typedef enum
 {
@@ -67,9 +73,40 @@ typedef struct
 
 typedef struct
 {
+    uint8_t write_length;
+    uint8_t write_index;
+    uint16_t write_address;
+    uint32_t write_data;
+} Dbc_M001WriteEepromDataLtcType;
+
+typedef struct
+{
+    uint8_t mux;
+    uint8_t eeprom_area;
+    uint8_t eeprom_address;
+    uint32_t eeprom_data;
+} Dbc_M001ReadEepromReqType;
+
+typedef struct
+{
     uint32_t magic;
     uint8_t action_index;
 } Dbc_M001StartLtcTransmissionType;
+
+typedef struct
+{
+    uint16_t diag_cmd;
+    uint16_t param1;
+    int32_t param2;
+} Dbc_BmuDiagReqType;
+
+typedef struct
+{
+    uint16_t under_voltage_raw_0p001V;
+    uint16_t over_voltage_raw_0p001V;
+    int16_t min_temp_raw_0p1C;
+    int16_t max_temp_raw_0p1C;
+} Dbc_ThresholdSettingsType;
 
 typedef struct
 {
@@ -202,7 +239,11 @@ static inline bool Dbc_TraceMessage_IsTesterInputId(uint32_t can_id)
         (can_id == DBC_M001_WRITE_EEPROM_DATA_ID) ||
         (can_id == DBC_M001_START_LTC_TRANSMISSION_ID) ||
         (can_id == DBC_M001_CONFIGURATION_MESSAGE_ID) ||
-        (can_id == DBC_SCU1_HS_SWITCH_REQ_ID))
+        (can_id == DBC_SCU1_HS_SWITCH_REQ_ID) ||
+        (can_id == DBC_BMU_DIAG_COMMAND_ID) ||
+        (can_id == DBC_M001_WRITE_EEPROM_DATA_LTC_ID) ||
+        (can_id == DBC_M001_READ_EEPROM_DATA_LTC_ID) ||
+        (can_id == DBC_SCU1_LIMIT_CONFIG_INFO_ID))
     {
         return true;
     }
@@ -296,6 +337,12 @@ static inline uint32_t Dbc_ReadLe24(const uint8_t *data)
            ((uint32_t)data[2] << 16u);
 }
 
+static inline uint16_t Dbc_ReadLe16(const uint8_t *data)
+{
+    return (uint16_t)(((uint16_t)data[0]) |
+                      ((uint16_t)data[1] << 8u));
+}
+
 static inline uint32_t Dbc_ReadLe32(const uint8_t *data)
 {
     return ((uint32_t)data[0]) |
@@ -347,6 +394,40 @@ static inline bool Dbc_M001WriteEepromData_Unpack(
     return true;
 }
 
+static inline bool Dbc_M001WriteEepromDataLtc_Unpack(
+    const CanIf_MsgType *msg,
+    Dbc_M001WriteEepromDataLtcType *sig)
+{
+    if ((sig == 0) || (!Dbc_IsExpectedExtended8(msg, DBC_M001_WRITE_EEPROM_DATA_LTC_ID)))
+    {
+        return false;
+    }
+
+    sig->write_length = msg->data[0];
+    sig->write_index = msg->data[1];
+    sig->write_address = Dbc_ReadLe16(&msg->data[2]);
+    sig->write_data = Dbc_ReadLe32(&msg->data[4]);
+
+    return true;
+}
+
+static inline bool Dbc_M001ReadEepromReq_Unpack(
+    const CanIf_MsgType *msg,
+    Dbc_M001ReadEepromReqType *sig)
+{
+    if ((sig == 0) || (!Dbc_IsExpectedExtended8(msg, DBC_M001_READ_EEPROM_DATA_LTC_ID)))
+    {
+        return false;
+    }
+
+    sig->mux = msg->data[0];
+    sig->eeprom_area = msg->data[1];
+    sig->eeprom_address = msg->data[3];
+    sig->eeprom_data = Dbc_ReadLe32(&msg->data[4]);
+
+    return true;
+}
+
 static inline bool Dbc_M001StartLtcTransmission_Unpack(
     const CanIf_MsgType *msg,
     Dbc_M001StartLtcTransmissionType *sig)
@@ -358,6 +439,37 @@ static inline bool Dbc_M001StartLtcTransmission_Unpack(
 
     sig->magic = Dbc_ReadLe24(&msg->data[0]);
     sig->action_index = msg->data[3];
+
+    return true;
+}
+
+static inline bool Dbc_BmuDiagReq_Unpack(const CanIf_MsgType *msg,
+                                         Dbc_BmuDiagReqType *sig)
+{
+    if ((sig == 0) || (!Dbc_IsExpectedExtended8(msg, DBC_BMU_DIAG_COMMAND_ID)))
+    {
+        return false;
+    }
+
+    sig->diag_cmd = Dbc_ReadLe16(&msg->data[0]);
+    sig->param1 = Dbc_ReadLe16(&msg->data[2]);
+    sig->param2 = (int32_t)Dbc_ReadLe32(&msg->data[4]);
+
+    return true;
+}
+
+static inline bool Dbc_ThresholdSettings_Unpack(const CanIf_MsgType *msg,
+                                                Dbc_ThresholdSettingsType *sig)
+{
+    if ((sig == 0) || (!Dbc_IsExpectedExtended8(msg, DBC_SCU1_LIMIT_CONFIG_INFO_ID)))
+    {
+        return false;
+    }
+
+    sig->under_voltage_raw_0p001V = Dbc_ReadLe16(&msg->data[0]);
+    sig->over_voltage_raw_0p001V = Dbc_ReadLe16(&msg->data[2]);
+    sig->min_temp_raw_0p1C = (int16_t)Dbc_ReadLe16(&msg->data[4]);
+    sig->max_temp_raw_0p1C = (int16_t)Dbc_ReadLe16(&msg->data[6]);
 
     return true;
 }

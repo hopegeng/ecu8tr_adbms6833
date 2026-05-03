@@ -79,16 +79,26 @@ static void task_r_g_led(void *arg)
 		{
 			IfxPort_setPinLow( &MODULE_P33, 14 );
 			IfxPort_togglePin( &MODULE_P34, 4 );
+			vTaskDelay(pdMS_TO_TICKS(100));
 		}
 		else if( ADBMS_GET_STATE_FN() == ECU8TR_ADBMS6830_OK  )
 		{
 			IfxPort_togglePin( &MODULE_P33, 14 );	//Green
 			IfxPort_setPinLow( &MODULE_P34, 4 );	//RED OFF
+			vTaskDelay(pdMS_TO_TICKS(100));
+
 		}
 		else
 		{
+#if 0
 			IfxPort_setPinHigh( &MODULE_P33, 14 );	//Green ON
 			IfxPort_setPinLow( &MODULE_P34, 4 );	//RED OFF
+#else
+			IfxPort_setPinLow( &MODULE_P33, 14 );	//Green
+			IfxPort_setPinHigh( &MODULE_P34, 4 );	//RED
+#endif
+			vTaskDelay(pdMS_TO_TICKS(100));
+
 		}
 #else
 		if( ecu8tr_getTLE9012State() == ECU8TR_TLE9012_WAKEUP_DONE  )

@@ -29,8 +29,12 @@ typedef struct
 {
     uint32_t bmm_control_count;
     uint32_t write_eeprom_count;
+    uint32_t write_eeprom_ltc_count;
+    uint32_t read_eeprom_count;
     uint32_t start_ltc_count;
     uint32_t configuration_count;
+    uint32_t diag_req_count;
+    uint32_t threshold_settings_count;
     uint32_t scu1_hs_switch_req_count;
     uint32_t unknown_count;
     uint32_t tx_queued_count;
@@ -40,7 +44,11 @@ typedef struct
 
     Dbc_BmmControlDigitalOutputsType last_bmm_control;
     Dbc_M001WriteEepromDataType last_write_eeprom;
+    Dbc_M001WriteEepromDataLtcType last_write_eeprom_ltc;
+    Dbc_M001ReadEepromReqType last_read_eeprom;
     Dbc_M001StartLtcTransmissionType last_start_ltc;
+    Dbc_BmuDiagReqType last_diag_req;
+    Dbc_ThresholdSettingsType last_threshold_settings;
     Dbc_Scu1HsSwitchReqType last_scu1_hs_switch_req;
     CanIf_MsgType last_configuration;
 } CanIf_TesterCommandStateType;
@@ -98,6 +106,32 @@ static void CanIf_HandleM001WriteEepromData(const Dbc_M001WriteEepromDataType *c
     /* Stub: connect this to EEPROM/NVM write service later. */
 }
 
+static void CanIf_HandleM001WriteEepromDataLtc(const Dbc_M001WriteEepromDataLtcType *cmd)
+{
+    if (cmd == 0)
+    {
+        return;
+    }
+
+    g_canIfTesterCommandState.last_write_eeprom_ltc = *cmd;
+    g_canIfTesterCommandState.write_eeprom_ltc_count++;
+
+    /* Stub: connect this LTC-format EEPROM write to the NVM service later. */
+}
+
+static void CanIf_HandleM001ReadEepromReq(const Dbc_M001ReadEepromReqType *cmd)
+{
+    if (cmd == 0)
+    {
+        return;
+    }
+
+    g_canIfTesterCommandState.last_read_eeprom = *cmd;
+    g_canIfTesterCommandState.read_eeprom_count++;
+
+    /* Stub: read EEPROM/NVM and queue the response message later. */
+}
+
 static void CanIf_HandleM001StartLtcTransmission(const Dbc_M001StartLtcTransmissionType *cmd)
 {
     if (cmd == 0)
@@ -122,6 +156,32 @@ static void CanIf_HandleM001ConfigurationMessage(const CanIf_MsgType *msg)
     g_canIfTesterCommandState.configuration_count++;
 
     /* Stub: decode mux-specific configuration payloads later. */
+}
+
+static void CanIf_HandleBmuDiagReq(const Dbc_BmuDiagReqType *cmd)
+{
+    if (cmd == 0)
+    {
+        return;
+    }
+
+    g_canIfTesterCommandState.last_diag_req = *cmd;
+    g_canIfTesterCommandState.diag_req_count++;
+
+    /* Stub: connect this to BMU/BMM diagnostic command execution later. */
+}
+
+static void CanIf_HandleThresholdSettings(const Dbc_ThresholdSettingsType *cmd)
+{
+    if (cmd == 0)
+    {
+        return;
+    }
+
+    g_canIfTesterCommandState.last_threshold_settings = *cmd;
+    g_canIfTesterCommandState.threshold_settings_count++;
+
+    /* Stub: validate and apply OV/UV and temperature limits later. */
 }
 
 static void CanIf_HandleScu1HsSwitchReq(const Dbc_Scu1HsSwitchReqType *cmd)
@@ -247,7 +307,11 @@ void CanIf_RxIndication(const CanIf_MsgType *msg)
 {
     Dbc_BmmControlDigitalOutputsType bmmControl;
     Dbc_M001WriteEepromDataType writeEeprom;
+    Dbc_M001WriteEepromDataLtcType writeEepromLtc;
+    Dbc_M001ReadEepromReqType readEeprom;
     Dbc_M001StartLtcTransmissionType startLtc;
+    Dbc_BmuDiagReqType diagReq;
+    Dbc_ThresholdSettingsType thresholdSettings;
     Dbc_Scu1HsSwitchReqType hsSwitchReq;
 
     if (msg == 0)
@@ -267,6 +331,18 @@ void CanIf_RxIndication(const CanIf_MsgType *msg)
         return;
     }
 
+    if (Dbc_M001WriteEepromDataLtc_Unpack(msg, &writeEepromLtc))
+    {
+        CanIf_HandleM001WriteEepromDataLtc(&writeEepromLtc);
+        return;
+    }
+
+    if (Dbc_M001ReadEepromReq_Unpack(msg, &readEeprom))
+    {
+        CanIf_HandleM001ReadEepromReq(&readEeprom);
+        return;
+    }
+
     if (Dbc_M001StartLtcTransmission_Unpack(msg, &startLtc))
     {
         CanIf_HandleM001StartLtcTransmission(&startLtc);
@@ -276,6 +352,18 @@ void CanIf_RxIndication(const CanIf_MsgType *msg)
     if (Dbc_IsExpectedExtended8(msg, DBC_M001_CONFIGURATION_MESSAGE_ID))
     {
         CanIf_HandleM001ConfigurationMessage(msg);
+        return;
+    }
+
+    if (Dbc_BmuDiagReq_Unpack(msg, &diagReq))
+    {
+        CanIf_HandleBmuDiagReq(&diagReq);
+        return;
+    }
+
+    if (Dbc_ThresholdSettings_Unpack(msg, &thresholdSettings))
+    {
+        CanIf_HandleThresholdSettings(&thresholdSettings);
         return;
     }
 

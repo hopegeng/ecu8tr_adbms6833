@@ -140,7 +140,7 @@ void Bmu_Task_100ms(uint32_t now_ms)
 
 void Bmu_Task_1000ms(uint32_t now_ms)
 {
-#if 0
+#if 1
     (void)Bmu_CellCan_SendAll();
     Bmu_SendDemoTraceMessages(now_ms);
 #else

@@ -1,0 +1,2 @@
+The SPU SBST User Manual is to be found in the following MyICP platform: 
+https://myicp.infineon.com/sites/auto_sw/Lists/defaultdoclib/Forms/AllItems.aspx?RootFolder=%2fsites%2fauto%5fsw%2fLists%2fdefaultdoclib%2fSBST%20AURIX%202G&FolderCTID=0x012000B94988D6A9244F998169D54E334B9D770099B7F60C4DF672488D27B085426C824B
