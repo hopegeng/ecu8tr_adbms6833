@@ -108,15 +108,21 @@ void qspi0mstr_Init_iLLD(void)
 	IfxQspi_SpiMaster_initChannelConfig(&spiMasterChannelConfig, &spi);
 
 	// set the baudrate for this channel
-	spiMasterChannelConfig.base.baudrate = 1000000;
+	spiMasterChannelConfig.base.baudrate = 800000;
 
-	// Choose CS6
-	spiMasterChannelConfig.sls.output = slsOutput6;
-	// initialize channel
-	IfxQspi_SpiMaster_initChannel(&spiChannel, &spiMasterChannelConfig);
+#if 1
+//Raymond added on 2026-05-04 for LTC6812 mode 3
+	//Tested, only mode 0 is working( as set below )
+	spiMasterChannelConfig.base.mode.clockPolarity =
+			SpiIf_ClockPolarity_idleLow;
+
+	spiMasterChannelConfig.base.mode.shiftClock =
+			SpiIf_ShiftClock_shiftTransmitDataOnLeadingEdge;
+#endif
 
 	// Choose CS2
 	spiMasterChannelConfig.sls.output = slsOutput2;
+
 	// initialize channel
 	IfxQspi_SpiMaster_initChannel(&spiChannel, &spiMasterChannelConfig);
 }
@@ -161,5 +167,19 @@ extern SpiIf_Status qspi0_send_receive_iLLD(QspiCs_t CS, uint16 u16Length, uint8
 bool qspimstr_waitForRxDone_iLLD( void )
 {
 	while( IfxQspi_SpiMaster_getStatus(&spiChannel) != SpiIf_Status_ok );
+	return true;
+}
+
+bool qspimstr_waitForRxDoneTimeout_iLLD( uint32 timeoutLoops )
+{
+	while( IfxQspi_SpiMaster_getStatus(&spiChannel) != SpiIf_Status_ok )
+	{
+		if( timeoutLoops == 0U )
+		{
+			return false;
+		}
+		timeoutLoops--;
+	}
+
 	return true;
 }

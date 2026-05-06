@@ -15,6 +15,7 @@
 void qspi0mstr_Init_iLLD(void);
 extern SpiIf_Status qspi0_send_receive_iLLD(QspiCs_t CS, uint16 u16Length, uint8* pu8SrcBuff, uint8* pu8DstBuff);
 bool qspimstr_waitForRxDone_iLLD( void );
+bool qspimstr_waitForRxDoneTimeout_iLLD( uint32 timeoutLoops );
 bool qspimstr_waitForRxDone( void );
 
 #endif /* BSP_QSPI_INC_QSPI0MSTR_ILLD_H_ */

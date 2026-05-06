@@ -5,9 +5,10 @@
 
 #define ADBMS_DEVICE_FAMILY_6830    (6830u)
 #define ADBMS_DEVICE_FAMILY_6833    (6833u)
+#define ADBMS_DEVICE_FAMILY_LTC6812 (6812u)
 
 #ifndef ADBMS_DEVICE_FAMILY
-#define ADBMS_DEVICE_FAMILY         ADBMS_DEVICE_FAMILY_6830
+#define ADBMS_DEVICE_FAMILY         ADBMS_DEVICE_FAMILY_LTC6812
 #endif
 
 #if (ADBMS_DEVICE_FAMILY == ADBMS_DEVICE_FAMILY_6830)
@@ -31,6 +32,17 @@ typedef Adbms6833_SharedSnapshot_t AdbmsSharedSnapshot_t;
 #define ADBMS_SHARED_SAMPLE_PERIOD_MS       ADBMS6833_SHARED_SAMPLE_PERIOD_MS
 #define ADBMS_CORE2_MAIN_FN                 adbms6833_main_on_core2
 #define ADBMS_GET_STATE_FN                  adbms6833_getState
+
+#elif (ADBMS_DEVICE_FAMILY == ADBMS_DEVICE_FAMILY_LTC6812)
+
+#include "ltc6812_on_core2/ltc6812_shared.h"
+
+typedef Ltc6812_SharedSnapshot_t AdbmsSharedSnapshot_t;
+
+#define AdbmsSharedRead                     Ltc6812_SharedRead
+#define ADBMS_SHARED_SAMPLE_PERIOD_MS       LTC6812_SHARED_SAMPLE_PERIOD_MS
+#define ADBMS_CORE2_MAIN_FN                 ltc6812_main_on_core2
+#define ADBMS_GET_STATE_FN                  ltc6812_getState
 
 #else
 #error "Unsupported ADBMS_DEVICE_FAMILY selection."
