@@ -23,8 +23,6 @@
 
 #define ENABLE_PRECAUTION_WAKEUP			 0			//We may not need so many wakeup call
 
-static volatile uint32_t adbms6833_ray_err = 0;
-static volatile uint8_t adbms6833_ray_buffer[72] = {0};
 
 static Adbms6833_Status_t Adbms6833_ReadRegisterGroup(const Adbms6833_Hal_t *hal,
                                                       uint16_t cmd,
@@ -513,8 +511,6 @@ Adbms6833_Status_t Adbms6833_ReadCellVoltagesAll(Adbms6833_Context_t *ctx,
 
     offset = ADBMS6833_CMD_FRAME_SIZE;
 
-    memcpy((void *)adbms6833_ray_buffer, rx, totalLen);
-
     for (ic = (int32_t)ctx->icCount - 1; ic >= 0; ic--)
     {
         if (Adbms6833_VerifyRxBlockPec10(&rx[offset], ADBMS6833_RDCVALL_DATA_BYTES) == false)
@@ -731,7 +727,6 @@ Adbms6833_Status_t Adbms6833_FullInitialize(Adbms6833_Context_t *ctx,
     st = Adbms6833_WriteCfga(ctx, hal, cmds);
     if (st != ADBMS6833_OK)
     {
-    	adbms6833_ray_err = 1;
         return st;
     }
 
@@ -740,12 +735,10 @@ Adbms6833_Status_t Adbms6833_FullInitialize(Adbms6833_Context_t *ctx,
     {
     	if( st == ADBMS6833_ERR_PEC )
     	{
-    		adbms6833_ray_err = 2;
     		ctx->pecErrorCount++;
     	}
     	if( st == ADBMS6833_ERR_COMM )
     	{
-    		adbms6833_ray_err = 3;
     		ctx->commErrorCount++;
     	}
         return st;
@@ -756,8 +749,6 @@ Adbms6833_Status_t Adbms6833_FullInitialize(Adbms6833_Context_t *ctx,
     {
         if (memcmp(&ctx->cfga[ic].data[0], &readCfga[(uint16_t)ic * ADBMS6833_REG_GROUP_DATA_LEN], ADBMS6833_REG_GROUP_DATA_LEN) != 0)
         {
-        	adbms6833_ray_err = 4;
-        	__debug();
     		ctx->commErrorCount++;
             return ADBMS6833_ERR_COMM;
         }
@@ -770,12 +761,10 @@ Adbms6833_Status_t Adbms6833_FullInitialize(Adbms6833_Context_t *ctx,
     {
     	if( st == ADBMS6833_ERR_PEC )
     	{
-    		adbms6833_ray_err = 5;
     		ctx->pecErrorCount++;
     	}
     	if( st == ADBMS6833_ERR_COMM )
     	{
-    		adbms6833_ray_err = 6;
     		ctx->commErrorCount++;
     	}
         return st;
@@ -784,7 +773,6 @@ Adbms6833_Status_t Adbms6833_FullInitialize(Adbms6833_Context_t *ctx,
     st = Adbms6833_ReadRegisterGroup(hal, cmds->RDCFGB, readCfgb, ADBMS6833_REG_GROUP_DATA_LEN, ctx->icCount);
     if (st != ADBMS6833_OK)
     {
-    	adbms6833_ray_err = 7;
         return st;
     }
 
@@ -792,7 +780,6 @@ Adbms6833_Status_t Adbms6833_FullInitialize(Adbms6833_Context_t *ctx,
     {
         if (memcmp(&ctx->cfgb[ic].data[0], &readCfgb[(uint16_t)ic * ADBMS6833_REG_GROUP_DATA_LEN], ADBMS6833_REG_GROUP_DATA_LEN) != 0)
         {
-        	adbms6833_ray_err = 8;
     		ctx->commErrorCount++;
             return ADBMS6833_ERR_COMM;
         }
@@ -832,7 +819,6 @@ Adbms6833_Status_t Adbms6833_FullInitialize(Adbms6833_Context_t *ctx,
 
         if (hal->spiTransfer(tx, rx, idx) != ADBMS6833_OK)
         {
-        	adbms6833_ray_err = 9;
             return ADBMS6833_ERR_COMM;
         }
     }
@@ -840,7 +826,6 @@ Adbms6833_Status_t Adbms6833_FullInitialize(Adbms6833_Context_t *ctx,
     st = Adbms6833_ReadRegisterGroup(hal, cmds->RDSTATC, readStatc, ADBMS6833_REG_GROUP_DATA_LEN, ctx->icCount);
     if (st != ADBMS6833_OK)
     {
-    	adbms6833_ray_err = 10;
         return st;
     }
 
@@ -851,7 +836,6 @@ Adbms6833_Status_t Adbms6833_FullInitialize(Adbms6833_Context_t *ctx,
             (readStatc[(uint16_t)ic * ADBMS6833_REG_GROUP_DATA_LEN + 4U] != 0U) ||
             (readStatc[(uint16_t)ic * ADBMS6833_REG_GROUP_DATA_LEN + 5U] != 0U))
         {
-        	adbms6833_ray_err = 11;
             return ADBMS6833_ERR_COMM;
         }
     }
@@ -859,7 +843,6 @@ Adbms6833_Status_t Adbms6833_FullInitialize(Adbms6833_Context_t *ctx,
     st = Adbms6833_ReadRegisterGroup(hal, cmds->RDSID, readSid, ADBMS6833_REG_GROUP_DATA_LEN, ctx->icCount);
     if (st != ADBMS6833_OK)
     {
-    	adbms6833_ray_err = 12;
         return st;
     }
 
@@ -880,7 +863,6 @@ Adbms6833_Status_t Adbms6833_FullInitialize(Adbms6833_Context_t *ctx,
         ADBMS6833_DEBUG_PRINTF( "\r\n" );
         if (sidIsAllZero == true)
         {
-        	adbms6833_ray_err = 13;
             return ADBMS6833_ERR_COMM;
         }
 
@@ -890,7 +872,6 @@ Adbms6833_Status_t Adbms6833_FullInitialize(Adbms6833_Context_t *ctx,
     st = Adbms6833_SendMute(hal, cmds);
     if (st != ADBMS6833_OK)
     {
-    	adbms6833_ray_err = 14;
         return st;
     }
 

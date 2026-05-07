@@ -6,12 +6,24 @@
 #define ADBMS_DEVICE_FAMILY_6830    (6830u)
 #define ADBMS_DEVICE_FAMILY_6833    (6833u)
 #define ADBMS_DEVICE_FAMILY_LTC6812 (6812u)
+#define ADBMS_DEVICE_FAMILY_AUTO    (0u)
 
 #ifndef ADBMS_DEVICE_FAMILY
-#define ADBMS_DEVICE_FAMILY         ADBMS_DEVICE_FAMILY_LTC6812
+#define ADBMS_DEVICE_FAMILY         ADBMS_DEVICE_FAMILY_AUTO
 #endif
 
-#if (ADBMS_DEVICE_FAMILY == ADBMS_DEVICE_FAMILY_6830)
+#if (ADBMS_DEVICE_FAMILY == ADBMS_DEVICE_FAMILY_AUTO)
+
+#include "adbms_runtime_detect.h"
+
+typedef AdbmsRuntime_SharedSnapshot_t AdbmsSharedSnapshot_t;
+
+#define AdbmsSharedRead                     AdbmsRuntime_SharedRead
+#define ADBMS_SHARED_SAMPLE_PERIOD_MS       ADBMS_RUNTIME_SHARED_SAMPLE_PERIOD_MS
+#define ADBMS_CORE2_MAIN_FN                 adbms_runtime_main_on_core2
+#define ADBMS_GET_STATE_FN                  AdbmsRuntime_GetState
+
+#elif (ADBMS_DEVICE_FAMILY == ADBMS_DEVICE_FAMILY_6830)
 
 #include "adbms6830_on_core2/adbms6830_shared.h"
 
