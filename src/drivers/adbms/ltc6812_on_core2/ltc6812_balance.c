@@ -1,5 +1,5 @@
 #include "ltc6812_balance.h"
-
+#include "shell.h"
 #include <string.h>
 
 static uint16_t Ltc6812_Min(const uint16_t *data, uint8_t len)
@@ -116,10 +116,10 @@ void Ltc6812_BalanceInit(Ltc6812_BalanceContext_t *ctx)
     }
 
     (void)memset(ctx, 0, sizeof(*ctx));
-    ctx->cfg.balanceStart_mV = 15u;
+    ctx->cfg.balanceStart_mV = 15u;			//For testing, changed to 13u from 15U
     ctx->cfg.balanceStop_mV = 5u;
     ctx->cfg.balanceMargin_mV = 10u;
-    ctx->cfg.minCellForBalance_mV = 3700u;
+    ctx->cfg.minCellForBalance_mV = 3700u; 	//For testing, changed to 2000U from 3700u;
 }
 
 void Ltc6812_BalanceEvaluate(Ltc6812_BalanceContext_t *bal, Ltc6812_Context_t *drv)

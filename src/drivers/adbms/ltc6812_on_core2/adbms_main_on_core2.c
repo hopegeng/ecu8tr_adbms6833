@@ -11,18 +11,32 @@
 #include "ltc6812_shared.h"
 #include "ecu8tr_cmd.h"
 
+#define DO_TEST			(0)
 #define ISR_PRIORITY_STM2_TICK_LTC6812  19
 #define LTC6812_CORE2_DEMO_MODE         (0u)
 #define LTC6812_QSPI_WAIT_TIMEOUT_LOOPS (1000000u)
+
+#ifndef LTC6812_BALANCE_FORCE_CHARGING_ACTIVE
+/* DC3036A bench test hook. Set to 0 for application-controlled charging state. */
+#define LTC6812_BALANCE_FORCE_CHARGING_ACTIVE (1u)
+#endif
+
+#ifndef LTC6812_BALANCE_DCTO_MINUTES_CODE
+#define LTC6812_BALANCE_DCTO_MINUTES_CODE     (1u)
+#endif
 
 #ifndef LTC6812_ACTIVE_IC_COUNT
 #define LTC6812_ACTIVE_IC_COUNT         (1u)
 #endif
 
+#undef LTC6812_ENABLE_DEBUG_PRINTF
+#define LTC6812_ENABLE_DEBUG_PRINTF     (1u)
 #if LTC6812_ENABLE_DEBUG_PRINTF
 #define LTC6812_DEBUG_PRINTF(...)       PRINTF(__VA_ARGS__)
+#define LTC6812_PRINT_DEBUG_STATUS(status) Ltc6812_PrintDebugStatus(status)
 #else
 #define LTC6812_DEBUG_PRINTF(...)       ((void)0)
+#define LTC6812_PRINT_DEBUG_STATUS(status) ((void)(status))
 #endif
 
 typedef struct
@@ -41,8 +55,12 @@ static bool g_ltc6812RuntimeInit = false;
 static ECU8TR_ADBMS6830_State_t g_ltc6812State = ECU8TR_ADBMS6830_IDLE;
 static uint32_t g_ltc6812LastPublishedMeasureMs = 0u;
 static uint32_t g_ltc6812SampleCounter = 0u;
+#if LTC6812_ENABLE_DEBUG_PRINTF
 static uint32_t g_ltc6812LastDebugPrintMs = 0u;
+#endif
+static uint32_t g_ltc6812LastBalanceDebugMeasureMs = 0u;
 static uint32_t g_ltc6812QspiTimeoutCount = 0u;
+static uint16_t g_ltc6812LastAppliedDcc[LTC6812_MAX_ICS] = {0u};
 
 static Ltc6812_Status_t Ltc6812_QspiTransfer(const uint8_t *tx, uint8_t *rx, uint16_t len);
 static void Ltc6812_DelayUs(uint32_t us);
@@ -51,20 +69,76 @@ static void Ltc6812_FillDefaultCfga(Ltc6812_Context_t *ctx);
 static void Ltc6812_FillDefaultCfgb(Ltc6812_Context_t *ctx);
 static void Ltc6812_InitCore2Runtime(void);
 static void Ltc6812_PublishSharedSnapshot(void);
+static bool Ltc6812_HasAnyDccSet(const Ltc6812_BalanceContext_t *bal, uint8_t icCount);
+static void Ltc6812_UpdateLastAppliedDcc(const Ltc6812_BalanceContext_t *bal, uint8_t icCount);
 #if LTC6812_CORE2_DEMO_MODE
 static void Ltc6812_PublishDemoSnapshot(void);
 #endif
 static void Ltc6812_SharedMemoryBarrier(void);
+#if LTC6812_ENABLE_DEBUG_PRINTF
 static const char *Ltc6812_StatusToString(Ltc6812_Status_t status);
 static const char *Ltc6812_SvcStateToString(Ltc6812_ServiceState_t state);
 static const char *Ltc6812_DiagStepToString(Ltc6812_DiagStep_t step);
+static const char *Ltc6812_BalanceParityToString(Ltc6812_BalanceParity_t parity);
 static void Ltc6812_PrintDebugStatus(Ltc6812_Status_t status);
+#endif
 
 static void Ltc6812_SharedMemoryBarrier(void)
 {
     __dsync();
 }
 
+static bool Ltc6812_HasAnyDccSet(const Ltc6812_BalanceContext_t *bal, uint8_t icCount)
+{
+    uint8_t ic;
+
+    if (bal == 0)
+    {
+        return false;
+    }
+
+    if (icCount > LTC6812_MAX_ICS)
+    {
+        icCount = LTC6812_MAX_ICS;
+    }
+
+    for (ic = 0u; ic < icCount; ic++)
+    {
+        if (bal->result[ic].dccMask != 0u)
+        {
+            return true;
+        }
+
+        if (g_ltc6812LastAppliedDcc[ic] != 0u)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static void Ltc6812_UpdateLastAppliedDcc(const Ltc6812_BalanceContext_t *bal, uint8_t icCount)
+{
+    uint8_t ic;
+
+    if (bal == 0)
+    {
+        return;
+    }
+
+    if (icCount > LTC6812_MAX_ICS)
+    {
+        icCount = LTC6812_MAX_ICS;
+    }
+
+    for (ic = 0u; ic < icCount; ic++)
+    {
+        g_ltc6812LastAppliedDcc[ic] = bal->result[ic].dccMask;
+    }
+}
+
+#if LTC6812_ENABLE_DEBUG_PRINTF
 static const char *Ltc6812_StatusToString(Ltc6812_Status_t status)
 {
     switch (status)
@@ -144,6 +218,21 @@ static const char *Ltc6812_DiagStepToString(Ltc6812_DiagStep_t step)
     }
 }
 
+static const char *Ltc6812_BalanceParityToString(Ltc6812_BalanceParity_t parity)
+{
+    switch (parity)
+    {
+        case LTC6812_BALANCE_PARITY_NONE:
+            return "NONE";
+        case LTC6812_BALANCE_PARITY_ODD:
+            return "ODD";
+        case LTC6812_BALANCE_PARITY_EVEN:
+            return "EVEN";
+        default:
+            return "UNKNOWN";
+    }
+}
+
 static void Ltc6812_PrintDebugStatus(Ltc6812_Status_t status)
 {
     if ((status == LTC6812_OK) &&
@@ -174,6 +263,7 @@ static void Ltc6812_PrintDebugStatus(Ltc6812_Status_t status)
                          (uint32_t)g_ltc6812Drv.cell[0].mV[2],
                          (uint32_t)g_ltc6812Drv.cell[0].mV[9]);
 }
+#endif
 
 void Ltc6812_SharedInit(void)
 {
@@ -335,7 +425,7 @@ static void Ltc6812_FillDefaultCfga(Ltc6812_Context_t *ctx)
         ctx->cfga[ic].data[2] = 0x00u;
         ctx->cfga[ic].data[3] = 0x00u;
         ctx->cfga[ic].data[4] = 0x00u;
-        ctx->cfga[ic].data[5] = 0x00u;
+        ctx->cfga[ic].data[5] = (uint8_t)((LTC6812_BALANCE_DCTO_MINUTES_CODE & 0x0Fu) << 4u);
     }
 }
 
@@ -474,12 +564,13 @@ void ltc6812_main_on_core2(void)
     Ltc6812_FillDefaultCfga(&g_ltc6812Drv);
     Ltc6812_FillDefaultCfgb(&g_ltc6812Drv);
 
-    g_ltc6812Bal.cfg.chargingActive = false;
+    g_ltc6812Bal.cfg.chargingActive = (LTC6812_BALANCE_FORCE_CHARGING_ACTIVE != 0u);
     g_ltc6812Bal.cfg.faultActive = false;
     g_ltc6812Drv.svcState = LTC6812_SVC_BOOT;
 
-
-    //ltc6812_test();
+#if DO_TEST
+    ltc6812_test();
+#endif
 
 
     while (1)
@@ -488,7 +579,7 @@ void ltc6812_main_on_core2(void)
 
         g_ltc6812Drv.tickMs = g_ltc6812SysTickMs;
         status = Ltc6812_Task(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds, LTC6812_SHARED_SAMPLE_PERIOD_MS);
-        Ltc6812_PrintDebugStatus(status);
+        //LTC6812_PRINT_DEBUG_STATUS(status);
 
         if (status != LTC6812_OK)
         {
@@ -501,13 +592,59 @@ void ltc6812_main_on_core2(void)
 
         if (g_ltc6812Drv.svcState == LTC6812_SVC_STANDBY)
         {
+            bool balanceDecisionFresh = (g_ltc6812Drv.lastMeasureMs != g_ltc6812LastBalanceDebugMeasureMs);
+
             Ltc6812_BalanceEvaluate(&g_ltc6812Bal, &g_ltc6812Drv);
 
-            if (g_ltc6812Bal.cfg.chargingActive == true)
+            if (balanceDecisionFresh == true)
             {
-                (void)Ltc6812_SendMute(&g_ltc6812Hal, &g_ltc6812Cmds);
-                (void)Ltc6812_BalanceApplyDcc(&g_ltc6812Bal, &g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds);
-                (void)Ltc6812_SendUnmute(&g_ltc6812Hal, &g_ltc6812Cmds);
+#if 0
+                for (uint8_t afeIdx = 0u; afeIdx < g_ltc6812Drv.icCount; afeIdx++)
+                {
+                    LTC6812_DEBUG_PRINTF("LTC6812 BAL AFE%u chg=%u en=%u fault=%u min=%u max=%u d=%u parity=%s dcc=0x%04X\r\n",
+                                         (uint32_t)afeIdx,
+                                         g_ltc6812Bal.cfg.chargingActive ? 1u : 0u,
+                                         g_ltc6812Bal.cfg.balancingEnabled ? 1u : 0u,
+                                         g_ltc6812Bal.cfg.faultActive ? 1u : 0u,
+                                         (uint32_t)g_ltc6812Bal.result[afeIdx].cellMin_mV,
+                                         (uint32_t)g_ltc6812Bal.result[afeIdx].cellMax_mV,
+                                         (uint32_t)g_ltc6812Bal.result[afeIdx].delta_mV,
+                                         Ltc6812_BalanceParityToString(g_ltc6812Bal.result[afeIdx].selectedParity),
+                                         (uint32_t)g_ltc6812Bal.result[afeIdx].dccMask);
+                }
+#endif
+
+                g_ltc6812LastBalanceDebugMeasureMs = g_ltc6812Drv.lastMeasureMs;
+            }
+
+            if ((balanceDecisionFresh == true) &&
+                (g_ltc6812Bal.cfg.chargingActive == true) &&
+                (Ltc6812_HasAnyDccSet(&g_ltc6812Bal, g_ltc6812Drv.icCount) == true))
+            {
+                status = Ltc6812_SendMute(&g_ltc6812Hal, &g_ltc6812Cmds);
+                if (status == LTC6812_OK)
+                {
+                    status = Ltc6812_BalanceApplyDcc(&g_ltc6812Bal, &g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds);
+                }
+                if (status == LTC6812_OK)
+                {
+                    status = Ltc6812_SendUnmute(&g_ltc6812Hal, &g_ltc6812Cmds);
+                }
+                if (status != LTC6812_OK)
+                {
+                    g_ltc6812State = ECU8TR_ADBMS6830_ERROR;
+                    LTC6812_PRINT_DEBUG_STATUS(status);
+                }
+                else if (g_ltc6812Drv.icCount > 0u)
+                {
+                    Ltc6812_UpdateLastAppliedDcc(&g_ltc6812Bal, g_ltc6812Drv.icCount);
+                    LTC6812_DEBUG_PRINTF("LTC6812 BAL WRITE st=OK dcc=0x%04X cfga4=%02X cfga5=%02X cfgb0=%02X\r\n",
+                                         (uint32_t)g_ltc6812Bal.result[0].dccMask,
+                                         (uint32_t)g_ltc6812Drv.cfga[0].data[4],
+                                         (uint32_t)g_ltc6812Drv.cfga[0].data[5],
+                                         (uint32_t)g_ltc6812Drv.cfgb[0].data[0]);
+                    PRINTF( "\r\n" );
+                }
             }
 
             if ((g_ltc6812Drv.lastMeasureMs != 0u) &&
@@ -527,7 +664,7 @@ ECU8TR_ADBMS6830_State_t ltc6812_getState(void)
 }
 
 /************ For test *****************/
-#if 0
+#if DO_TEST
 volatile static uint8_t ray_6812[13] ={0};
 static void ltc6812_test( void )
 {

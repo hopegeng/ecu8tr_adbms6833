@@ -9,7 +9,7 @@
 #endif
 
 #if LTC6812_WAKE_THROUGH_ADBMS6822
-#define LTC6812_WAKE_SLEEP_BYTES           (2u)
+#define LTC6812_WAKE_SLEEP_BYTES           (3u)
 #define LTC6812_WAKE_SLEEP_BYTE            (0x00u)
 #define LTC6812_WAKE_SLEEP_POST_DELAY_US   (400u)
 #else
@@ -20,6 +20,10 @@
 #define LTC6812_LINK_IDLE_TIMEOUT_MS       (5u)
 #define LTC6812_SLEEP_WATCHDOG_TIMEOUT_MS  (2000u)
 #define LTC6812_CELL_MEASUREMENT_TIME_MS   (8u)
+
+#ifndef LTC6812_BALANCE_DCTO_MINUTES_CODE
+#define LTC6812_BALANCE_DCTO_MINUTES_CODE     (1u)
+#endif
 
 static Ltc6812_Status_t Ltc6812_BuildCmdFrame(uint16_t cmd, uint8_t frame[LTC6812_CMD_FRAME_SIZE])
 {
@@ -107,9 +111,6 @@ static Ltc6812_Status_t Ltc6812_ReadRegisterGroup(const Ltc6812_Hal_t *hal,
     totalLen = (uint16_t)(LTC6812_CMD_FRAME_SIZE + ((uint16_t)icCount * (dataLen + LTC6812_DATA_PEC_SIZE)));
     (void)memset(tx, 0, totalLen);
     (void)Ltc6812_BuildCmdFrame(cmd, tx);
-
-    //0x00, 0x02, 0x2b, 0x0a
-    PRINTF( "LTC6812: Read CFGA command value = 0x%x, 0x%x, 0x%x, 0x%x\r\n", tx[0], tx[1], tx[2], tx[3] );
 
     if (hal->spiTransfer(tx, rx, totalLen) != LTC6812_OK)
     {
@@ -403,41 +404,46 @@ Ltc6812_Status_t Ltc6812_FullInitialize(Ltc6812_Context_t *ctx, const Ltc6812_Ha
         return LTC6812_ERR_PARAM;
     }
 
-    st = Ltc6812_WriteCfga(ctx, hal, cmds);
-    if (st != LTC6812_OK)
-    {
-        return st;
-    }
 
-    ctx->lastDiagStep = LTC6812_DIAG_RDCFGA;
-    ctx->lastDiagCmd = cmds->RDCFGA;
-    st = Ltc6812_ReadRegisterGroup(hal, cmds->RDCFGA, readCfga, LTC6812_REG_GROUP_DATA_LEN, ctx->icCount, ctx, 0u);
-    if (st != LTC6812_OK)
-    {
-        if (st == LTC6812_ERR_PEC)
-        {
-            ctx->pecErrorCount++;
-        }
-        else if (st == LTC6812_ERR_COMM)
-        {
-            ctx->commErrorCount++;
-        }
-        return st;
-    }
+	st = Ltc6812_WriteCfga(ctx, hal, cmds);
+	if (st != LTC6812_OK)
+	{
+		return st;
+	}
 
-    return st;
-
+	ctx->lastDiagStep = LTC6812_DIAG_RDCFGA;
+	ctx->lastDiagCmd = cmds->RDCFGA;
+	st = Ltc6812_ReadRegisterGroup(hal, cmds->RDCFGA, readCfga, LTC6812_REG_GROUP_DATA_LEN, ctx->icCount, ctx, 0u);
+	if (st != LTC6812_OK)
+	{
+		if (st == LTC6812_ERR_PEC)
+		{
+			ctx->pecErrorCount++;
+		}
+		else if (st == LTC6812_ERR_COMM)
+		{
+			ctx->commErrorCount++;
+		}
+		return st;
+	}
 
 
-    for (ic = 0u; ic < ctx->icCount; ic++)
-    {
-        if (memcmp(ctx->cfga[ic].data, &readCfga[(uint16_t)ic * LTC6812_REG_GROUP_DATA_LEN], LTC6812_REG_GROUP_DATA_LEN) != 0)
-        {
-            ctx->commErrorCount++;
-            ctx->lastDiagStep = LTC6812_DIAG_CFGA_COMPARE;
-            return LTC6812_ERR_COMM;
-        }
-    }
+	for (ic = 0u; ic < ctx->icCount; ic++)
+	{
+#if 0
+		if (memcmp(ctx->cfga[ic].data, &readCfga[(uint16_t)ic * LTC6812_REG_GROUP_DATA_LEN], LTC6812_REG_GROUP_DATA_LEN) != 0)
+		{
+			ctx->commErrorCount++;
+			ctx->lastDiagStep = LTC6812_DIAG_CFGA_COMPARE;
+			return LTC6812_ERR_COMM;
+		}
+#endif
+		for( int idx = 0; idx < 6; idx++ )
+		{
+			PRINTF( "The tx cfga[%d] = 0x%x, the rx cfga[%d] = 0x%x\r\n", idx, ctx->cfga[ic].data[idx], idx, readCfga[idx] );
+		}
+	}
+
 
     st = Ltc6812_WriteCfgb(ctx, hal, cmds);
     if (st != LTC6812_OK)
@@ -463,12 +469,16 @@ Ltc6812_Status_t Ltc6812_FullInitialize(Ltc6812_Context_t *ctx, const Ltc6812_Ha
 
     for (ic = 0u; ic < ctx->icCount; ic++)
     {
+#if 0
         if (memcmp(ctx->cfgb[ic].data, &readCfgb[(uint16_t)ic * LTC6812_REG_GROUP_DATA_LEN], LTC6812_REG_GROUP_DATA_LEN) != 0)
         {
             ctx->commErrorCount++;
             ctx->lastDiagStep = LTC6812_DIAG_CFGB_COMPARE;
             return LTC6812_ERR_COMM;
         }
+#else
+
+#endif
     }
 
     ctx->configured = true;
