@@ -122,11 +122,10 @@ static bool AdbmsRuntime_ProbeAdbms683x(void)
     return AdbmsRuntime_VerifyAdbmsPec10(block, ADBMS_RUNTIME_REG_GROUP_DATA_LEN);
 }
 
+volatile static uint8_t ray_detect[20] = {0};
 static bool AdbmsRuntime_ProbeLtc6812(void)
 {
     uint8_t block[ADBMS_RUNTIME_REG_GROUP_DATA_LEN + ADBMS_RUNTIME_DATA_PEC_SIZE];
-
-    delay_ms_stm2( 3000 );
 
     AdbmsRuntime_WakeIsoSpi();
 
@@ -134,6 +133,7 @@ static bool AdbmsRuntime_ProbeLtc6812(void)
     {
         return false;
     }
+    memcpy( ray_detect, block, 12 );
 
     return AdbmsRuntime_VerifyLtcPec15(block, ADBMS_RUNTIME_REG_GROUP_DATA_LEN);
 }
@@ -152,6 +152,7 @@ static uint16_t AdbmsRuntime_DetectDevice(void)
             return ADBMS_RUNTIME_DEVICE_ADBMS6830;
 #endif
         }
+
 
         if (AdbmsRuntime_ProbeLtc6812() == true)
         {
@@ -279,17 +280,75 @@ static bool AdbmsRuntime_VerifyLtcPec15(const uint8_t *payload, uint16_t dataLen
 
 static void AdbmsRuntime_Copy6830Snapshot(AdbmsRuntime_SharedSnapshot_t *dst, const Adbms6830_SharedSnapshot_t *src)
 {
-    (void)memcpy(dst, src, sizeof(*dst));
+    uint8_t afeIdx;
+    uint8_t cellIdx;
+
+    (void)memset(dst, 0, sizeof(*dst));
+    dst->sample_counter = src->sample_counter;
+    dst->sample_timestamp_ms = src->sample_timestamp_ms;
+    dst->valid = src->valid;
+
+    for (afeIdx = 0u; afeIdx < ADBMS_RUNTIME_SHARED_AFE_COUNT; afeIdx++)
+    {
+        for (cellIdx = 0u; cellIdx < ADBMS_RUNTIME_SHARED_USED_CELLS_PER_AFE; cellIdx++)
+        {
+            dst->cell_voltage_mV[afeIdx][cellIdx] = src->cell_voltage_mV[afeIdx][cellIdx];
+            dst->cell_temp_raw_0p01C[afeIdx][cellIdx] = src->cell_temp_raw_0p01C[afeIdx][cellIdx];
+            dst->balancing[afeIdx][cellIdx] = src->balancing[afeIdx][cellIdx];
+        }
+    }
 }
 
 static void AdbmsRuntime_Copy6833Snapshot(AdbmsRuntime_SharedSnapshot_t *dst, const Adbms6833_SharedSnapshot_t *src)
 {
-    (void)memcpy(dst, src, sizeof(*dst));
+    uint8_t afeIdx;
+    uint8_t cellIdx;
+
+    (void)memset(dst, 0, sizeof(*dst));
+    dst->sample_counter = src->sample_counter;
+    dst->sample_timestamp_ms = src->sample_timestamp_ms;
+    dst->valid = src->valid;
+
+    for (afeIdx = 0u; afeIdx < ADBMS_RUNTIME_SHARED_AFE_COUNT; afeIdx++)
+    {
+        for (cellIdx = 0u; cellIdx < ADBMS_RUNTIME_SHARED_USED_CELLS_PER_AFE; cellIdx++)
+        {
+            dst->cell_voltage_mV[afeIdx][cellIdx] = src->cell_voltage_mV[afeIdx][cellIdx];
+            dst->cell_temp_raw_0p01C[afeIdx][cellIdx] = src->cell_temp_raw_0p01C[afeIdx][cellIdx];
+            dst->balancing[afeIdx][cellIdx] = src->balancing[afeIdx][cellIdx];
+        }
+    }
 }
 
 static void AdbmsRuntime_CopyLtc6812Snapshot(AdbmsRuntime_SharedSnapshot_t *dst, const Ltc6812_SharedSnapshot_t *src)
 {
-    (void)memcpy(dst, src, sizeof(*dst));
+    uint8_t afeIdx;
+    uint8_t cellIdx;
+    uint8_t tempIdx;
+
+    (void)memset(dst, 0, sizeof(*dst));
+    dst->sample_counter = src->sample_counter;
+    dst->sample_timestamp_ms = src->sample_timestamp_ms;
+    dst->valid = src->valid;
+    dst->dew_sensor_mV = src->dew_sensor_mV;
+    dst->dew_sensor_state = src->dew_sensor_state;
+    dst->led_on = src->led_on;
+
+    for (afeIdx = 0u; afeIdx < ADBMS_RUNTIME_SHARED_AFE_COUNT; afeIdx++)
+    {
+        for (cellIdx = 0u; cellIdx < ADBMS_RUNTIME_SHARED_USED_CELLS_PER_AFE; cellIdx++)
+        {
+            dst->cell_voltage_mV[afeIdx][cellIdx] = src->cell_voltage_mV[afeIdx][cellIdx];
+            dst->cell_temp_raw_0p01C[afeIdx][cellIdx] = src->cell_temp_raw_0p01C[afeIdx][cellIdx];
+            dst->balancing[afeIdx][cellIdx] = src->balancing[afeIdx][cellIdx];
+        }
+    }
+
+    for (tempIdx = 0u; tempIdx < ADBMS_RUNTIME_SHARED_EXTERNAL_TEMP_COUNT; tempIdx++)
+    {
+        dst->external_temp_raw_0p01C[tempIdx] = src->external_temp_raw_0p01C[tempIdx];
+        dst->external_temp_voltage_mV[tempIdx] = src->external_temp_voltage_mV[tempIdx];
+    }
 }
 
 void adbms_runtime_main_on_core2(void)

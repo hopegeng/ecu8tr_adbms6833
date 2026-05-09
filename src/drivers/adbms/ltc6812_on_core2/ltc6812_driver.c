@@ -20,6 +20,17 @@
 #define LTC6812_LINK_IDLE_TIMEOUT_MS       (5u)
 #define LTC6812_SLEEP_WATCHDOG_TIMEOUT_MS  (2000u)
 #define LTC6812_CELL_MEASUREMENT_TIME_MS   (8u)
+#define LTC6812_AUX_MEASUREMENT_TIME_MS    (8u)
+#define LTC6812_STCOMM_CLOCK_BYTES         (9u)
+#define LTC6812_EEPROM_I2C_ADDR_BASE       (0x50u)
+#define LTC6812_EEPROM_WRITE_DELAY_MS      (5u)
+#define LTC6812_COMM_ICOM_START            (0x6u)
+#define LTC6812_COMM_ICOM_STOP             (0x1u)
+#define LTC6812_COMM_ICOM_BLANK            (0x0u)
+#define LTC6812_COMM_ICOM_NO_TX            (0x7u)
+#define LTC6812_COMM_FCOM_ACK              (0x0u)
+#define LTC6812_COMM_FCOM_NACK             (0x8u)
+#define LTC6812_COMM_FCOM_NACK_STOP        (0x9u)
 
 #ifndef LTC6812_BALANCE_DCTO_MINUTES_CODE
 #define LTC6812_BALANCE_DCTO_MINUTES_CODE     (1u)
@@ -177,6 +188,96 @@ static void Ltc6812_ParseCellGroup(Ltc6812_CellData_t *cell,
     }
 }
 
+static uint16_t Ltc6812_ParseRaw16(const uint8_t *block, uint8_t index)
+{
+    return (uint16_t)(((uint16_t)block[(uint16_t)(2u * index) + 1u] << 8u) |
+                      (uint16_t)block[(uint16_t)(2u * index)]);
+}
+
+static void Ltc6812_ParseAuxGroup(Ltc6812_AuxData_t *aux,
+                                  const uint8_t *block,
+                                  uint8_t group)
+{
+    uint8_t i;
+
+    if ((aux == 0) || (block == 0))
+    {
+        return;
+    }
+
+    for (i = 0u; i < 3u; i++)
+    {
+        uint16_t raw = Ltc6812_ParseRaw16(block, i);
+        uint8_t auxIndex = 0xFFu;
+
+        if (group == 0u)
+        {
+            auxIndex = i;
+        }
+        else if (group == 1u)
+        {
+            if (i < 2u)
+            {
+                auxIndex = (uint8_t)(3u + i);
+            }
+            else
+            {
+                aux->vref2Raw = raw;
+                aux->vref2mV = Ltc6812_RawTo_mV(raw);
+            }
+        }
+        else if (group == 2u)
+        {
+            auxIndex = (uint8_t)(5u + i);
+        }
+        else if ((group == 3u) && (i == 0u))
+        {
+            auxIndex = 8u;
+        }
+
+        if (auxIndex < LTC6812_AUX_CHANNELS_PER_IC)
+        {
+            aux->raw[auxIndex] = raw;
+            aux->mV[auxIndex] = Ltc6812_RawTo_mV(raw);
+        }
+    }
+}
+
+static void Ltc6812_PackCommByte(uint8_t icom, uint8_t data, uint8_t fcom, uint8_t *commHi, uint8_t *commLo)
+{
+    if ((commHi == 0) || (commLo == 0))
+    {
+        return;
+    }
+
+    *commHi = (uint8_t)(((icom & 0x0Fu) << 4u) | ((data >> 4u) & 0x0Fu));
+    *commLo = (uint8_t)((data << 4u) | (fcom & 0x0Fu));
+}
+
+static uint8_t Ltc6812_UnpackCommData(const uint8_t *comm, uint8_t byteIndex)
+{
+    uint16_t offset = (uint16_t)byteIndex * 2u;
+
+    return (uint8_t)(((comm[offset] & 0x0Fu) << 4u) | ((comm[offset + 1u] >> 4u) & 0x0Fu));
+}
+
+static void Ltc6812_FillNoTransmitComm(uint8_t comm[LTC6812_COMM_BYTES_PER_IC])
+{
+    uint8_t byteIndex;
+
+    if (comm == 0)
+    {
+        return;
+    }
+
+    for (byteIndex = 0u; byteIndex < 3u; byteIndex++)
+    {
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_NO_TX, 0xFFu, LTC6812_COMM_FCOM_NACK_STOP,
+                             &comm[(uint16_t)byteIndex * 2u],
+                             &comm[(uint16_t)byteIndex * 2u + 1u]);
+    }
+}
+
 void Ltc6812_Init(Ltc6812_Context_t *ctx, uint8_t icCount)
 {
     if (ctx == 0)
@@ -207,6 +308,9 @@ void Ltc6812_SetDefaultCommands(Ltc6812_CommandSet_t *cmds)
     cmds->WRCFGB = LTC6812_WRCFGB_REG;
     cmds->RDCFGA = LTC6812_RDCFGA_REG;
     cmds->RDCFGB = LTC6812_RDCFGB_REG;
+    cmds->WRCOMM = LTC6812_WRCOMM_REG;
+    cmds->RDCOMM = LTC6812_RDCOMM_REG;
+    cmds->STCOMM = LTC6812_STCOMM_REG;
     cmds->RDCVA = LTC6812_RDCVA_REG;
     cmds->RDCVB = LTC6812_RDCVB_REG;
     cmds->RDCVC = LTC6812_RDCVC_REG;
@@ -214,6 +318,10 @@ void Ltc6812_SetDefaultCommands(Ltc6812_CommandSet_t *cmds)
     cmds->RDCVE = LTC6812_RDCVE_REG;
     cmds->ADCV = LTC6812_ADCV_BASE_REG;
     cmds->ADAX = LTC6812_ADAX_BASE_REG;
+    cmds->RDAUXA = LTC6812_RDAUXA_REG;
+    cmds->RDAUXB = LTC6812_RDAUXB_REG;
+    cmds->RDAUXC = LTC6812_RDAUXC_REG;
+    cmds->RDAUXD = LTC6812_RDAUXD_REG;
     cmds->CLRCELL = LTC6812_CLRCELL_REG;
     cmds->MUTE = LTC6812_MUTE_REG;
     cmds->UNMUTE = LTC6812_UNMUTE_REG;
@@ -272,6 +380,16 @@ Ltc6812_Status_t Ltc6812_StartCellConversion(const Ltc6812_Hal_t *hal, const Ltc
     }
 
     return Ltc6812_SendCommandOnly(hal, cmds->ADCV);
+}
+
+Ltc6812_Status_t Ltc6812_StartAuxConversion(const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds)
+{
+    if (cmds == 0)
+    {
+        return LTC6812_ERR_PARAM;
+    }
+
+    return Ltc6812_SendCommandOnly(hal, cmds->ADAX);
 }
 
 Ltc6812_Status_t Ltc6812_WriteCfga(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds)
@@ -392,6 +510,57 @@ Ltc6812_Status_t Ltc6812_ReadCellVoltagesByGroup(Ltc6812_Context_t *ctx, const L
     return LTC6812_OK;
 }
 
+Ltc6812_Status_t Ltc6812_ReadAuxVoltagesByGroup(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds)
+{
+    uint16_t groupCmds[LTC6812_AUX_GROUP_COUNT];
+    uint8_t groupData[LTC6812_MAX_ICS * LTC6812_CELL_GROUP_DATA_BYTES];
+    uint8_t group;
+    uint8_t ic;
+
+    if ((ctx == 0) || (hal == 0) || (cmds == 0) || (hal->spiTransfer == 0))
+    {
+        return LTC6812_ERR_PARAM;
+    }
+
+    groupCmds[0] = cmds->RDAUXA;
+    groupCmds[1] = cmds->RDAUXB;
+    groupCmds[2] = cmds->RDAUXC;
+    groupCmds[3] = cmds->RDAUXD;
+
+    for (group = 0u; group < LTC6812_AUX_GROUP_COUNT; group++)
+    {
+        Ltc6812_Status_t st = Ltc6812_ReadRegisterGroup(hal,
+                                                        groupCmds[group],
+                                                        groupData,
+                                                        LTC6812_CELL_GROUP_DATA_BYTES,
+                                                        ctx->icCount,
+                                                        ctx,
+                                                        group);
+        if (st != LTC6812_OK)
+        {
+            if (st == LTC6812_ERR_PEC)
+            {
+                ctx->pecErrorCount++;
+                ctx->lastDiagStep = LTC6812_DIAG_RDAUX_PEC;
+            }
+            return st;
+        }
+
+        for (ic = 0u; ic < ctx->icCount; ic++)
+        {
+            Ltc6812_ParseAuxGroup(&ctx->aux[ic],
+                                  &groupData[(uint16_t)ic * LTC6812_CELL_GROUP_DATA_BYTES],
+                                  group);
+        }
+
+        ctx->lastDiagStep = LTC6812_DIAG_RDAUX;
+        ctx->lastDiagCmd = groupCmds[group];
+        ctx->lastDiagGroup = group;
+    }
+
+    return LTC6812_OK;
+}
+
 Ltc6812_Status_t Ltc6812_FullInitialize(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds)
 {
     uint8_t readCfga[LTC6812_MAX_ICS * LTC6812_REG_GROUP_DATA_LEN];
@@ -408,6 +577,7 @@ Ltc6812_Status_t Ltc6812_FullInitialize(Ltc6812_Context_t *ctx, const Ltc6812_Ha
 	st = Ltc6812_WriteCfga(ctx, hal, cmds);
 	if (st != LTC6812_OK)
 	{
+		PRINTF( "Debug 1\r\n" );
 		return st;
 	}
 
@@ -416,6 +586,8 @@ Ltc6812_Status_t Ltc6812_FullInitialize(Ltc6812_Context_t *ctx, const Ltc6812_Ha
 	st = Ltc6812_ReadRegisterGroup(hal, cmds->RDCFGA, readCfga, LTC6812_REG_GROUP_DATA_LEN, ctx->icCount, ctx, 0u);
 	if (st != LTC6812_OK)
 	{
+		PRINTF( "Debug 2\r\n" );
+
 		if (st == LTC6812_ERR_PEC)
 		{
 			ctx->pecErrorCount++;
@@ -506,6 +678,279 @@ Ltc6812_Status_t Ltc6812_SendUnmute(const Ltc6812_Hal_t *hal, const Ltc6812_Comm
     }
 
     return Ltc6812_SendCommandOnly(hal, cmds->UNMUTE);
+}
+
+static Ltc6812_Status_t Ltc6812_WriteComm(Ltc6812_Context_t *ctx,
+                                          const Ltc6812_Hal_t *hal,
+                                          const Ltc6812_CommandSet_t *cmds,
+                                          const uint8_t comm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC])
+{
+    uint8_t tx[LTC6812_CMD_FRAME_SIZE + LTC6812_MAX_ICS * (LTC6812_COMM_BYTES_PER_IC + LTC6812_DATA_PEC_SIZE)];
+    uint8_t rx[sizeof(tx)];
+    uint16_t idx;
+    int32_t ic;
+
+    if ((ctx == 0) || (hal == 0) || (cmds == 0) || (comm == 0) || (hal->spiTransfer == 0))
+    {
+        return LTC6812_ERR_PARAM;
+    }
+
+    (void)Ltc6812_BuildCmdFrame(cmds->WRCOMM, tx);
+    ctx->lastDiagStep = LTC6812_DIAG_WRCOMM;
+    ctx->lastDiagCmd = cmds->WRCOMM;
+    idx = LTC6812_CMD_FRAME_SIZE;
+
+    for (ic = (int32_t)ctx->icCount - 1; ic >= 0; ic--)
+    {
+        uint16_t pec;
+
+        (void)memcpy(&tx[idx], comm[ic], LTC6812_COMM_BYTES_PER_IC);
+        pec = Ltc6812_Pec15Calc(comm[ic], LTC6812_COMM_BYTES_PER_IC);
+        idx = (uint16_t)(idx + LTC6812_COMM_BYTES_PER_IC);
+        tx[idx++] = (uint8_t)(pec >> 8u);
+        tx[idx++] = (uint8_t)(pec & 0xFFu);
+    }
+
+    return hal->spiTransfer(tx, rx, idx);
+}
+
+static Ltc6812_Status_t Ltc6812_StartComm(Ltc6812_Context_t *ctx,
+                                          const Ltc6812_Hal_t *hal,
+                                          const Ltc6812_CommandSet_t *cmds)
+{
+    uint8_t tx[LTC6812_CMD_FRAME_SIZE + LTC6812_STCOMM_CLOCK_BYTES];
+    uint8_t rx[sizeof(tx)];
+    uint8_t i;
+
+    if ((ctx == 0) || (hal == 0) || (cmds == 0) || (hal->spiTransfer == 0))
+    {
+        return LTC6812_ERR_PARAM;
+    }
+
+    (void)Ltc6812_BuildCmdFrame(cmds->STCOMM, tx);
+    for (i = LTC6812_CMD_FRAME_SIZE; i < sizeof(tx); i++)
+    {
+        tx[i] = 0xFFu;
+    }
+
+    ctx->lastDiagStep = LTC6812_DIAG_STCOMM;
+    ctx->lastDiagCmd = cmds->STCOMM;
+
+    return hal->spiTransfer(tx, rx, (uint16_t)sizeof(tx));
+}
+
+static Ltc6812_Status_t Ltc6812_ReadComm(Ltc6812_Context_t *ctx,
+                                         const Ltc6812_Hal_t *hal,
+                                         const Ltc6812_CommandSet_t *cmds,
+                                         uint8_t comm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC])
+{
+    Ltc6812_Status_t st;
+
+    if ((ctx == 0) || (hal == 0) || (cmds == 0) || (comm == 0))
+    {
+        return LTC6812_ERR_PARAM;
+    }
+
+    ctx->lastDiagStep = LTC6812_DIAG_RDCOMM;
+    ctx->lastDiagCmd = cmds->RDCOMM;
+    st = Ltc6812_ReadRegisterGroup(hal,
+                                   cmds->RDCOMM,
+                                   (uint8_t *)comm,
+                                   LTC6812_COMM_BYTES_PER_IC,
+                                   ctx->icCount,
+                                   ctx,
+                                   0u);
+    if (st == LTC6812_ERR_PEC)
+    {
+        ctx->pecErrorCount++;
+    }
+
+    return st;
+}
+
+static Ltc6812_Status_t Ltc6812_RunComm(Ltc6812_Context_t *ctx,
+                                        const Ltc6812_Hal_t *hal,
+                                        const Ltc6812_CommandSet_t *cmds,
+                                        const uint8_t txComm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC],
+                                        uint8_t rxComm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC])
+{
+    Ltc6812_Status_t st;
+
+    st = Ltc6812_WriteComm(ctx, hal, cmds, txComm);
+    if (st != LTC6812_OK)
+    {
+        return st;
+    }
+
+    st = Ltc6812_StartComm(ctx, hal, cmds);
+    if (st != LTC6812_OK)
+    {
+        return st;
+    }
+
+    return Ltc6812_ReadComm(ctx, hal, cmds, rxComm);
+}
+
+static uint8_t Ltc6812_EepromControlByte(uint16_t address, bool read)
+{
+    uint8_t block = (uint8_t)((address >> 8u) & 0x03u);
+    uint8_t control = (uint8_t)(((LTC6812_EEPROM_I2C_ADDR_BASE | block) << 1u) & 0xFEu);
+
+    if (read == true)
+    {
+        control |= 0x01u;
+    }
+
+    return control;
+}
+
+static void Ltc6812_PrepareCommForIc(uint8_t comm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC],
+                                     uint8_t icCount,
+                                     uint8_t activeIc)
+{
+    uint8_t ic;
+
+    for (ic = 0u; ic < LTC6812_MAX_ICS; ic++)
+    {
+        Ltc6812_FillNoTransmitComm(comm[ic]);
+    }
+
+    if ((activeIc < icCount) && (activeIc < LTC6812_MAX_ICS))
+    {
+        (void)memset(comm[activeIc], 0, LTC6812_COMM_BYTES_PER_IC);
+    }
+}
+
+Ltc6812_Status_t Ltc6812_EepromRead(Ltc6812_Context_t *ctx,
+                                    const Ltc6812_Hal_t *hal,
+                                    const Ltc6812_CommandSet_t *cmds,
+                                    uint16_t address,
+                                    uint8_t *data,
+                                    uint16_t len)
+{
+    uint16_t pos;
+    uint8_t txComm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC];
+    uint8_t rxComm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC];
+
+    if ((ctx == 0) || (hal == 0) || (cmds == 0) || (data == 0) || (len == 0u) || (ctx->icCount == 0u))
+    {
+        return LTC6812_ERR_PARAM;
+    }
+
+    for (pos = 0u; pos < len; pos++)
+    {
+        Ltc6812_Status_t st;
+        uint16_t eepromAddr = (uint16_t)(address + pos);
+
+        Ltc6812_PrepareCommForIc(txComm, ctx->icCount, 0u);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_START, Ltc6812_EepromControlByte(eepromAddr, false), LTC6812_COMM_FCOM_ACK, &txComm[0][0], &txComm[0][1]);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_BLANK, (uint8_t)(eepromAddr & 0xFFu), LTC6812_COMM_FCOM_ACK, &txComm[0][2], &txComm[0][3]);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_START, Ltc6812_EepromControlByte(eepromAddr, true), LTC6812_COMM_FCOM_ACK, &txComm[0][4], &txComm[0][5]);
+
+        st = Ltc6812_RunComm(ctx, hal, cmds, txComm, rxComm);
+        if (st != LTC6812_OK)
+        {
+            return st;
+        }
+
+        Ltc6812_PrepareCommForIc(txComm, ctx->icCount, 0u);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_BLANK, 0xFFu, LTC6812_COMM_FCOM_NACK_STOP, &txComm[0][0], &txComm[0][1]);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_NO_TX, 0xFFu, LTC6812_COMM_FCOM_NACK_STOP, &txComm[0][2], &txComm[0][3]);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_NO_TX, 0xFFu, LTC6812_COMM_FCOM_NACK_STOP, &txComm[0][4], &txComm[0][5]);
+
+        st = Ltc6812_RunComm(ctx, hal, cmds, txComm, rxComm);
+        if (st != LTC6812_OK)
+        {
+            return st;
+        }
+
+        data[pos] = Ltc6812_UnpackCommData(rxComm[0], 0u);
+    }
+
+    return LTC6812_OK;
+}
+
+Ltc6812_Status_t Ltc6812_EepromWrite(Ltc6812_Context_t *ctx,
+                                     const Ltc6812_Hal_t *hal,
+                                     const Ltc6812_CommandSet_t *cmds,
+                                     uint16_t address,
+                                     const uint8_t *data,
+                                     uint16_t len)
+{
+    uint16_t pos = 0u;
+    uint8_t txComm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC];
+    uint8_t rxComm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC];
+
+    if ((ctx == 0) || (hal == 0) || (cmds == 0) || (data == 0) || (len == 0u) || (ctx->icCount == 0u))
+    {
+        return LTC6812_ERR_PARAM;
+    }
+
+    while (pos < len)
+    {
+        Ltc6812_Status_t st;
+        uint16_t eepromAddr = (uint16_t)(address + pos);
+
+        Ltc6812_PrepareCommForIc(txComm, ctx->icCount, 0u);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_START, Ltc6812_EepromControlByte(eepromAddr, false), LTC6812_COMM_FCOM_ACK, &txComm[0][0], &txComm[0][1]);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_BLANK, (uint8_t)(eepromAddr & 0xFFu), LTC6812_COMM_FCOM_ACK, &txComm[0][2], &txComm[0][3]);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_BLANK, data[pos], LTC6812_COMM_FCOM_NACK_STOP, &txComm[0][4], &txComm[0][5]);
+
+        st = Ltc6812_RunComm(ctx, hal, cmds, txComm, rxComm);
+        if (st != LTC6812_OK)
+        {
+            return st;
+        }
+
+        if (hal->delayMs != 0)
+        {
+            hal->delayMs(LTC6812_EEPROM_WRITE_DELAY_MS);
+        }
+        pos++;
+    }
+
+    return LTC6812_OK;
+}
+
+Ltc6812_Status_t Ltc6812_SetGpioPullDown(Ltc6812_Context_t *ctx,
+                                         const Ltc6812_Hal_t *hal,
+                                         const Ltc6812_CommandSet_t *cmds,
+                                         uint8_t ic,
+                                         uint8_t gpio,
+                                         bool pullDownOn)
+{
+    uint8_t mask;
+
+    if ((ctx == 0) || (hal == 0) || (cmds == 0) || (ic >= ctx->icCount) || (gpio == 0u) || (gpio > 9u))
+    {
+        return LTC6812_ERR_PARAM;
+    }
+
+    if (gpio <= 5u)
+    {
+        mask = (uint8_t)(1u << (uint8_t)(gpio + 2u));
+        if (pullDownOn == true)
+        {
+            ctx->cfga[ic].data[0] &= (uint8_t)(~mask);
+        }
+        else
+        {
+            ctx->cfga[ic].data[0] |= mask;
+        }
+        return Ltc6812_WriteCfga(ctx, hal, cmds);
+    }
+
+    mask = (uint8_t)(1u << (uint8_t)(gpio - 6u));
+    if (pullDownOn == true)
+    {
+        ctx->cfgb[ic].data[0] &= (uint8_t)(~mask);
+    }
+    else
+    {
+        ctx->cfgb[ic].data[0] |= mask;
+    }
+
+    return Ltc6812_WriteCfgb(ctx, hal, cmds);
 }
 
 Ltc6812_Status_t Ltc6812_Task(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds, uint32_t measurementPeriodMs)

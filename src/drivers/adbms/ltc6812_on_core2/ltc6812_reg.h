@@ -23,6 +23,9 @@
 
 #define LTC6812_CLRCELL_REG       0x0711u
 #define LTC6812_CLRAUX_REG        0x0712u
+#define LTC6812_WRCOMM_REG        0x0721u
+#define LTC6812_RDCOMM_REG        0x0722u
+#define LTC6812_STCOMM_REG        0x0723u
 #define LTC6812_MUTE_REG          0x0028u
 #define LTC6812_UNMUTE_REG        0x0029u
 

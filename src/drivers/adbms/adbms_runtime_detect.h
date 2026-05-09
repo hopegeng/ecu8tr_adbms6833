@@ -17,6 +17,7 @@ extern "C" {
 
 #define ADBMS_RUNTIME_SHARED_AFE_COUNT              (2u)
 #define ADBMS_RUNTIME_SHARED_USED_CELLS_PER_AFE     (10u)
+#define ADBMS_RUNTIME_SHARED_EXTERNAL_TEMP_COUNT    (14u)
 
 #ifndef ADBMS_RUNTIME_SHARED_SAMPLE_PERIOD_MS
 #define ADBMS_RUNTIME_SHARED_SAMPLE_PERIOD_MS       (5000u)
@@ -33,6 +34,11 @@ typedef struct
     uint32_t sample_timestamp_ms;
     uint16_t cell_voltage_mV[ADBMS_RUNTIME_SHARED_AFE_COUNT][ADBMS_RUNTIME_SHARED_USED_CELLS_PER_AFE];
     int16_t cell_temp_raw_0p01C[ADBMS_RUNTIME_SHARED_AFE_COUNT][ADBMS_RUNTIME_SHARED_USED_CELLS_PER_AFE];
+    int16_t external_temp_raw_0p01C[ADBMS_RUNTIME_SHARED_EXTERNAL_TEMP_COUNT];
+    uint16_t external_temp_voltage_mV[ADBMS_RUNTIME_SHARED_EXTERNAL_TEMP_COUNT];
+    uint16_t dew_sensor_mV;
+    uint8_t dew_sensor_state;
+    uint8_t led_on;
     uint8_t balancing[ADBMS_RUNTIME_SHARED_AFE_COUNT][ADBMS_RUNTIME_SHARED_USED_CELLS_PER_AFE];
     bool valid;
 } AdbmsRuntime_SharedSnapshot_t;

@@ -11,10 +11,18 @@
 #include "ltc6812_shared.h"
 #include "ecu8tr_cmd.h"
 
-#define DO_TEST			(0)
+#define __DO_LTC6812_TEST__				(0)
+#define __DO_LTC6812_EEPROM_TEST__		(1)
 #define ISR_PRIORITY_STM2_TICK_LTC6812  19
 #define LTC6812_CORE2_DEMO_MODE         (0u)
 #define LTC6812_QSPI_WAIT_TIMEOUT_LOOPS (1000000u)
+#define LTC6812_BW_TEMP_COUNT           (14u)
+#define LTC6812_BW_DEW_THRESHOLD_MV     (1500u)
+#define LTC6812_BW_LED_IC               (1u)
+#define LTC6812_BW_LED_GPIO             (5u)
+#define LTC6812_BW_AUX_MEASUREMENT_TIME_MS (8u)
+#define LTC6812_EEPROM_TEST_ADDRESS     (0x03F0u)
+#define LTC6812_EEPROM_TEST_LEN         (8u)
 
 #ifndef LTC6812_BALANCE_FORCE_CHARGING_ACTIVE
 /* DC3036A bench test hook. Set to 0 for application-controlled charging state. */
@@ -26,7 +34,7 @@
 #endif
 
 #ifndef LTC6812_ACTIVE_IC_COUNT
-#define LTC6812_ACTIVE_IC_COUNT         (1u)
+#define LTC6812_ACTIVE_IC_COUNT         (2u)
 #endif
 
 #undef LTC6812_ENABLE_DEBUG_PRINTF
@@ -61,6 +69,7 @@ static uint32_t g_ltc6812LastDebugPrintMs = 0u;
 static uint32_t g_ltc6812LastBalanceDebugMeasureMs = 0u;
 static uint32_t g_ltc6812QspiTimeoutCount = 0u;
 static uint16_t g_ltc6812LastAppliedDcc[LTC6812_MAX_ICS] = {0u};
+static uint8_t g_ltc6812LedOn = 0u;
 
 static Ltc6812_Status_t Ltc6812_QspiTransfer(const uint8_t *tx, uint8_t *rx, uint16_t len);
 static void Ltc6812_DelayUs(uint32_t us);
@@ -69,10 +78,19 @@ static void Ltc6812_FillDefaultCfga(Ltc6812_Context_t *ctx);
 static void Ltc6812_FillDefaultCfgb(Ltc6812_Context_t *ctx);
 static void Ltc6812_InitCore2Runtime(void);
 static void Ltc6812_PublishSharedSnapshot(void);
+static int16_t Ltc6812_NtcVoltageToTempRaw_0p01C(uint16_t voltage_mV);
+static uint16_t Ltc6812_GetExternalTempVoltage_mV(uint8_t tempIndex);
+static int16_t Ltc6812_GetExternalTempRaw_0p01C(uint8_t tempIndex);
+static uint16_t Ltc6812_GetDewSensor_mV(void);
+static void Ltc6812_ReadBoardAuxInputs(void);
+static Ltc6812_Status_t Ltc6812_SetBoardLed(bool on);
 static bool Ltc6812_HasAnyDccSet(const Ltc6812_BalanceContext_t *bal, uint8_t icCount);
 static void Ltc6812_UpdateLastAppliedDcc(const Ltc6812_BalanceContext_t *bal, uint8_t icCount);
 #if LTC6812_CORE2_DEMO_MODE
 static void Ltc6812_PublishDemoSnapshot(void);
+#endif
+#if __DO_LTC6812_EEPROM_TEST__
+static void ltc6812_eeprom_test(void);
 #endif
 static void Ltc6812_SharedMemoryBarrier(void);
 #if LTC6812_ENABLE_DEBUG_PRINTF
@@ -136,6 +154,148 @@ static void Ltc6812_UpdateLastAppliedDcc(const Ltc6812_BalanceContext_t *bal, ui
     {
         g_ltc6812LastAppliedDcc[ic] = bal->result[ic].dccMask;
     }
+}
+
+static int16_t Ltc6812_NtcVoltageToTempRaw_0p01C(uint16_t voltage_mV)
+{
+    typedef struct
+    {
+        uint16_t voltage_mV;
+        int16_t temp_raw_0p01C;
+    } Ltc6812_NtcPoint_t;
+
+    static const Ltc6812_NtcPoint_t ntcTable[] =
+    {
+        {2962u, -4000},
+        {2044u,  2500},
+        { 529u,  8000},
+        { 184u, 12500}
+    };
+    uint8_t i;
+
+    if (voltage_mV >= ntcTable[0].voltage_mV)
+    {
+        return ntcTable[0].temp_raw_0p01C;
+    }
+
+    for (i = 0u; i < ((uint8_t)(sizeof(ntcTable) / sizeof(ntcTable[0])) - 1u); i++)
+    {
+        const Ltc6812_NtcPoint_t *hi = &ntcTable[i];
+        const Ltc6812_NtcPoint_t *lo = &ntcTable[i + 1u];
+
+        if (voltage_mV >= lo->voltage_mV)
+        {
+            int32_t voltageSpan_mV = (int32_t)hi->voltage_mV - (int32_t)lo->voltage_mV;
+            int32_t tempSpan_raw = (int32_t)lo->temp_raw_0p01C - (int32_t)hi->temp_raw_0p01C;
+            int32_t voltageDrop_mV = (int32_t)hi->voltage_mV - (int32_t)voltage_mV;
+
+            return (int16_t)((int32_t)hi->temp_raw_0p01C +
+                             ((voltageDrop_mV * tempSpan_raw) / voltageSpan_mV));
+        }
+    }
+
+    return ntcTable[(sizeof(ntcTable) / sizeof(ntcTable[0])) - 1u].temp_raw_0p01C;
+}
+
+static uint16_t Ltc6812_GetExternalTempVoltage_mV(uint8_t tempIndex)
+{
+    static const uint8_t tempIc[LTC6812_BW_TEMP_COUNT] =
+    {
+        0u, 0u, 0u, 0u, 0u, 0u, 0u,
+        1u, 1u, 1u, 1u, 1u, 1u, 1u
+    };
+    static const uint8_t tempGpio[LTC6812_BW_TEMP_COUNT] =
+    {
+        1u, 2u, 3u, 6u, 7u, 8u, 9u,
+        1u, 2u, 3u, 6u, 7u, 8u, 9u
+    };
+    uint8_t ic;
+    uint8_t gpio;
+
+    if (tempIndex >= LTC6812_BW_TEMP_COUNT)
+    {
+        return 0u;
+    }
+
+    ic = tempIc[tempIndex];
+    gpio = tempGpio[tempIndex];
+
+    if ((ic >= g_ltc6812Drv.icCount) || (gpio == 0u) || (gpio > LTC6812_AUX_CHANNELS_PER_IC))
+    {
+        return 0u;
+    }
+
+    return g_ltc6812Drv.aux[ic].mV[gpio - 1u];
+}
+
+static int16_t Ltc6812_GetExternalTempRaw_0p01C(uint8_t tempIndex)
+{
+    return Ltc6812_NtcVoltageToTempRaw_0p01C(Ltc6812_GetExternalTempVoltage_mV(tempIndex));
+}
+
+static uint16_t Ltc6812_GetDewSensor_mV(void)
+{
+    if (g_ltc6812Drv.icCount <= 1u)
+    {
+        return 0u;
+    }
+
+    return g_ltc6812Drv.aux[1].mV[3u];
+}
+
+static void Ltc6812_ReadBoardAuxInputs(void)
+{
+    Ltc6812_Status_t st;
+
+    st = Ltc6812_StartAuxConversion(&g_ltc6812Hal, &g_ltc6812Cmds);
+    if (st != LTC6812_OK)
+    {
+        g_ltc6812State = ECU8TR_ADBMS6830_ERROR;
+        LTC6812_PRINT_DEBUG_STATUS(st);
+        return;
+    }
+    g_ltc6812Drv.lastCommMs = g_ltc6812Drv.tickMs;
+
+    g_ltc6812Hal.delayMs(LTC6812_BW_AUX_MEASUREMENT_TIME_MS);
+    st = Ltc6812_WakeUp(&g_ltc6812Drv, &g_ltc6812Hal);
+    if (st == LTC6812_OK)
+    {
+        st = Ltc6812_ReadAuxVoltagesByGroup(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds);
+        if (st == LTC6812_OK)
+        {
+            g_ltc6812Drv.lastCommMs = g_ltc6812Drv.tickMs;
+        }
+    }
+
+    if (st != LTC6812_OK)
+    {
+        g_ltc6812State = ECU8TR_ADBMS6830_ERROR;
+        LTC6812_PRINT_DEBUG_STATUS(st);
+    }
+}
+
+static Ltc6812_Status_t Ltc6812_SetBoardLed(bool on)
+{
+    Ltc6812_Status_t st;
+
+    if (g_ltc6812Drv.icCount <= LTC6812_BW_LED_IC)
+    {
+        return LTC6812_ERR_STATE;
+    }
+
+    st = Ltc6812_SetGpioPullDown(&g_ltc6812Drv,
+                                 &g_ltc6812Hal,
+                                 &g_ltc6812Cmds,
+                                 LTC6812_BW_LED_IC,
+                                 LTC6812_BW_LED_GPIO,
+                                 on);
+    if (st == LTC6812_OK)
+    {
+        g_ltc6812LedOn = on ? 1u : 0u;
+        g_ltc6812Drv.lastCommMs = g_ltc6812Drv.tickMs;
+    }
+
+    return st;
 }
 
 #if LTC6812_ENABLE_DEBUG_PRINTF
@@ -269,6 +429,7 @@ void Ltc6812_SharedInit(void)
 {
     uint8_t afeIdx;
     uint8_t cellIdx;
+    uint8_t tempIdx;
 
     g_ltc6812Shared.sequence = 0u;
     g_ltc6812Shared.snapshot.sample_counter = 0u;
@@ -284,12 +445,23 @@ void Ltc6812_SharedInit(void)
             g_ltc6812Shared.snapshot.balancing[afeIdx][cellIdx] = 0u;
         }
     }
+
+    for (tempIdx = 0u; tempIdx < LTC6812_SHARED_EXTERNAL_TEMP_COUNT; tempIdx++)
+    {
+        g_ltc6812Shared.snapshot.external_temp_raw_0p01C[tempIdx] = 0;
+        g_ltc6812Shared.snapshot.external_temp_voltage_mV[tempIdx] = 0u;
+    }
+
+    g_ltc6812Shared.snapshot.dew_sensor_mV = 0u;
+    g_ltc6812Shared.snapshot.dew_sensor_state = 0u;
+    g_ltc6812Shared.snapshot.led_on = 0u;
 }
 
 void Ltc6812_SharedPublish(const Ltc6812_SharedSnapshot_t *snapshot)
 {
     uint8_t afeIdx;
     uint8_t cellIdx;
+    uint8_t tempIdx;
 
     if (snapshot == 0)
     {
@@ -313,6 +485,15 @@ void Ltc6812_SharedPublish(const Ltc6812_SharedSnapshot_t *snapshot)
         }
     }
 
+    for (tempIdx = 0u; tempIdx < LTC6812_SHARED_EXTERNAL_TEMP_COUNT; tempIdx++)
+    {
+        g_ltc6812Shared.snapshot.external_temp_raw_0p01C[tempIdx] = snapshot->external_temp_raw_0p01C[tempIdx];
+        g_ltc6812Shared.snapshot.external_temp_voltage_mV[tempIdx] = snapshot->external_temp_voltage_mV[tempIdx];
+    }
+    g_ltc6812Shared.snapshot.dew_sensor_mV = snapshot->dew_sensor_mV;
+    g_ltc6812Shared.snapshot.dew_sensor_state = snapshot->dew_sensor_state;
+    g_ltc6812Shared.snapshot.led_on = snapshot->led_on;
+
     Ltc6812_SharedMemoryBarrier();
     g_ltc6812Shared.sequence++;
     Ltc6812_SharedMemoryBarrier();
@@ -324,6 +505,7 @@ bool Ltc6812_SharedRead(Ltc6812_SharedSnapshot_t *snapshot)
     uint32_t seqEnd;
     uint8_t afeIdx;
     uint8_t cellIdx;
+    uint8_t tempIdx;
 
     if (snapshot == 0)
     {
@@ -355,11 +537,25 @@ bool Ltc6812_SharedRead(Ltc6812_SharedSnapshot_t *snapshot)
             }
         }
 
+        for (tempIdx = 0u; tempIdx < LTC6812_SHARED_EXTERNAL_TEMP_COUNT; tempIdx++)
+        {
+            snapshot->external_temp_raw_0p01C[tempIdx] = g_ltc6812Shared.snapshot.external_temp_raw_0p01C[tempIdx];
+            snapshot->external_temp_voltage_mV[tempIdx] = g_ltc6812Shared.snapshot.external_temp_voltage_mV[tempIdx];
+        }
+        snapshot->dew_sensor_mV = g_ltc6812Shared.snapshot.dew_sensor_mV;
+        snapshot->dew_sensor_state = g_ltc6812Shared.snapshot.dew_sensor_state;
+        snapshot->led_on = g_ltc6812Shared.snapshot.led_on;
+
         Ltc6812_SharedMemoryBarrier();
         seqEnd = g_ltc6812Shared.sequence;
     } while ((seqStart != seqEnd) || ((seqEnd & 0x1u) != 0u));
 
     return true;
+}
+
+bool Ltc6812_SetLed(bool on)
+{
+    return (Ltc6812_SetBoardLed(on) == LTC6812_OK) ? true : false;
 }
 
 IFX_INTERRUPT(stm2_isr_handler_ltc6812, 2, ISR_PRIORITY_STM2_TICK_LTC6812);
@@ -420,12 +616,12 @@ static void Ltc6812_FillDefaultCfga(Ltc6812_Context_t *ctx)
     for (ic = 0u; ic < ctx->icCount; ic++)
     {
         (void)memset(ctx->cfga[ic].data, 0, LTC6812_BYTES_PER_CFGR);
-        ctx->cfga[ic].data[0] = 0xFCu; /* REFON=1, ADCOPT=0, GPIO1..GPIO5 pull-downs off. */
+        ctx->cfga[ic].data[0] = 0xFE;
         ctx->cfga[ic].data[1] = 0x00u;
         ctx->cfga[ic].data[2] = 0x00u;
         ctx->cfga[ic].data[3] = 0x00u;
         ctx->cfga[ic].data[4] = 0x00u;
-        ctx->cfga[ic].data[5] = (uint8_t)((LTC6812_BALANCE_DCTO_MINUTES_CODE & 0x0Fu) << 4u);
+        ctx->cfga[ic].data[5] = 0x00u;	//(uint8_t)((LTC6812_BALANCE_DCTO_MINUTES_CODE & 0x0Fu) << 4u);
     }
 }
 
@@ -474,7 +670,9 @@ static void Ltc6812_PublishSharedSnapshot(void)
     Ltc6812_SharedSnapshot_t snapshot;
     uint8_t afeIdx;
     uint8_t usedCellIdx;
+    uint8_t tempIdx;
 
+    (void)memset(&snapshot, 0, sizeof(snapshot));
     snapshot.sample_counter = ++g_ltc6812SampleCounter;
     snapshot.sample_timestamp_ms = g_ltc6812Drv.lastMeasureMs;
     snapshot.valid = (g_ltc6812State == ECU8TR_ADBMS6830_OK);
@@ -485,7 +683,15 @@ static void Ltc6812_PublishSharedSnapshot(void)
         {
             uint8_t driverCellIdx = (uint8_t)(LTC6812_SHARED_FIRST_USED_CELL_0BASED + usedCellIdx);
 
-            snapshot.cell_temp_raw_0p01C[afeIdx][usedCellIdx] = 0;
+            if (usedCellIdx < 7u)
+            {
+                snapshot.cell_temp_raw_0p01C[afeIdx][usedCellIdx] =
+                    Ltc6812_GetExternalTempRaw_0p01C((uint8_t)(((uint8_t)afeIdx * 7u) + usedCellIdx));
+            }
+            else
+            {
+                snapshot.cell_temp_raw_0p01C[afeIdx][usedCellIdx] = 0;
+            }
             if (afeIdx < g_ltc6812Drv.icCount)
             {
                 uint16_t dccMask = g_ltc6812Bal.result[afeIdx].dccMask;
@@ -501,6 +707,16 @@ static void Ltc6812_PublishSharedSnapshot(void)
         }
     }
 
+    for (tempIdx = 0u; tempIdx < LTC6812_SHARED_EXTERNAL_TEMP_COUNT; tempIdx++)
+    {
+        snapshot.external_temp_voltage_mV[tempIdx] = Ltc6812_GetExternalTempVoltage_mV(tempIdx);
+        snapshot.external_temp_raw_0p01C[tempIdx] = Ltc6812_GetExternalTempRaw_0p01C(tempIdx);
+    }
+
+    snapshot.dew_sensor_mV = Ltc6812_GetDewSensor_mV();
+    snapshot.dew_sensor_state = (snapshot.dew_sensor_mV >= LTC6812_BW_DEW_THRESHOLD_MV) ? 1u : 0u;
+    snapshot.led_on = g_ltc6812LedOn;
+
     Ltc6812_SharedPublish(&snapshot);
 }
 
@@ -511,6 +727,7 @@ static void Ltc6812_PublishDemoSnapshot(void)
     uint8_t afeIdx;
     uint8_t cellIdx;
 
+    (void)memset(&snapshot, 0, sizeof(snapshot));
     snapshot.sample_counter = ++g_ltc6812SampleCounter;
     snapshot.sample_timestamp_ms = g_ltc6812SysTickMs;
     snapshot.valid = true;
@@ -552,13 +769,13 @@ void ltc6812_main_on_core2(void)
     }
 #else
     (void)lastDemoPublishMs;
-    qspi0mstr_Init_iLLD();
+    //qspi0mstr_Init_iLLD();
 
     g_ltc6812Hal.spiTransfer = Ltc6812_QspiTransfer;
     g_ltc6812Hal.delayUs = Ltc6812_DelayUs;
     g_ltc6812Hal.delayMs = Ltc6812_DelayMs;
 
-    Ltc6812_Init(&g_ltc6812Drv, LTC6812_ACTIVE_IC_COUNT);
+    Ltc6812_Init(&g_ltc6812Drv, 1 );//LTC6812_ACTIVE_IC_COUNT);
     Ltc6812_SetDefaultCommands(&g_ltc6812Cmds);
     Ltc6812_BalanceInit(&g_ltc6812Bal);
     Ltc6812_FillDefaultCfga(&g_ltc6812Drv);
@@ -568,10 +785,18 @@ void ltc6812_main_on_core2(void)
     g_ltc6812Bal.cfg.faultActive = false;
     g_ltc6812Drv.svcState = LTC6812_SVC_BOOT;
 
-#if DO_TEST
+#if __DO_LTC6812_TEST__
     ltc6812_test();
 #endif
 
+#if __DO_LTC6812_EEPROM_TEST__
+    while( 1 )
+    {
+    	ltc6812_eeprom_test();
+    	Ltc6812_DelayMs( 2000 );
+    }
+
+#endif
 
     while (1)
     {
@@ -598,6 +823,7 @@ void ltc6812_main_on_core2(void)
 
             if (balanceDecisionFresh == true)
             {
+                Ltc6812_ReadBoardAuxInputs();
 #if 0
                 for (uint8_t afeIdx = 0u; afeIdx < g_ltc6812Drv.icCount; afeIdx++)
                 {
@@ -664,7 +890,7 @@ ECU8TR_ADBMS6830_State_t ltc6812_getState(void)
 }
 
 /************ For test *****************/
-#if DO_TEST
+#if __DO_LTC6812_TEST__
 volatile static uint8_t ray_6812[13] ={0};
 static void ltc6812_test( void )
 {
@@ -693,5 +919,199 @@ static void ltc6812_test( void )
 		g_ltc6812Hal.spiTransfer( tx, ray_6812, 12 );
 		g_ltc6812Hal.delayMs( 3000 );
 	}
+}
+#endif
+
+#if __DO_LTC6812_EEPROM_TEST__
+static void ltc6812_eeprom_test(void)
+{
+    static const uint8_t patternA[LTC6812_EEPROM_TEST_LEN] =
+    {
+        0xA5u, 0x5Au, 0x12u, 0x34u, 0x56u, 0x78u, 0xC3u, 0x3Cu
+    };
+    static const uint8_t patternB[LTC6812_EEPROM_TEST_LEN] =
+    {
+        0x00u, 0xFFu, 0x55u, 0xAAu, 0x33u, 0xCCu, 0x0Fu, 0xF0u
+    };
+    uint8_t original[LTC6812_EEPROM_TEST_LEN];
+    uint8_t verify[LTC6812_EEPROM_TEST_LEN];
+    Ltc6812_Status_t status;
+    uint8_t i;
+    bool match;
+
+    (void)memset(original, 0, sizeof(original));
+    (void)memset(verify, 0, sizeof(verify));
+
+    LTC6812_DEBUG_PRINTF("LTC6812 EEPROM TEST start addr=0x%04X len=%u\r\n",
+                         (uint32_t)LTC6812_EEPROM_TEST_ADDRESS,
+                         (uint32_t)LTC6812_EEPROM_TEST_LEN);
+
+    status = Ltc6812_FullInitialize(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds);
+    LTC6812_DEBUG_PRINTF("LTC6812 EEPROM TEST init=%s\r\n", Ltc6812_StatusToString(status));
+    if (status != LTC6812_OK)
+    {
+        g_ltc6812State = ECU8TR_ADBMS6830_ERROR;
+        LTC6812_PRINT_DEBUG_STATUS(status);
+        return;
+    }
+
+    status = Ltc6812_EepromRead(&g_ltc6812Drv,
+                                &g_ltc6812Hal,
+                                &g_ltc6812Cmds,
+                                LTC6812_EEPROM_TEST_ADDRESS,
+                                original,
+                                LTC6812_EEPROM_TEST_LEN);
+    LTC6812_DEBUG_PRINTF("LTC6812 EEPROM TEST read-original=%s data=%02X %02X %02X %02X %02X %02X %02X %02X\r\n",
+                         Ltc6812_StatusToString(status),
+                         (uint32_t)original[0],
+                         (uint32_t)original[1],
+                         (uint32_t)original[2],
+                         (uint32_t)original[3],
+                         (uint32_t)original[4],
+                         (uint32_t)original[5],
+                         (uint32_t)original[6],
+                         (uint32_t)original[7]);
+    if (status != LTC6812_OK)
+    {
+        g_ltc6812State = ECU8TR_ADBMS6830_ERROR;
+        LTC6812_PRINT_DEBUG_STATUS(status);
+        return;
+    }
+
+    status = Ltc6812_EepromWrite(&g_ltc6812Drv,
+                                 &g_ltc6812Hal,
+                                 &g_ltc6812Cmds,
+                                 LTC6812_EEPROM_TEST_ADDRESS,
+                                 patternA,
+                                 LTC6812_EEPROM_TEST_LEN);
+    LTC6812_DEBUG_PRINTF("LTC6812 EEPROM TEST write-patternA=%s\r\n", Ltc6812_StatusToString(status));
+    if (status != LTC6812_OK)
+    {
+        g_ltc6812State = ECU8TR_ADBMS6830_ERROR;
+        LTC6812_PRINT_DEBUG_STATUS(status);
+        return;
+    }
+
+    status = Ltc6812_EepromRead(&g_ltc6812Drv,
+                                &g_ltc6812Hal,
+                                &g_ltc6812Cmds,
+                                LTC6812_EEPROM_TEST_ADDRESS,
+                                verify,
+                                LTC6812_EEPROM_TEST_LEN);
+    match = (status == LTC6812_OK);
+    for (i = 0u; i < LTC6812_EEPROM_TEST_LEN; i++)
+    {
+        if (verify[i] != patternA[i])
+        {
+            match = false;
+        }
+    }
+    LTC6812_DEBUG_PRINTF("LTC6812 EEPROM TEST verify-patternA=%s match=%u data=%02X %02X %02X %02X %02X %02X %02X %02X\r\n",
+                         Ltc6812_StatusToString(status),
+                         match ? 1u : 0u,
+                         (uint32_t)verify[0],
+                         (uint32_t)verify[1],
+                         (uint32_t)verify[2],
+                         (uint32_t)verify[3],
+                         (uint32_t)verify[4],
+                         (uint32_t)verify[5],
+                         (uint32_t)verify[6],
+                         (uint32_t)verify[7]);
+    if (match == false)
+    {
+        g_ltc6812State = ECU8TR_ADBMS6830_ERROR;
+        return;
+    }
+
+    status = Ltc6812_EepromWrite(&g_ltc6812Drv,
+                                 &g_ltc6812Hal,
+                                 &g_ltc6812Cmds,
+                                 LTC6812_EEPROM_TEST_ADDRESS,
+                                 patternB,
+                                 LTC6812_EEPROM_TEST_LEN);
+    LTC6812_DEBUG_PRINTF("LTC6812 EEPROM TEST write-patternB=%s\r\n", Ltc6812_StatusToString(status));
+    if (status != LTC6812_OK)
+    {
+        g_ltc6812State = ECU8TR_ADBMS6830_ERROR;
+        LTC6812_PRINT_DEBUG_STATUS(status);
+        return;
+    }
+
+    status = Ltc6812_EepromRead(&g_ltc6812Drv,
+                                &g_ltc6812Hal,
+                                &g_ltc6812Cmds,
+                                LTC6812_EEPROM_TEST_ADDRESS,
+                                verify,
+                                LTC6812_EEPROM_TEST_LEN);
+    match = (status == LTC6812_OK);
+    for (i = 0u; i < LTC6812_EEPROM_TEST_LEN; i++)
+    {
+        if (verify[i] != patternB[i])
+        {
+            match = false;
+        }
+    }
+    LTC6812_DEBUG_PRINTF("LTC6812 EEPROM TEST verify-patternB=%s match=%u data=%02X %02X %02X %02X %02X %02X %02X %02X\r\n",
+                         Ltc6812_StatusToString(status),
+                         match ? 1u : 0u,
+                         (uint32_t)verify[0],
+                         (uint32_t)verify[1],
+                         (uint32_t)verify[2],
+                         (uint32_t)verify[3],
+                         (uint32_t)verify[4],
+                         (uint32_t)verify[5],
+                         (uint32_t)verify[6],
+                         (uint32_t)verify[7]);
+    if (match == false)
+    {
+        g_ltc6812State = ECU8TR_ADBMS6830_ERROR;
+        return;
+    }
+
+    status = Ltc6812_EepromWrite(&g_ltc6812Drv,
+                                 &g_ltc6812Hal,
+                                 &g_ltc6812Cmds,
+                                 LTC6812_EEPROM_TEST_ADDRESS,
+                                 original,
+                                 LTC6812_EEPROM_TEST_LEN);
+    LTC6812_DEBUG_PRINTF("LTC6812 EEPROM TEST restore-original=%s\r\n", Ltc6812_StatusToString(status));
+    if (status != LTC6812_OK)
+    {
+        g_ltc6812State = ECU8TR_ADBMS6830_ERROR;
+        LTC6812_PRINT_DEBUG_STATUS(status);
+        return;
+    }
+
+    status = Ltc6812_EepromRead(&g_ltc6812Drv,
+                                &g_ltc6812Hal,
+                                &g_ltc6812Cmds,
+                                LTC6812_EEPROM_TEST_ADDRESS,
+                                verify,
+                                LTC6812_EEPROM_TEST_LEN);
+    match = (status == LTC6812_OK);
+    for (i = 0u; i < LTC6812_EEPROM_TEST_LEN; i++)
+    {
+        if (verify[i] != original[i])
+        {
+            match = false;
+        }
+    }
+
+    LTC6812_DEBUG_PRINTF("LTC6812 EEPROM TEST final=%s restored=%u data=%02X %02X %02X %02X %02X %02X %02X %02X\r\n",
+                         Ltc6812_StatusToString(status),
+                         match ? 1u : 0u,
+                         (uint32_t)verify[0],
+                         (uint32_t)verify[1],
+                         (uint32_t)verify[2],
+                         (uint32_t)verify[3],
+                         (uint32_t)verify[4],
+                         (uint32_t)verify[5],
+                         (uint32_t)verify[6],
+                         (uint32_t)verify[7]);
+
+    if (match == false)
+    {
+        g_ltc6812State = ECU8TR_ADBMS6830_ERROR;
+    }
 }
 #endif
