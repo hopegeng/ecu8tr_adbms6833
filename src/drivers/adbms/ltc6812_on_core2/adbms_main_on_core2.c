@@ -12,7 +12,9 @@
 #include "ecu8tr_cmd.h"
 
 #define __DO_LTC6812_TEST__				(0)
-#define __DO_LTC6812_EEPROM_TEST__		(1)
+#define __DO_LTC6812_EEPROM_TEST__		(0)
+
+
 #define ISR_PRIORITY_STM2_TICK_LTC6812  19
 #define LTC6812_CORE2_DEMO_MODE         (0u)
 #define LTC6812_QSPI_WAIT_TIMEOUT_LOOPS (1000000u)
@@ -775,7 +777,7 @@ void ltc6812_main_on_core2(void)
     g_ltc6812Hal.delayUs = Ltc6812_DelayUs;
     g_ltc6812Hal.delayMs = Ltc6812_DelayMs;
 
-    Ltc6812_Init(&g_ltc6812Drv, 1 );//LTC6812_ACTIVE_IC_COUNT);
+    Ltc6812_Init(&g_ltc6812Drv, LTC6812_ACTIVE_IC_COUNT);
     Ltc6812_SetDefaultCommands(&g_ltc6812Cmds);
     Ltc6812_BalanceInit(&g_ltc6812Bal);
     Ltc6812_FillDefaultCfga(&g_ltc6812Drv);

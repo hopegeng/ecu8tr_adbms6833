@@ -573,21 +573,21 @@ Ltc6812_Status_t Ltc6812_FullInitialize(Ltc6812_Context_t *ctx, const Ltc6812_Ha
         return LTC6812_ERR_PARAM;
     }
 
+    Ltc6812_SetLed( true );
 
 	st = Ltc6812_WriteCfga(ctx, hal, cmds);
 	if (st != LTC6812_OK)
 	{
-		PRINTF( "Debug 1\r\n" );
 		return st;
 	}
+
+
 
 	ctx->lastDiagStep = LTC6812_DIAG_RDCFGA;
 	ctx->lastDiagCmd = cmds->RDCFGA;
 	st = Ltc6812_ReadRegisterGroup(hal, cmds->RDCFGA, readCfga, LTC6812_REG_GROUP_DATA_LEN, ctx->icCount, ctx, 0u);
 	if (st != LTC6812_OK)
 	{
-		PRINTF( "Debug 2\r\n" );
-
 		if (st == LTC6812_ERR_PEC)
 		{
 			ctx->pecErrorCount++;
@@ -609,11 +609,12 @@ Ltc6812_Status_t Ltc6812_FullInitialize(Ltc6812_Context_t *ctx, const Ltc6812_Ha
 			ctx->lastDiagStep = LTC6812_DIAG_CFGA_COMPARE;
 			return LTC6812_ERR_COMM;
 		}
-#endif
 		for( int idx = 0; idx < 6; idx++ )
 		{
 			PRINTF( "The tx cfga[%d] = 0x%x, the rx cfga[%d] = 0x%x\r\n", idx, ctx->cfga[ic].data[idx], idx, readCfga[idx] );
 		}
+#endif
+
 	}
 
 
