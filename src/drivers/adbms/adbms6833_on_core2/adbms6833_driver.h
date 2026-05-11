@@ -169,6 +169,9 @@ Adbms6833_Status_t Adbms6833_WriteCfga(Adbms6833_Context_t *ctx,
 Adbms6833_Status_t Adbms6833_WriteCfgb(Adbms6833_Context_t *ctx,
                                        const Adbms6833_Hal_t *hal,
                                        const Adbms6833_CommandSet_t *cmds);
+Adbms6833_Status_t Adbms6833_ReadCfgb(Adbms6833_Context_t *ctx,
+                                      const Adbms6833_Hal_t *hal,
+                                      const Adbms6833_CommandSet_t *cmds);
 Adbms6833_Status_t Adbms6833_FullInitialize(Adbms6833_Context_t *ctx,
                                             const Adbms6833_Hal_t *hal,
                                             const Adbms6833_CommandSet_t *cmds);

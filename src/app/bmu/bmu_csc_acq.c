@@ -156,7 +156,7 @@ void Bmu_CscAcq_MainTask_20ms(uint32_t now_ms)
                                                cellIdx,
                                                (uint16_t)(snapshot.cell_voltage_mV[afeIdx][cellIdx] * 10u),
                                                snapshot.cell_temp_raw_0p01C[afeIdx][cellIdx],
-                                               BMU_INVALID_GPIO_VOLTAGE_RAW,
+                                               (uint16_t)(snapshot.gpio_voltage_mV[afeIdx][cellIdx] * 10u),
                                                (snapshot.balancing[afeIdx][cellIdx] != 0u),
                                                now_ms);
         }

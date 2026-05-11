@@ -475,6 +475,35 @@ Adbms6833_Status_t Adbms6833_WriteCfgb(Adbms6833_Context_t *ctx,
     return hal->spiTransfer(tx, rx, idx);
 }
 
+Adbms6833_Status_t Adbms6833_ReadCfgb(Adbms6833_Context_t *ctx,
+                                      const Adbms6833_Hal_t *hal,
+                                      const Adbms6833_CommandSet_t *cmds)
+{
+    uint8_t readCfgb[ADBMS6833_MAX_ICS * ADBMS6833_REG_GROUP_DATA_LEN];
+    uint8_t ic;
+    Adbms6833_Status_t st;
+
+    if ((ctx == NULL) || (hal == NULL) || (cmds == NULL))
+    {
+        return ADBMS6833_ERR_PARAM;
+    }
+
+    st = Adbms6833_ReadRegisterGroup(hal, cmds->RDCFGB, readCfgb, ADBMS6833_REG_GROUP_DATA_LEN, ctx->icCount);
+    if (st != ADBMS6833_OK)
+    {
+        return st;
+    }
+
+    for (ic = 0u; ic < ctx->icCount; ic++)
+    {
+        (void)memcpy(ctx->cfgb[ic].data,
+                     &readCfgb[(uint16_t)ic * ADBMS6833_REG_GROUP_DATA_LEN],
+                     ADBMS6833_REG_GROUP_DATA_LEN);
+    }
+
+    return ADBMS6833_OK;
+}
+
 Adbms6833_Status_t Adbms6833_ReadCellVoltagesAll(Adbms6833_Context_t *ctx,
                                                  const Adbms6833_Hal_t *hal,
                                                  const Adbms6833_CommandSet_t *cmds)

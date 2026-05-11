@@ -126,7 +126,7 @@ void Bmu_Init(void)
 
 void Bmu_Task_10ms(uint32_t now_ms)
 {
-    (void)now_ms;
+    Bmu_CellCan_MainTask_10ms(now_ms, Bmu_CscAcq_IsMeasurementActive());
 }
 
 void Bmu_Task_20ms(uint32_t now_ms)
@@ -141,12 +141,6 @@ void Bmu_Task_100ms(uint32_t now_ms)
 
 void Bmu_Task_1000ms(uint32_t now_ms)
 {
-    if (Bmu_CscAcq_IsMeasurementActive() == true)
-    {
-        (void)Bmu_CellCan_SendAll();
-        (void)Bmu_CellCan_SendMeasurementSummary();
-    }
-
 #if 0
     Bmu_SendDemoTraceMessages(now_ms);
 #else

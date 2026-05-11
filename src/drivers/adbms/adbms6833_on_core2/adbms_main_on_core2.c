@@ -28,7 +28,7 @@
 // Define a priority for the interrupt
 #define ISR_PRIORITY_STM2_TICK  12
 #define ADBMS6833_CORE2_DEMO_MODE       (0u)
-#define ADBMS6833_AUX_PRINT_PERIOD_MS   (10000u)
+#define ADBMS6833_AUX_PRINT_PERIOD_MS   (1000u)
 #if ADBMS6833_ENABLE_AUX_PRINTF
 #define ADBMS6833_AUX_PRINTF(...)       PRINTF(__VA_ARGS__)
 #else
@@ -158,6 +158,22 @@ static int16_t App_CellTempRawFromAux(uint8_t afeIdx, uint8_t usedCellIdx)
     return App_NtcVoltage_mV_ToTempRaw_0p01C(g_bmsDrv.aux[afeIdx].mV[auxIndex]);
 }
 
+static uint16_t App_ReadAppliedDccMaskFromCfgb(uint8_t afeIdx)
+{
+    if (afeIdx >= g_bmsDrv.icCount)
+    {
+        return 0u;
+    }
+
+    return (uint16_t)((uint16_t)g_bmsDrv.cfgb[afeIdx].data[4] |
+                      ((uint16_t)g_bmsDrv.cfgb[afeIdx].data[5] << 8u));
+}
+
+static uint16_t App_ClampAuxVoltageToU16_mV(uint32_t voltage_mV)
+{
+    return (voltage_mV > 0xFFFFu) ? 0xFFFFu : (uint16_t)voltage_mV;
+}
+
 void Adbms6833_SharedInit(void)
 {
     uint8_t afeIdx;
@@ -173,6 +189,7 @@ void Adbms6833_SharedInit(void)
         for (cellIdx = 0u; cellIdx < ADBMS6833_SHARED_USED_CELLS_PER_AFE; cellIdx++)
         {
             g_adbms6833Shared.snapshot.cell_voltage_mV[afeIdx][cellIdx] = 0u;
+            g_adbms6833Shared.snapshot.gpio_voltage_mV[afeIdx][cellIdx] = 0u;
             g_adbms6833Shared.snapshot.cell_temp_raw_0p01C[afeIdx][cellIdx] = 0;
             g_adbms6833Shared.snapshot.balancing[afeIdx][cellIdx] = 0u;
         }
@@ -202,6 +219,8 @@ void Adbms6833_SharedPublish(const Adbms6833_SharedSnapshot_t *snapshot)
         {
             g_adbms6833Shared.snapshot.cell_voltage_mV[afeIdx][cellIdx] =
                 snapshot->cell_voltage_mV[afeIdx][cellIdx];
+            g_adbms6833Shared.snapshot.gpio_voltage_mV[afeIdx][cellIdx] =
+                snapshot->gpio_voltage_mV[afeIdx][cellIdx];
             g_adbms6833Shared.snapshot.cell_temp_raw_0p01C[afeIdx][cellIdx] =
                 snapshot->cell_temp_raw_0p01C[afeIdx][cellIdx];
             g_adbms6833Shared.snapshot.balancing[afeIdx][cellIdx] =
@@ -246,6 +265,8 @@ bool Adbms6833_SharedRead(Adbms6833_SharedSnapshot_t *snapshot)
             {
                 snapshot->cell_voltage_mV[afeIdx][cellIdx] =
                     g_adbms6833Shared.snapshot.cell_voltage_mV[afeIdx][cellIdx];
+                snapshot->gpio_voltage_mV[afeIdx][cellIdx] =
+                    g_adbms6833Shared.snapshot.gpio_voltage_mV[afeIdx][cellIdx];
                 snapshot->cell_temp_raw_0p01C[afeIdx][cellIdx] =
                     g_adbms6833Shared.snapshot.cell_temp_raw_0p01C[afeIdx][cellIdx];
                 snapshot->balancing[afeIdx][cellIdx] =
@@ -415,9 +436,11 @@ static void App_PublishSharedSnapshot(void)
         for (usedCellIdx = 0u; usedCellIdx < ADBMS6833_SHARED_USED_CELLS_PER_AFE; usedCellIdx++)
         {
             uint8_t driverCellIdx = (uint8_t)(ADBMS6833_SHARED_FIRST_USED_CELL_0BASED + usedCellIdx);
-            uint16_t dccMask = g_bmsBal.result[afeIdx].dccMask;
+            uint16_t dccMask = App_ReadAppliedDccMaskFromCfgb(afeIdx);
 
             snapshot.cell_voltage_mV[afeIdx][usedCellIdx] = g_bmsDrv.cell[afeIdx].mV[driverCellIdx];
+            snapshot.gpio_voltage_mV[afeIdx][usedCellIdx] =
+                App_ClampAuxVoltageToU16_mV(g_bmsDrv.aux[afeIdx].mV[usedCellIdx]);
             snapshot.cell_temp_raw_0p01C[afeIdx][usedCellIdx] =
                 App_CellTempRawFromAux(afeIdx, usedCellIdx);
             snapshot.balancing[afeIdx][usedCellIdx] =
@@ -450,6 +473,7 @@ static void App_PublishDemoSnapshot(void)
             bool balancingActive = (((frameIdx + afeIdx + cellIdx) % 11u) >= 8u);
 
             snapshot.cell_voltage_mV[afeIdx][cellIdx] = (uint16_t)(baseVoltage_mV + waveform_mV);
+            snapshot.gpio_voltage_mV[afeIdx][cellIdx] = (uint16_t)(1000u + ((uint16_t)afeIdx * 100u) + cellIdx);
             snapshot.cell_temp_raw_0p01C[afeIdx][cellIdx] = (int16_t)(baseTempRaw + waveformTempRaw);
             snapshot.balancing[afeIdx][cellIdx] = balancingActive ? 1u : 0u;
         }
@@ -604,19 +628,31 @@ void adbms6833_main_on_core2(void)
 		  3. Calculate ΔV
 		  4. Update DCC/PWM
 		  5. UNMUTE (resume balancing)
-         */
+        */
         if (g_bmsDrv.svcState == ADBMS6833_SVC_STANDBY)
         {
+            bool measurementFresh =
+                ((g_bmsDrv.lastMeasureMs != 0u) && (g_bmsDrv.lastMeasureMs != g_lastPublishedMeasureMs));
+
+#if (ADBMS_BALANCE_CONTROL_MODE == ADBMS_BALANCE_CONTROL_CELL_VOLTAGE)
             Adbms6833_BalanceEvaluate(&g_bmsBal, &g_bmsDrv);
+#else
             App_ApplyManualBalanceCommand();
+#endif
 
             /* only apply balancing if charging */
-            if ((g_bmsBal.cfg.chargingActive == true) ||
-                (AdbmsRuntime_IsManualBalanceEnabled() == true))
+            if (
+#if (ADBMS_BALANCE_CONTROL_MODE == ADBMS_BALANCE_CONTROL_CELL_VOLTAGE)
+                (g_bmsBal.cfg.chargingActive == true)
+#else
+                (AdbmsRuntime_IsManualBalanceEnabled() == true)
+#endif
+               )
             {
                 (void)Adbms6833_SendMute(&g_bmsHal, &g_bmsCmds);
                 (void)Adbms6833_BalanceApplyDcc(&g_bmsBal, &g_bmsDrv, &g_bmsHal, &g_bmsCmds);
                 (void)Adbms6833_SendUnmute(&g_bmsHal, &g_bmsCmds);
+                (void)Adbms6833_ReadCfgb(&g_bmsDrv, &g_bmsHal, &g_bmsCmds);
 
                 {
                     uint8_t afeIdx;
@@ -631,13 +667,7 @@ void adbms6833_main_on_core2(void)
                 }
             }
 
-            if ((g_bmsDrv.lastMeasureMs != 0u) && (g_bmsDrv.lastMeasureMs != g_lastPublishedMeasureMs))
-            {
-                App_PublishSharedSnapshot();
-                g_lastPublishedMeasureMs = g_bmsDrv.lastMeasureMs;
-            }
-
-            if ((g_sysTickMs - g_lastAuxPrintMs) >= ADBMS6833_AUX_PRINT_PERIOD_MS)
+            if (measurementFresh == true)
             {
                 if (Adbms6833_StartAuxConversion(&g_bmsHal, &g_bmsCmds) == ADBMS6833_OK)
                 {
@@ -650,6 +680,9 @@ void adbms6833_main_on_core2(void)
                 }
 
                 g_lastAuxPrintMs = g_sysTickMs;
+
+                App_PublishSharedSnapshot();
+                g_lastPublishedMeasureMs = g_bmsDrv.lastMeasureMs;
             }
         }
 

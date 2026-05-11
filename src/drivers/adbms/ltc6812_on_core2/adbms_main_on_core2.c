@@ -233,6 +233,18 @@ static Ltc6812_Status_t Ltc6812_SetSystemLed(bool on)
     return st;
 }
 
+static uint16_t Ltc6812_ReadAppliedDccMaskFromCfg(uint8_t afeIdx)
+{
+    if (afeIdx >= g_ltc6812Drv.icCount)
+    {
+        return 0u;
+    }
+
+    return (uint16_t)((uint16_t)g_ltc6812Drv.cfga[afeIdx].data[4] |
+                      (((uint16_t)g_ltc6812Drv.cfga[afeIdx].data[5] & 0x0Fu) << 8u) |
+                      (((uint16_t)g_ltc6812Drv.cfgb[afeIdx].data[0] & 0x70u) << 8u));
+}
+
 static void Ltc6812_ApplyManualBalanceCommand(void)
 {
     uint32_t mask;
@@ -408,6 +420,7 @@ void Ltc6812_SharedInit(void)
         for (cellIdx = 0u; cellIdx < LTC6812_SHARED_USED_CELLS_PER_AFE; cellIdx++)
         {
             g_ltc6812Shared.snapshot.cell_voltage_mV[afeIdx][cellIdx] = 0u;
+            g_ltc6812Shared.snapshot.gpio_voltage_mV[afeIdx][cellIdx] = 0u;
             g_ltc6812Shared.snapshot.cell_temp_raw_0p01C[afeIdx][cellIdx] = 0;
             g_ltc6812Shared.snapshot.balancing[afeIdx][cellIdx] = 0u;
         }
@@ -447,6 +460,7 @@ void Ltc6812_SharedPublish(const Ltc6812_SharedSnapshot_t *snapshot)
         for (cellIdx = 0u; cellIdx < LTC6812_SHARED_USED_CELLS_PER_AFE; cellIdx++)
         {
             g_ltc6812Shared.snapshot.cell_voltage_mV[afeIdx][cellIdx] = snapshot->cell_voltage_mV[afeIdx][cellIdx];
+            g_ltc6812Shared.snapshot.gpio_voltage_mV[afeIdx][cellIdx] = snapshot->gpio_voltage_mV[afeIdx][cellIdx];
             g_ltc6812Shared.snapshot.cell_temp_raw_0p01C[afeIdx][cellIdx] = snapshot->cell_temp_raw_0p01C[afeIdx][cellIdx];
             g_ltc6812Shared.snapshot.balancing[afeIdx][cellIdx] = snapshot->balancing[afeIdx][cellIdx];
         }
@@ -499,6 +513,7 @@ bool Ltc6812_SharedRead(Ltc6812_SharedSnapshot_t *snapshot)
             for (cellIdx = 0u; cellIdx < LTC6812_SHARED_USED_CELLS_PER_AFE; cellIdx++)
             {
                 snapshot->cell_voltage_mV[afeIdx][cellIdx] = g_ltc6812Shared.snapshot.cell_voltage_mV[afeIdx][cellIdx];
+                snapshot->gpio_voltage_mV[afeIdx][cellIdx] = g_ltc6812Shared.snapshot.gpio_voltage_mV[afeIdx][cellIdx];
                 snapshot->cell_temp_raw_0p01C[afeIdx][cellIdx] = g_ltc6812Shared.snapshot.cell_temp_raw_0p01C[afeIdx][cellIdx];
                 snapshot->balancing[afeIdx][cellIdx] = g_ltc6812Shared.snapshot.balancing[afeIdx][cellIdx];
             }
@@ -661,14 +676,17 @@ static void Ltc6812_PublishSharedSnapshot(void)
             }
             if (afeIdx < g_ltc6812Drv.icCount)
             {
-                uint16_t dccMask = g_ltc6812Bal.result[afeIdx].dccMask;
+                uint16_t dccMask = Ltc6812_ReadAppliedDccMaskFromCfg(afeIdx);
 
                 snapshot.cell_voltage_mV[afeIdx][usedCellIdx] = g_ltc6812Drv.cell[afeIdx].mV[driverCellIdx];
+                snapshot.gpio_voltage_mV[afeIdx][usedCellIdx] =
+                    (usedCellIdx < 7u) ? Ltc6812_GetExternalTempVoltage_mV((uint8_t)(((uint8_t)afeIdx * 7u) + usedCellIdx)) : 0u;
                 snapshot.balancing[afeIdx][usedCellIdx] = ((dccMask & ((uint16_t)1u << driverCellIdx)) != 0u) ? 1u : 0u;
             }
             else
             {
                 snapshot.cell_voltage_mV[afeIdx][usedCellIdx] = 0u;
+                snapshot.gpio_voltage_mV[afeIdx][usedCellIdx] = 0u;
                 snapshot.balancing[afeIdx][usedCellIdx] = 0u;
             }
         }
@@ -704,6 +722,7 @@ static void Ltc6812_PublishDemoSnapshot(void)
         for (cellIdx = 0u; cellIdx < LTC6812_SHARED_USED_CELLS_PER_AFE; cellIdx++)
         {
             snapshot.cell_voltage_mV[afeIdx][cellIdx] = (uint16_t)(3650u + ((uint16_t)afeIdx * 20u) + cellIdx);
+            snapshot.gpio_voltage_mV[afeIdx][cellIdx] = (uint16_t)(900u + ((uint16_t)afeIdx * 100u) + cellIdx);
             snapshot.cell_temp_raw_0p01C[afeIdx][cellIdx] = 0;
             snapshot.balancing[afeIdx][cellIdx] = 0u;
         }
@@ -786,8 +805,11 @@ void ltc6812_main_on_core2(void)
         {
             bool balanceDecisionFresh = (g_ltc6812Drv.lastMeasureMs != g_ltc6812LastBalanceDebugMeasureMs);
 
+#if (ADBMS_BALANCE_CONTROL_MODE == ADBMS_BALANCE_CONTROL_CELL_VOLTAGE)
             Ltc6812_BalanceEvaluate(&g_ltc6812Bal, &g_ltc6812Drv);
+#else
             Ltc6812_ApplyManualBalanceCommand();
+#endif
 
             if (balanceDecisionFresh == true)
             {
@@ -812,8 +834,13 @@ void ltc6812_main_on_core2(void)
             }
 
             if ((balanceDecisionFresh == true) &&
-                ((g_ltc6812Bal.cfg.chargingActive == true) ||
-                 (AdbmsRuntime_IsManualBalanceEnabled() == true)) &&
+                (
+#if (ADBMS_BALANCE_CONTROL_MODE == ADBMS_BALANCE_CONTROL_CELL_VOLTAGE)
+                 (g_ltc6812Bal.cfg.chargingActive == true)
+#else
+                 (AdbmsRuntime_IsManualBalanceEnabled() == true)
+#endif
+                ) &&
                 (Ltc6812_BalanceHasAnyDccSet(&g_ltc6812Bal, g_ltc6812Drv.icCount) == true))
             {
                 status = Ltc6812_SendMute(&g_ltc6812Hal, &g_ltc6812Cmds);
@@ -833,6 +860,8 @@ void ltc6812_main_on_core2(void)
                 else if (g_ltc6812Drv.icCount > 0u)
                 {
                     Ltc6812_BalanceUpdateLastAppliedDcc(&g_ltc6812Bal, g_ltc6812Drv.icCount);
+                    (void)Ltc6812_ReadCfga(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds);
+                    (void)Ltc6812_ReadCfgb(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds);
                     LTC6812_DEBUG_PRINTF("LTC6812 BAL WRITE st=OK dcc=0x%04X cfga4=%02X cfga5=%02X cfgb0=%02X\r\n",
                                          (uint32_t)g_ltc6812Bal.result[0].dccMask,
                                          (uint32_t)g_ltc6812Drv.cfga[0].data[4],

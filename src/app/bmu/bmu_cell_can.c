@@ -24,6 +24,10 @@
 #define BMU_CAN_ID_M001_IC_INTERNAL_TEMP        (0x10008801UL)
 #define BMU_CAN_ID_M001_IC_CELL_SUM_VOLTAGES    (0x1000C801UL)
 
+static uint16_t g_bmuCellCanNextCellToTx = 0u;
+static uint32_t g_bmuCellCanNextCellTxMs = 0u;
+static uint32_t g_bmuCellCanNextSummaryTxMs = 0u;
+
 static void Bmu_CellCan_PutLe16(uint8_t *dst, uint16_t value)
 {
     dst[0] = (uint8_t)(value & 0xFFu);
@@ -150,6 +154,35 @@ Bmu_ReturnType Bmu_CellCan_SendAll(void)
     }
 
     return ret;
+}
+
+void Bmu_CellCan_MainTask_10ms(uint32_t now_ms, bool measurementActive)
+{
+    if (measurementActive == false)
+    {
+        g_bmuCellCanNextCellToTx = 0u;
+        g_bmuCellCanNextCellTxMs = now_ms;
+        g_bmuCellCanNextSummaryTxMs = now_ms;
+        return;
+    }
+
+    if ((uint32_t)(now_ms - g_bmuCellCanNextCellTxMs) >= BMU_CELLMESSAGE_TX_PERIOD_MS)
+    {
+        (void)Bmu_CellCan_SendOne(g_bmuCellCanNextCellToTx);
+
+        g_bmuCellCanNextCellToTx++;
+        if (g_bmuCellCanNextCellToTx >= BMU_TOTAL_CELLS)
+        {
+            g_bmuCellCanNextCellToTx = 0u;
+        }
+        g_bmuCellCanNextCellTxMs += BMU_CELLMESSAGE_TX_PERIOD_MS;
+    }
+
+    if ((uint32_t)(now_ms - g_bmuCellCanNextSummaryTxMs) >= BMU_CELLMESSAGE_CYCLE_MS)
+    {
+        (void)Bmu_CellCan_SendMeasurementSummary();
+        g_bmuCellCanNextSummaryTxMs += BMU_CELLMESSAGE_CYCLE_MS;
+    }
 }
 
 static Bmu_ReturnType Bmu_CellCan_SendIcCellSumVoltages(void)

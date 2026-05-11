@@ -17,6 +17,7 @@ Bmu_ReturnType Bmu_CellCan_BuildMessage(uint16_t global_cell_0based, void *msg_o
 Bmu_ReturnType Bmu_CellCan_SendOne(uint16_t global_cell_0based);
 Bmu_ReturnType Bmu_CellCan_SendAll(void);
 Bmu_ReturnType Bmu_CellCan_SendMeasurementSummary(void);
+void Bmu_CellCan_MainTask_10ms(uint32_t now_ms, bool measurementActive);
 
 
 #endif /* SRC_APP_BMU_BMU_CELL_CAN_H_ */

@@ -296,6 +296,7 @@ static void AdbmsRuntime_Copy6830Snapshot(AdbmsRuntime_SharedSnapshot_t *dst, co
         for (cellIdx = 0u; cellIdx < ADBMS_RUNTIME_SHARED_USED_CELLS_PER_AFE; cellIdx++)
         {
             dst->cell_voltage_mV[afeIdx][cellIdx] = src->cell_voltage_mV[afeIdx][cellIdx];
+            dst->gpio_voltage_mV[afeIdx][cellIdx] = src->gpio_voltage_mV[afeIdx][cellIdx];
             dst->cell_temp_raw_0p01C[afeIdx][cellIdx] = src->cell_temp_raw_0p01C[afeIdx][cellIdx];
             dst->balancing[afeIdx][cellIdx] = src->balancing[afeIdx][cellIdx];
         }
@@ -317,6 +318,7 @@ static void AdbmsRuntime_Copy6833Snapshot(AdbmsRuntime_SharedSnapshot_t *dst, co
         for (cellIdx = 0u; cellIdx < ADBMS_RUNTIME_SHARED_USED_CELLS_PER_AFE; cellIdx++)
         {
             dst->cell_voltage_mV[afeIdx][cellIdx] = src->cell_voltage_mV[afeIdx][cellIdx];
+            dst->gpio_voltage_mV[afeIdx][cellIdx] = src->gpio_voltage_mV[afeIdx][cellIdx];
             dst->cell_temp_raw_0p01C[afeIdx][cellIdx] = src->cell_temp_raw_0p01C[afeIdx][cellIdx];
             dst->balancing[afeIdx][cellIdx] = src->balancing[afeIdx][cellIdx];
         }
@@ -342,6 +344,7 @@ static void AdbmsRuntime_CopyLtc6812Snapshot(AdbmsRuntime_SharedSnapshot_t *dst,
         for (cellIdx = 0u; cellIdx < ADBMS_RUNTIME_SHARED_USED_CELLS_PER_AFE; cellIdx++)
         {
             dst->cell_voltage_mV[afeIdx][cellIdx] = src->cell_voltage_mV[afeIdx][cellIdx];
+            dst->gpio_voltage_mV[afeIdx][cellIdx] = src->gpio_voltage_mV[afeIdx][cellIdx];
             dst->cell_temp_raw_0p01C[afeIdx][cellIdx] = src->cell_temp_raw_0p01C[afeIdx][cellIdx];
             dst->balancing[afeIdx][cellIdx] = src->balancing[afeIdx][cellIdx];
         }

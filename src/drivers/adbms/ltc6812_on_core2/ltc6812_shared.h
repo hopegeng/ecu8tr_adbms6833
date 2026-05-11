@@ -14,7 +14,7 @@ extern "C" {
 #define LTC6812_SHARED_EXTERNAL_TEMP_COUNT    (14u)
 
 #ifndef LTC6812_SHARED_SAMPLE_PERIOD_MS
-#define LTC6812_SHARED_SAMPLE_PERIOD_MS       (5000u)
+#define LTC6812_SHARED_SAMPLE_PERIOD_MS       (1000u)
 #endif
 
 #ifndef LTC6812_ENABLE_DEBUG_PRINTF
@@ -30,6 +30,7 @@ typedef struct
     uint32_t sample_counter;
     uint32_t sample_timestamp_ms;
     uint16_t cell_voltage_mV[LTC6812_SHARED_AFE_COUNT][LTC6812_SHARED_USED_CELLS_PER_AFE];
+    uint16_t gpio_voltage_mV[LTC6812_SHARED_AFE_COUNT][LTC6812_SHARED_USED_CELLS_PER_AFE];
     int16_t cell_temp_raw_0p01C[LTC6812_SHARED_AFE_COUNT][LTC6812_SHARED_USED_CELLS_PER_AFE];
     int16_t external_temp_raw_0p01C[LTC6812_SHARED_EXTERNAL_TEMP_COUNT];
     uint16_t external_temp_voltage_mV[LTC6812_SHARED_EXTERNAL_TEMP_COUNT];

@@ -456,6 +456,60 @@ Ltc6812_Status_t Ltc6812_WriteCfgb(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *
     return hal->spiTransfer(tx, rx, idx);
 }
 
+Ltc6812_Status_t Ltc6812_ReadCfga(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds)
+{
+    uint8_t readCfga[LTC6812_MAX_ICS * LTC6812_REG_GROUP_DATA_LEN];
+    uint8_t ic;
+    Ltc6812_Status_t st;
+
+    if ((ctx == 0) || (hal == 0) || (cmds == 0))
+    {
+        return LTC6812_ERR_PARAM;
+    }
+
+    st = Ltc6812_ReadRegisterGroup(hal, cmds->RDCFGA, readCfga, LTC6812_REG_GROUP_DATA_LEN, ctx->icCount, ctx, 0u);
+    if (st != LTC6812_OK)
+    {
+        return st;
+    }
+
+    for (ic = 0u; ic < ctx->icCount; ic++)
+    {
+        (void)memcpy(ctx->cfga[ic].data,
+                     &readCfga[(uint16_t)ic * LTC6812_REG_GROUP_DATA_LEN],
+                     LTC6812_REG_GROUP_DATA_LEN);
+    }
+
+    return LTC6812_OK;
+}
+
+Ltc6812_Status_t Ltc6812_ReadCfgb(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds)
+{
+    uint8_t readCfgb[LTC6812_MAX_ICS * LTC6812_REG_GROUP_DATA_LEN];
+    uint8_t ic;
+    Ltc6812_Status_t st;
+
+    if ((ctx == 0) || (hal == 0) || (cmds == 0))
+    {
+        return LTC6812_ERR_PARAM;
+    }
+
+    st = Ltc6812_ReadRegisterGroup(hal, cmds->RDCFGB, readCfgb, LTC6812_REG_GROUP_DATA_LEN, ctx->icCount, ctx, 0u);
+    if (st != LTC6812_OK)
+    {
+        return st;
+    }
+
+    for (ic = 0u; ic < ctx->icCount; ic++)
+    {
+        (void)memcpy(ctx->cfgb[ic].data,
+                     &readCfgb[(uint16_t)ic * LTC6812_REG_GROUP_DATA_LEN],
+                     LTC6812_REG_GROUP_DATA_LEN);
+    }
+
+    return LTC6812_OK;
+}
+
 Ltc6812_Status_t Ltc6812_ReadCellVoltagesByGroup(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds)
 {
     static const uint8_t groupStartIndex[LTC6812_CELL_GROUP_COUNT] = { 0u, 3u, 6u, 9u, 12u };

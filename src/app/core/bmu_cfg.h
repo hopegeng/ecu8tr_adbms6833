@@ -28,6 +28,7 @@
 
 #define BMU_CELLMESSAGE_CYCLE_MS        (1000u)
 #define BMU_SAMPLE_PERIOD_MS            (ADBMS_SHARED_SAMPLE_PERIOD_MS)
+#define BMU_CELLMESSAGE_TX_PERIOD_MS    (50u)
 
 /* Scheduler tick used by CellMessage publisher */
 #define BMU_CELL_TX_TASK_PERIOD_MS      (10u)
@@ -43,6 +44,18 @@
 #define BMU_INVALID_CELL_TEMP_RAW       (0)      /* 0.01 C/bit */
 #define BMU_INVALID_GPIO_VOLTAGE_RAW    (0u)     /* 0.1 mV/bit */
 #define BMU_INVALID_BALANCING           (0u)
+
+/* Balance control selection.
+ * Default for the tester system is direct control from M001_BalanceCells.
+ * Set BMU_BALANCE_CONTROL_MODE to BMU_BALANCE_CONTROL_CELL_VOLTAGE to use
+ * the legacy voltage-delta based balancing algorithm.
+ */
+#define BMU_BALANCE_CONTROL_M001        (1u)
+#define BMU_BALANCE_CONTROL_CELL_VOLTAGE (2u)
+
+#ifndef BMU_BALANCE_CONTROL_MODE
+#define BMU_BALANCE_CONTROL_MODE        BMU_BALANCE_CONTROL_M001
+#endif
 
 /* Compile-time checks */
 #if (BMU_TOTAL_CELLS != 20u)

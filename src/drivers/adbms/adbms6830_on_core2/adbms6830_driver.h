@@ -169,6 +169,9 @@ Adbms6830_Status_t Adbms6830_WriteCfga(Adbms6830_Context_t *ctx,
 Adbms6830_Status_t Adbms6830_WriteCfgb(Adbms6830_Context_t *ctx,
                                        const Adbms6830_Hal_t *hal,
                                        const Adbms6830_CommandSet_t *cmds);
+Adbms6830_Status_t Adbms6830_ReadCfgb(Adbms6830_Context_t *ctx,
+                                      const Adbms6830_Hal_t *hal,
+                                      const Adbms6830_CommandSet_t *cmds);
 Adbms6830_Status_t Adbms6830_FullInitialize(Adbms6830_Context_t *ctx,
                                             const Adbms6830_Hal_t *hal,
                                             const Adbms6830_CommandSet_t *cmds);
