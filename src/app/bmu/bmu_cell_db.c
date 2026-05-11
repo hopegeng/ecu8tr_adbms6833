@@ -11,6 +11,7 @@
 #include "../bmu/bmu_cell_mapping.h"
 
 Bmu_CellDbType g_bmuCellDb;
+static uint32_t g_bmuManualBalanceMask20 = 0u;
 
 void Bmu_CellDb_Init(void)
 {
@@ -28,6 +29,36 @@ void Bmu_CellDb_Init(void)
         g_bmuCellDb.cells[i].csc_index = Bmu_GlobalToCscIndex(i);
         g_bmuCellDb.cells[i].cell_on_csc = Bmu_GlobalToCellOnCsc(i);
     }
+
+    g_bmuManualBalanceMask20 = 0u;
+}
+
+void Bmu_CellDb_SetManualBalanceMask(uint32_t balance_mask_20)
+{
+    uint16_t i;
+
+    g_bmuManualBalanceMask20 = (balance_mask_20 & 0x000FFFFFUL);
+
+    for (i = 0u; i < BMU_TOTAL_CELLS; i++)
+    {
+        g_bmuCellDb.cells[i].dbc_cell_sig.balancing =
+            ((g_bmuManualBalanceMask20 & (1UL << i)) != 0u);
+    }
+}
+
+uint32_t Bmu_CellDb_GetManualBalanceMask(void)
+{
+    return g_bmuManualBalanceMask20;
+}
+
+bool Bmu_CellDb_IsManualBalanceActive(uint16_t global_cell_0based)
+{
+    if (!Bmu_IsValidGlobalCell0(global_cell_0based))
+    {
+        return false;
+    }
+
+    return ((g_bmuManualBalanceMask20 & (1UL << global_cell_0based)) != 0u);
 }
 
 Bmu_ReturnType Bmu_CellDb_UpdateMeasurement(uint8_t afe_index,
@@ -50,7 +81,8 @@ Bmu_ReturnType Bmu_CellDb_UpdateMeasurement(uint8_t afe_index,
     g_bmuCellDb.cells[idx].dbc_cell_sig.cell_voltage_raw_0p1mV = cell_voltage_raw_0p1mV;
     g_bmuCellDb.cells[idx].dbc_cell_sig.cell_temp_raw_0p01C = cell_temp_raw_0p01C;
     g_bmuCellDb.cells[idx].dbc_cell_sig.gpio_voltage_raw_0p1mV = gpio_voltage_raw_0p1mV;
-    g_bmuCellDb.cells[idx].dbc_cell_sig.balancing = balancing;
+    g_bmuCellDb.cells[idx].dbc_cell_sig.balancing =
+        (balancing || Bmu_CellDb_IsManualBalanceActive(idx));
     g_bmuCellDb.cells[idx].valid = true;
     g_bmuCellDb.cells[idx].stale = false;
     g_bmuCellDb.cells[idx].sample_timestamp_ms = now_ms;

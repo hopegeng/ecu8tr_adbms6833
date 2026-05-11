@@ -33,8 +33,8 @@
     #define pdTICKS_TO_MS( xTimeInTicks )    ( ( TickType_t ) ( ( ( uint64_t ) ( xTimeInTicks ) * ( uint64_t ) 1000U ) / ( uint64_t ) configTICK_RATE_HZ ) )
 #endif
 
+#if 0
 static void Bmu_SendDemoTraceMessages(uint32_t now_ms);
-
 static void Bmu_SendDemoTraceMessages(uint32_t now_ms)
 {
     static uint32_t demoSequence = 0u;
@@ -57,6 +57,7 @@ static void Bmu_SendDemoTraceMessages(uint32_t now_ms)
         (void)CanIf_Transmit(&msg);
     }
 }
+#endif
 
 static void Bmu_Task_10ms_FreeRTOS(void *pvParameters)
 {
@@ -140,10 +141,19 @@ void Bmu_Task_100ms(uint32_t now_ms)
 
 void Bmu_Task_1000ms(uint32_t now_ms)
 {
-#if 1
-    (void)Bmu_CellCan_SendAll();
+    if (Bmu_CscAcq_IsMeasurementActive() == true)
+    {
+        (void)Bmu_CellCan_SendAll();
+        (void)Bmu_CellCan_SendMeasurementSummary();
+    }
+
+#if 0
     Bmu_SendDemoTraceMessages(now_ms);
 #else
+    (void)now_ms;
+#endif
+
+#if 0
     void run_can_simulation(void);
     run_can_simulation();
 #endif

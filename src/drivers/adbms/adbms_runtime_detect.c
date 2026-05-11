@@ -30,6 +30,9 @@ extern ECU8TR_ADBMS6830_State_t adbms6833_getState(void);
 extern ECU8TR_ADBMS6830_State_t ltc6812_getState(void);
 
 static uint16_t g_adbmsRuntimeDetectedDevice = ADBMS_RUNTIME_DEVICE_UNKNOWN;
+static volatile bool g_adbmsRuntimeStartRequested = false;
+static volatile bool g_adbmsRuntimeManualBalanceEnabled = false;
+static volatile uint32_t g_adbmsRuntimeBalanceMask20 = 0u;
 
 static bool AdbmsRuntime_QspiTransfer(const uint8_t *tx, uint8_t *rx, uint16_t len);
 static void AdbmsRuntime_WakeIsoSpi(void);
@@ -355,6 +358,11 @@ void adbms_runtime_main_on_core2(void)
 {
     qspi0mstr_Init_iLLD();
 
+    while (g_adbmsRuntimeStartRequested == false)
+    {
+        delay_ms_stm2(10u);
+    }
+
     while (g_adbmsRuntimeDetectedDevice == ADBMS_RUNTIME_DEVICE_UNKNOWN)
     {
         g_adbmsRuntimeDetectedDevice = AdbmsRuntime_DetectDevice();
@@ -384,6 +392,32 @@ void adbms_runtime_main_on_core2(void)
     while (1)
     {
     }
+}
+
+void AdbmsRuntime_RequestStart(void)
+{
+    g_adbmsRuntimeStartRequested = true;
+}
+
+bool AdbmsRuntime_IsStartRequested(void)
+{
+    return g_adbmsRuntimeStartRequested;
+}
+
+void AdbmsRuntime_SetBalanceMask(uint32_t balanceMask20)
+{
+    g_adbmsRuntimeBalanceMask20 = (balanceMask20 & 0x000FFFFFUL);
+    g_adbmsRuntimeManualBalanceEnabled = true;
+}
+
+uint32_t AdbmsRuntime_GetBalanceMask(void)
+{
+    return g_adbmsRuntimeBalanceMask20;
+}
+
+bool AdbmsRuntime_IsManualBalanceEnabled(void)
+{
+    return g_adbmsRuntimeManualBalanceEnabled;
 }
 
 bool AdbmsRuntime_SharedRead(AdbmsRuntime_SharedSnapshot_t *snapshot)

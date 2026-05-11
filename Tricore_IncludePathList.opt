@@ -87,7 +87,9 @@
 "-I../src/drivers/gpio/"
 "-I../src/drivers/qspi/"
 "-I../src/drivers/eth/inc/"
-"-I../src/drivers/adbms/adbms6830_on_core2//"
+"-I../src/drivers/adbms/adbms6830_on_core2/"
+"-I../src/drivers/adbms/"
+
 
 "-I../src/"
 "-I../src/app/core"

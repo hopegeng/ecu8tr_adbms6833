@@ -38,6 +38,9 @@ typedef struct
 extern Bmu_CellDbType g_bmuCellDb;
 
 void Bmu_CellDb_Init(void);
+void Bmu_CellDb_SetManualBalanceMask(uint32_t balance_mask_20);
+uint32_t Bmu_CellDb_GetManualBalanceMask(void);
+bool Bmu_CellDb_IsManualBalanceActive(uint16_t global_cell_0based);
 
 Bmu_ReturnType Bmu_CellDb_UpdateMeasurement(uint8_t afe_index,
                                             uint8_t cell_on_csc,

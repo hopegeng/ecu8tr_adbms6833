@@ -22,6 +22,8 @@ typedef AdbmsRuntime_SharedSnapshot_t AdbmsSharedSnapshot_t;
 #define ADBMS_SHARED_SAMPLE_PERIOD_MS       ADBMS_RUNTIME_SHARED_SAMPLE_PERIOD_MS
 #define ADBMS_CORE2_MAIN_FN                 adbms_runtime_main_on_core2
 #define ADBMS_GET_STATE_FN                  AdbmsRuntime_GetState
+#define ADBMS_REQUEST_START_FN              AdbmsRuntime_RequestStart
+#define ADBMS_GET_DETECTED_DEVICE_FN        AdbmsRuntime_GetDetectedDevice
 
 #elif (ADBMS_DEVICE_FAMILY == ADBMS_DEVICE_FAMILY_6830)
 
@@ -33,6 +35,8 @@ typedef Adbms6830_SharedSnapshot_t AdbmsSharedSnapshot_t;
 #define ADBMS_SHARED_SAMPLE_PERIOD_MS       ADBMS6830_SHARED_SAMPLE_PERIOD_MS
 #define ADBMS_CORE2_MAIN_FN                 adbms6830_main_on_core2
 #define ADBMS_GET_STATE_FN                  adbms6830_getState
+#define ADBMS_REQUEST_START_FN              AdbmsFixedFamily_RequestStart
+#define ADBMS_GET_DETECTED_DEVICE_FN        AdbmsFixedFamily_GetDetectedDevice
 
 #elif (ADBMS_DEVICE_FAMILY == ADBMS_DEVICE_FAMILY_6833)
 
@@ -44,6 +48,8 @@ typedef Adbms6833_SharedSnapshot_t AdbmsSharedSnapshot_t;
 #define ADBMS_SHARED_SAMPLE_PERIOD_MS       ADBMS6833_SHARED_SAMPLE_PERIOD_MS
 #define ADBMS_CORE2_MAIN_FN                 adbms6833_main_on_core2
 #define ADBMS_GET_STATE_FN                  adbms6833_getState
+#define ADBMS_REQUEST_START_FN              AdbmsFixedFamily_RequestStart
+#define ADBMS_GET_DETECTED_DEVICE_FN        AdbmsFixedFamily_GetDetectedDevice
 
 #elif (ADBMS_DEVICE_FAMILY == ADBMS_DEVICE_FAMILY_LTC6812)
 
@@ -55,6 +61,8 @@ typedef Ltc6812_SharedSnapshot_t AdbmsSharedSnapshot_t;
 #define ADBMS_SHARED_SAMPLE_PERIOD_MS       LTC6812_SHARED_SAMPLE_PERIOD_MS
 #define ADBMS_CORE2_MAIN_FN                 ltc6812_main_on_core2
 #define ADBMS_GET_STATE_FN                  ltc6812_getState
+#define ADBMS_REQUEST_START_FN              AdbmsFixedFamily_RequestStart
+#define ADBMS_GET_DETECTED_DEVICE_FN        AdbmsFixedFamily_GetDetectedDevice
 
 #else
 #error "Unsupported ADBMS_DEVICE_FAMILY selection."
@@ -62,5 +70,14 @@ typedef Ltc6812_SharedSnapshot_t AdbmsSharedSnapshot_t;
 
 extern void ADBMS_CORE2_MAIN_FN(void);
 extern ECU8TR_ADBMS6830_State_t ADBMS_GET_STATE_FN(void);
+
+static inline void AdbmsFixedFamily_RequestStart(void)
+{
+}
+
+static inline uint16_t AdbmsFixedFamily_GetDetectedDevice(void)
+{
+    return (uint16_t)ADBMS_DEVICE_FAMILY;
+}
 
 #endif /* SRC_DRIVERS_ADBMS_ADBMS_FAMILY_SELECT_H_ */

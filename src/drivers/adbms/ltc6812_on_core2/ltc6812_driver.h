@@ -172,6 +172,10 @@ Ltc6812_Status_t Ltc6812_SetGpioPullDown(Ltc6812_Context_t *ctx,
                                          uint8_t ic,
                                          uint8_t gpio,
                                          bool pullDownOn);
+Ltc6812_Status_t Ltc6812_SetBoardLed(Ltc6812_Context_t *ctx,
+                                     const Ltc6812_Hal_t *hal,
+                                     const Ltc6812_CommandSet_t *cmds,
+                                     bool on);
 Ltc6812_Status_t Ltc6812_EepromRead(Ltc6812_Context_t *ctx,
                                     const Ltc6812_Hal_t *hal,
                                     const Ltc6812_CommandSet_t *cmds,

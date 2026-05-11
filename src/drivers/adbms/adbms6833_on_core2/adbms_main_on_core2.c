@@ -18,6 +18,7 @@
 #include "adbms6833_balance.h"
 #include "adbms6833_help.h"
 #include "adbms6833_shared.h"
+#include "../adbms_runtime_detect.h"
 #include "ecu8tr_cmd.h"
 
 /* =========================================================
@@ -500,6 +501,37 @@ static const char *App_BalanceParityToString(Adbms6833_BalanceParity_t parity)
     }
 }
 
+static void App_ApplyManualBalanceCommand(void)
+{
+    uint32_t mask;
+    uint8_t afeIdx;
+
+    if (AdbmsRuntime_IsManualBalanceEnabled() == false)
+    {
+        return;
+    }
+
+    mask = AdbmsRuntime_GetBalanceMask();
+    for (afeIdx = 0u; afeIdx < g_bmsDrv.icCount; afeIdx++)
+    {
+        uint8_t usedCellIdx;
+        uint16_t dccMask = 0u;
+
+        for (usedCellIdx = 0u; usedCellIdx < ADBMS6833_SHARED_USED_CELLS_PER_AFE; usedCellIdx++)
+        {
+            uint8_t globalCellIdx = (uint8_t)((afeIdx * ADBMS6833_SHARED_USED_CELLS_PER_AFE) + usedCellIdx);
+            uint8_t driverCellIdx = (uint8_t)(ADBMS6833_SHARED_FIRST_USED_CELL_0BASED + usedCellIdx);
+
+            if ((mask & (1UL << globalCellIdx)) != 0u)
+            {
+                dccMask |= (uint16_t)(1u << driverCellIdx);
+            }
+        }
+
+        g_bmsBal.result[afeIdx].dccMask = dccMask;
+    }
+}
+
 /* =========================================================
  * Example main
  * ========================================================= */
@@ -576,9 +608,11 @@ void adbms6833_main_on_core2(void)
         if (g_bmsDrv.svcState == ADBMS6833_SVC_STANDBY)
         {
             Adbms6833_BalanceEvaluate(&g_bmsBal, &g_bmsDrv);
+            App_ApplyManualBalanceCommand();
 
             /* only apply balancing if charging */
-            if (g_bmsBal.cfg.chargingActive == true)
+            if ((g_bmsBal.cfg.chargingActive == true) ||
+                (AdbmsRuntime_IsManualBalanceEnabled() == true))
             {
                 (void)Adbms6833_SendMute(&g_bmsHal, &g_bmsCmds);
                 (void)Adbms6833_BalanceApplyDcc(&g_bmsBal, &g_bmsDrv, &g_bmsHal, &g_bmsCmds);

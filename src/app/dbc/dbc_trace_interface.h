@@ -23,6 +23,7 @@ extern "C" {
 #define DBC_BMM_CONTROL_DIGITAL_OUTPUTS_ID           (0x0A181400UL)
 #define DBC_M001_WRITE_EEPROM_DATA_ID                (0x10087801UL)
 #define DBC_M001_START_LTC_TRANSMISSION_ID           (0x10088801UL)
+#define DBC_M001_BALANCE_CELLS_ID                    (0x12181801UL)
 #define DBC_M001_CONFIGURATION_MESSAGE_ID            (0x1808D801UL)
 #define DBC_SCU1_HS_SWITCH_REQ_ID                    (0x12182401UL)
 #define DBC_BMU_DIAG_COMMAND_ID                      (0x1E05D401UL)
@@ -92,6 +93,11 @@ typedef struct
     uint32_t magic;
     uint8_t action_index;
 } Dbc_M001StartLtcTransmissionType;
+
+typedef struct
+{
+    uint32_t balance_mask_20;
+} Dbc_M001BalanceCellsType;
 
 typedef struct
 {
@@ -238,6 +244,7 @@ static inline bool Dbc_TraceMessage_IsTesterInputId(uint32_t can_id)
     if ((can_id == DBC_BMM_CONTROL_DIGITAL_OUTPUTS_ID) ||
         (can_id == DBC_M001_WRITE_EEPROM_DATA_ID) ||
         (can_id == DBC_M001_START_LTC_TRANSMISSION_ID) ||
+        (can_id == DBC_M001_BALANCE_CELLS_ID) ||
         (can_id == DBC_M001_CONFIGURATION_MESSAGE_ID) ||
         (can_id == DBC_SCU1_HS_SWITCH_REQ_ID) ||
         (can_id == DBC_BMU_DIAG_COMMAND_ID) ||
@@ -440,6 +447,19 @@ static inline bool Dbc_M001StartLtcTransmission_Unpack(
     sig->magic = Dbc_ReadLe24(&msg->data[0]);
     sig->action_index = msg->data[3];
 
+    return true;
+}
+
+static inline bool Dbc_M001BalanceCells_Unpack(
+    const CanIf_MsgType *msg,
+    Dbc_M001BalanceCellsType *sig)
+{
+    if ((sig == 0) || (!Dbc_IsExpectedExtended8(msg, DBC_M001_BALANCE_CELLS_ID)))
+    {
+        return false;
+    }
+
+    sig->balance_mask_20 = Dbc_ReadLe32(&msg->data[0]) & 0x000FFFFFUL;
     return true;
 }
 

@@ -109,19 +109,23 @@ void canIsrRxHandler(void)
 {
 	CanPkt_t canPkt;
     CanIf_MsgType canIfMsg;
+    Ifx_CAN_RXMSG *rxBufferElement;
+    boolean isExtendedFrame;
 	portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 
     /* Clear the "Message stored to Dedicated RX Buffer" interrupt flag */
     IfxCan_Node_clearInterruptFlag(g_mcmcan.canSrcNode.node, IfxCan_Interrupt_messageStoredToDedicatedRxBuffer);
 
-    /* Clear the "New Data" flag; as long as the "New Data" flag is set, the respective Rx buffer is
-     * locked against updates from received matching frames.
-     */
-   IfxCan_Node_clearRxBufferNewDataFlag(g_mcmcan.canSrcNode.node, g_mcmcan.canFilter.rxBufferOffset);
-
     /* Read the received CAN message */
     IfxCan_Can_initMessage(&g_mcmcan.rxMsg);
+    rxBufferElement = IfxCan_Node_getRxBufferElementAddress(g_mcmcan.canSrcNode.node,
+                                                            g_mcmcan.canSrcNode.messageRAM.baseAddress,
+                                                            g_mcmcan.canSrcNode.messageRAM.rxBuffersStartAddress,
+                                                            g_mcmcan.rxMsg.bufferNumber);
+    isExtendedFrame = (rxBufferElement->R0.B.XTD != 0u) ? TRUE : FALSE;
     IfxCan_Can_readMessage(&g_mcmcan.canSrcNode, &g_mcmcan.rxMsg, g_mcmcan.rxData);
+    g_mcmcan.rxMsg.messageIdLength = (isExtendedFrame == TRUE) ?
+        IfxCan_MessageIdLength_extended : IfxCan_MessageIdLength_standard;
 
     rxMsgID =  g_mcmcan.rxMsg.messageId;
     rxBufferID = rxMsgID - 0x700;
@@ -142,7 +146,7 @@ void canIsrRxHandler(void)
 
     canIfMsg.id = (rxMsgID & 0x1FFFFFFFUL);
     canIfMsg.dlc = 8u;
-    canIfMsg.is_extended = (g_mcmcan.rxMsg.messageIdLength == IfxCan_MessageIdLength_extended) ? true : false;
+    canIfMsg.is_extended = (isExtendedFrame == TRUE) ? true : false;
     canIfMsg.data[0] = (uint8_t)(g_mcmcan.rxData[0] & 0xFFu);
     canIfMsg.data[1] = (uint8_t)((g_mcmcan.rxData[0] >> 8u) & 0xFFu);
     canIfMsg.data[2] = (uint8_t)((g_mcmcan.rxData[0] >> 16u) & 0xFFu);

@@ -190,6 +190,56 @@ void Ltc6812_BalanceEvaluate(Ltc6812_BalanceContext_t *bal, Ltc6812_Context_t *d
     }
 }
 
+bool Ltc6812_BalanceHasAnyDccSet(const Ltc6812_BalanceContext_t *bal, uint8_t icCount)
+{
+    uint8_t ic;
+
+    if (bal == 0)
+    {
+        return false;
+    }
+
+    if (icCount > LTC6812_MAX_ICS)
+    {
+        icCount = LTC6812_MAX_ICS;
+    }
+
+    for (ic = 0u; ic < icCount; ic++)
+    {
+        if (bal->result[ic].dccMask != 0u)
+        {
+            return true;
+        }
+
+        if (bal->lastAppliedDcc[ic] != 0u)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void Ltc6812_BalanceUpdateLastAppliedDcc(Ltc6812_BalanceContext_t *bal, uint8_t icCount)
+{
+    uint8_t ic;
+
+    if (bal == 0)
+    {
+        return;
+    }
+
+    if (icCount > LTC6812_MAX_ICS)
+    {
+        icCount = LTC6812_MAX_ICS;
+    }
+
+    for (ic = 0u; ic < icCount; ic++)
+    {
+        bal->lastAppliedDcc[ic] = bal->result[ic].dccMask;
+    }
+}
+
 Ltc6812_Status_t Ltc6812_BalanceApplyDcc(Ltc6812_BalanceContext_t *bal,
                                          Ltc6812_Context_t *drv,
                                          const Ltc6812_Hal_t *hal,

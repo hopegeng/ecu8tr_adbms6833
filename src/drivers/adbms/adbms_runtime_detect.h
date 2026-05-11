@@ -44,6 +44,11 @@ typedef struct
 } AdbmsRuntime_SharedSnapshot_t;
 
 void adbms_runtime_main_on_core2(void);
+void AdbmsRuntime_RequestStart(void);
+bool AdbmsRuntime_IsStartRequested(void);
+void AdbmsRuntime_SetBalanceMask(uint32_t balanceMask20);
+uint32_t AdbmsRuntime_GetBalanceMask(void);
+bool AdbmsRuntime_IsManualBalanceEnabled(void);
 bool AdbmsRuntime_SharedRead(AdbmsRuntime_SharedSnapshot_t *snapshot);
 ECU8TR_ADBMS6830_State_t AdbmsRuntime_GetState(void);
 uint16_t AdbmsRuntime_GetDetectedDevice(void);

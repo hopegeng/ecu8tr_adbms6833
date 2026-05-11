@@ -6,11 +6,13 @@
  */
 
 
-#include "../bmu/bmu_csc_acq.h"
+#include "bmu_csc_acq.h"
 
-#include "../bmu/bmu_cell_db.h"
-#include "../../drivers/adbms/adbms_family_select.h"
+#include "bmu_cell_db.h"
+#include "adbms_family_select.h"
 #include "bmu_cfg.h"
+#include <string.h>
+#include "shell.h"
 
 
 //when the hardware CSC boards are not available, we use the demo version
@@ -85,10 +87,37 @@ void Bmu_CscAcq_MainTask_20ms(uint32_t now_ms)
 
 #else
 static uint32_t g_lastSampleCounter = 0u;
+static bool g_measurementActive = false;
+static AdbmsSharedSnapshot_t g_lastSnapshot;
 
 void Bmu_CscAcq_Init(void)
 {
     g_lastSampleCounter = 0u;
+    g_measurementActive = false;
+    (void)memset(&g_lastSnapshot, 0, sizeof(g_lastSnapshot));
+}
+
+void Bmu_CscAcq_StartMeasurement(void)
+{
+	PRINTF( "Starting measurement\r\n" );
+    g_measurementActive = true;
+    ADBMS_REQUEST_START_FN();
+}
+
+bool Bmu_CscAcq_IsMeasurementActive(void)
+{
+    return g_measurementActive;
+}
+
+bool Bmu_CscAcq_GetLastSnapshot(AdbmsSharedSnapshot_t *snapshot)
+{
+    if ((snapshot == 0) || (g_lastSnapshot.valid == false))
+    {
+        return false;
+    }
+
+    *snapshot = g_lastSnapshot;
+    return true;
 }
 
 void Bmu_CscAcq_MainTask_20ms(uint32_t now_ms)
@@ -96,6 +125,11 @@ void Bmu_CscAcq_MainTask_20ms(uint32_t now_ms)
     AdbmsSharedSnapshot_t snapshot;
     uint8_t afeIdx;
     uint8_t cellIdx;
+
+    if (g_measurementActive == false)
+    {
+        return;
+    }
 
     if (AdbmsSharedRead(&snapshot) == false)
     {
@@ -111,6 +145,8 @@ void Bmu_CscAcq_MainTask_20ms(uint32_t now_ms)
     {
         return;
     }
+
+    g_lastSnapshot = snapshot;
 
     for (afeIdx = 0u; afeIdx < BMU_AFE_COUNT_PER_CSC; afeIdx++)
     {

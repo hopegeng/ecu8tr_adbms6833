@@ -16,6 +16,9 @@
 #include "can_if.h"
 #include "dbc_trace_interface.h"
 #include "tools.h"
+#include "bmu_cell_db.h"
+#include "bmu_csc_acq.h"
+#include "../../drivers/adbms/adbms_runtime_detect.h"
 
 #define CANIF_TX_QUEUE_LENGTH          (128u)
 #define CANIF_TX_QUEUE_SEND_TIMEOUT_MS (10u)
@@ -32,6 +35,7 @@ typedef struct
     uint32_t write_eeprom_ltc_count;
     uint32_t read_eeprom_count;
     uint32_t start_ltc_count;
+    uint32_t balance_cells_count;
     uint32_t configuration_count;
     uint32_t diag_req_count;
     uint32_t threshold_settings_count;
@@ -47,6 +51,7 @@ typedef struct
     Dbc_M001WriteEepromDataLtcType last_write_eeprom_ltc;
     Dbc_M001ReadEepromReqType last_read_eeprom;
     Dbc_M001StartLtcTransmissionType last_start_ltc;
+    Dbc_M001BalanceCellsType last_balance_cells;
     Dbc_BmuDiagReqType last_diag_req;
     Dbc_ThresholdSettingsType last_threshold_settings;
     Dbc_Scu1HsSwitchReqType last_scu1_hs_switch_req;
@@ -142,7 +147,21 @@ static void CanIf_HandleM001StartLtcTransmission(const Dbc_M001StartLtcTransmiss
     g_canIfTesterCommandState.last_start_ltc = *cmd;
     g_canIfTesterCommandState.start_ltc_count++;
 
-    /* Stub: connect this to the ADBMS/LTC measurement action dispatcher later. */
+    Bmu_CscAcq_StartMeasurement();
+}
+
+static void CanIf_HandleM001BalanceCells(const Dbc_M001BalanceCellsType *cmd)
+{
+    if (cmd == 0)
+    {
+        return;
+    }
+
+    g_canIfTesterCommandState.last_balance_cells = *cmd;
+    g_canIfTesterCommandState.balance_cells_count++;
+
+    Bmu_CellDb_SetManualBalanceMask(cmd->balance_mask_20);
+    AdbmsRuntime_SetBalanceMask(cmd->balance_mask_20);
 }
 
 static void CanIf_HandleM001ConfigurationMessage(const CanIf_MsgType *msg)
@@ -310,6 +329,7 @@ void CanIf_RxIndication(const CanIf_MsgType *msg)
     Dbc_M001WriteEepromDataLtcType writeEepromLtc;
     Dbc_M001ReadEepromReqType readEeprom;
     Dbc_M001StartLtcTransmissionType startLtc;
+    Dbc_M001BalanceCellsType balanceCells;
     Dbc_BmuDiagReqType diagReq;
     Dbc_ThresholdSettingsType thresholdSettings;
     Dbc_Scu1HsSwitchReqType hsSwitchReq;
@@ -346,6 +366,12 @@ void CanIf_RxIndication(const CanIf_MsgType *msg)
     if (Dbc_M001StartLtcTransmission_Unpack(msg, &startLtc))
     {
         CanIf_HandleM001StartLtcTransmission(&startLtc);
+        return;
+    }
+
+    if (Dbc_M001BalanceCells_Unpack(msg, &balanceCells))
+    {
+        CanIf_HandleM001BalanceCells(&balanceCells);
         return;
     }
 

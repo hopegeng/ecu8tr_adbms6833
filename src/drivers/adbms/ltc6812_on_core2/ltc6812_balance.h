@@ -39,10 +39,13 @@ typedef struct
 {
     Ltc6812_BalanceConfig_t cfg;
     Ltc6812_BalanceResult_t result[LTC6812_MAX_ICS];
+    uint16_t lastAppliedDcc[LTC6812_MAX_ICS];
 } Ltc6812_BalanceContext_t;
 
 void Ltc6812_BalanceInit(Ltc6812_BalanceContext_t *ctx);
 void Ltc6812_BalanceEvaluate(Ltc6812_BalanceContext_t *bal, Ltc6812_Context_t *drv);
+bool Ltc6812_BalanceHasAnyDccSet(const Ltc6812_BalanceContext_t *bal, uint8_t icCount);
+void Ltc6812_BalanceUpdateLastAppliedDcc(Ltc6812_BalanceContext_t *bal, uint8_t icCount);
 Ltc6812_Status_t Ltc6812_BalanceApplyDcc(Ltc6812_BalanceContext_t *bal,
                                          Ltc6812_Context_t *drv,
                                          const Ltc6812_Hal_t *hal,

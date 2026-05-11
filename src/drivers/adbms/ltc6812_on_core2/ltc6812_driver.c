@@ -31,6 +31,8 @@
 #define LTC6812_COMM_FCOM_ACK              (0x0u)
 #define LTC6812_COMM_FCOM_NACK             (0x8u)
 #define LTC6812_COMM_FCOM_NACK_STOP        (0x9u)
+#define LTC6812_BOARD_LED_IC               (1u)
+#define LTC6812_BOARD_LED_GPIO             (5u)
 
 #ifndef LTC6812_BALANCE_DCTO_MINUTES_CODE
 #define LTC6812_BALANCE_DCTO_MINUTES_CODE     (1u)
@@ -573,7 +575,7 @@ Ltc6812_Status_t Ltc6812_FullInitialize(Ltc6812_Context_t *ctx, const Ltc6812_Ha
         return LTC6812_ERR_PARAM;
     }
 
-    Ltc6812_SetLed( true );
+    (void)Ltc6812_SetBoardLed(ctx, hal, cmds, true);
 
 	st = Ltc6812_WriteCfga(ctx, hal, cmds);
 	if (st != LTC6812_OK)
@@ -952,6 +954,29 @@ Ltc6812_Status_t Ltc6812_SetGpioPullDown(Ltc6812_Context_t *ctx,
     }
 
     return Ltc6812_WriteCfgb(ctx, hal, cmds);
+}
+
+Ltc6812_Status_t Ltc6812_SetBoardLed(Ltc6812_Context_t *ctx,
+                                     const Ltc6812_Hal_t *hal,
+                                     const Ltc6812_CommandSet_t *cmds,
+                                     bool on)
+{
+    if (ctx == 0)
+    {
+        return LTC6812_ERR_PARAM;
+    }
+
+    if (ctx->icCount <= LTC6812_BOARD_LED_IC)
+    {
+        return LTC6812_ERR_STATE;
+    }
+
+    return Ltc6812_SetGpioPullDown(ctx,
+                                   hal,
+                                   cmds,
+                                   LTC6812_BOARD_LED_IC,
+                                   LTC6812_BOARD_LED_GPIO,
+                                   on);
 }
 
 Ltc6812_Status_t Ltc6812_Task(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds, uint32_t measurementPeriodMs)
