@@ -186,6 +186,8 @@ void Bmu_CellCan_MainTask_10ms(uint32_t now_ms, bool measurementActive)
         (void)Bmu_CellCan_SendMeasurementSummary();
         g_bmuCellCanNextSummaryTxMs += BMU_CELLMESSAGE_CYCLE_MS;
     }
+
+    CanIf_PollEepromReadResult();
 }
 
 /* M001_IC_CellSumVoltages */

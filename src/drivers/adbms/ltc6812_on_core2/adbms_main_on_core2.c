@@ -383,6 +383,28 @@ static void Ltc6812_ProcessEepromRequests(void)
                 break;
         }
     }
+    else if (request.kind == ADBMS_RUNTIME_EEPROM_REQ_READ)
+    {
+        uint8_t readData[4] = {0u, 0u, 0u, 0u};
+        Ltc6812_Status_t st;
+
+        st = Ltc6812_WakeUp(&g_ltc6812Drv, &g_ltc6812Hal);
+        if (st == LTC6812_OK)
+        {
+            st = Ltc6812_EepromRead(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds,
+                                    request.address, readData, request.length);
+        }
+        if (st == LTC6812_OK)
+        {
+            AdbmsRuntime_PublishEepromReadResult(request.address, readData, request.length);
+            ok = true;
+        }
+        else
+        {
+            g_ltc6812State = ECU8TR_ADBMS6830_ERROR;
+            LTC6812_PRINT_DEBUG_STATUS(st);
+        }
+    }
 
     if (ok == true)
     {

@@ -38,7 +38,6 @@ typedef struct
 {
     uint32_t bmm_control_count;
     uint32_t write_eeprom_count;
-    uint32_t write_eeprom_ltc_count;
     uint32_t read_eeprom_count;
     uint32_t eeprom_request_rejected_count;
     uint32_t start_ltc_count;
@@ -55,8 +54,6 @@ typedef struct
 
     Dbc_BmmControlDigitalOutputsType last_bmm_control;
     Dbc_M001WriteEepromDataType last_write_eeprom;
-    Dbc_M001WriteEepromDataLtcType last_write_eeprom_ltc;
-    Dbc_M001ReadEepromReqType last_read_eeprom;
     Dbc_M001StartLtcTransmissionType last_start_ltc;
     Dbc_M001BalanceCellsType last_balance_cells;
     Dbc_BmuDiagReqType last_diag_req;
@@ -70,6 +67,7 @@ static CanIf_TesterCommandStateType g_canIfTesterCommandState;
 static Bmu_ReturnType CanIf_TransmitBlocking(const CanIf_MsgType *msg);
 static void CanIf_TxTask(void *pvParameters);
 static bool CanIf_RequestLtcEepromWrite(uint16_t address, const uint8_t *data, uint8_t length);
+static void CanIf_QueueEepromDataResponse(uint16_t address, uint8_t index, const uint8_t *data, uint8_t length);
 
 static void CanIf_TxTask(void *pvParameters)
 {
@@ -106,6 +104,15 @@ static void CanIf_HandleBmmControlDigitalOutputs(const Dbc_BmmControlDigitalOutp
     /* Stub: connect this to contactor, relay, and fan output control later. */
 }
 
+static void CanIf_QueueEepromDataResponse(uint16_t address, uint8_t index,
+                                          const uint8_t *data, uint8_t length)
+{
+    CanIf_MsgType msg;
+
+    Dbc_M001EepromData_Pack(&msg, address, index, data, length);
+    (void)CanIf_Transmit(&msg);
+}
+
 static void CanIf_HandleM001WriteEepromData(const Dbc_M001WriteEepromDataType *cmd)
 {
     uint8_t data[4];
@@ -119,6 +126,22 @@ static void CanIf_HandleM001WriteEepromData(const Dbc_M001WriteEepromDataType *c
     g_canIfTesterCommandState.last_write_eeprom = *cmd;
     g_canIfTesterCommandState.write_eeprom_count++;
 
+    if (cmd->mux == DBC_M001_EEPROM_READ_MUX)
+    {
+        /* Read request: tester wants to read 4 bytes at this index */
+        address = (uint16_t)((uint16_t)cmd->eeprom_write_index * 4u);
+        if (AdbmsRuntime_RequestEepromRead(address, 4u) == false)
+        {
+            g_canIfTesterCommandState.eeprom_request_rejected_count++;
+        }
+        else
+        {
+            g_canIfTesterCommandState.read_eeprom_count++;
+        }
+        return;
+    }
+
+    /* Normal write */
     address = (uint16_t)((uint16_t)cmd->eeprom_write_index * 4u);
     data[0] = (uint8_t)(cmd->eeprom_write_data & 0xFFu);
     data[1] = (uint8_t)((cmd->eeprom_write_data >> 8u) & 0xFFu);
@@ -128,43 +151,11 @@ static void CanIf_HandleM001WriteEepromData(const Dbc_M001WriteEepromDataType *c
     if (CanIf_RequestLtcEepromWrite(address, data, 4u) == false)
     {
         g_canIfTesterCommandState.eeprom_request_rejected_count++;
-    }
-}
-
-static void CanIf_HandleM001WriteEepromDataLtc(const Dbc_M001WriteEepromDataLtcType *cmd)
-{
-    uint8_t data[4];
-
-    if (cmd == 0)
-    {
         return;
     }
 
-    g_canIfTesterCommandState.last_write_eeprom_ltc = *cmd;
-    g_canIfTesterCommandState.write_eeprom_ltc_count++;
-
-    data[0] = (uint8_t)(cmd->write_data & 0xFFu);
-    data[1] = (uint8_t)((cmd->write_data >> 8u) & 0xFFu);
-    data[2] = (uint8_t)((cmd->write_data >> 16u) & 0xFFu);
-    data[3] = (uint8_t)((cmd->write_data >> 24u) & 0xFFu);
-
-    if (CanIf_RequestLtcEepromWrite(cmd->write_address, data, cmd->write_length) == false)
-    {
-        g_canIfTesterCommandState.eeprom_request_rejected_count++;
-    }
-}
-
-static void CanIf_HandleM001ReadEepromReq(const Dbc_M001ReadEepromReqType *cmd)
-{
-    if (cmd == 0)
-    {
-        return;
-    }
-
-    g_canIfTesterCommandState.last_read_eeprom = *cmd;
-    g_canIfTesterCommandState.read_eeprom_count++;
-
-    /* Stub: read EEPROM/NVM and queue the response message later. */
+    /* Echo the written data back immediately so the tester can confirm */
+    CanIf_QueueEepromDataResponse(address, cmd->eeprom_write_index, data, 4u);
 }
 
 static void CanIf_HandleM001StartLtcTransmission(const Dbc_M001StartLtcTransmissionType *cmd)
@@ -273,6 +264,26 @@ static void CanIf_HandleScu1HsSwitchReq(const Dbc_Scu1HsSwitchReqType *cmd)
     g_canIfTesterCommandState.scu1_hs_switch_req_count++;
 
     /* Stub: connect this to high-side switch output request handling later. */
+}
+
+void CanIf_PollEepromReadResult(void)
+{
+    AdbmsRuntime_EepromReadResult_t result;
+
+    if (AdbmsRuntime_TakeEepromReadResult(&result) == false)
+    {
+        return;
+    }
+
+    if (result.valid == false)
+    {
+        return;
+    }
+
+    CanIf_QueueEepromDataResponse(result.address,
+                                  (uint8_t)(result.address / 4u),
+                                  result.data,
+                                  result.length);
 }
 
 static bool CanIf_RequestLtcEepromWrite(uint16_t address, const uint8_t *data, uint8_t length)
@@ -403,8 +414,6 @@ void CanIf_RxIndication(const CanIf_MsgType *msg)
 {
     Dbc_BmmControlDigitalOutputsType bmmControl;
     Dbc_M001WriteEepromDataType writeEeprom;
-    Dbc_M001WriteEepromDataLtcType writeEepromLtc;
-    Dbc_M001ReadEepromReqType readEeprom;
     Dbc_M001StartLtcTransmissionType startLtc;
     Dbc_M001BalanceCellsType balanceCells;
     Dbc_BmuDiagReqType diagReq;
@@ -425,18 +434,6 @@ void CanIf_RxIndication(const CanIf_MsgType *msg)
     if (Dbc_M001WriteEepromData_Unpack(msg, &writeEeprom))
     {
         CanIf_HandleM001WriteEepromData(&writeEeprom);
-        return;
-    }
-
-    if (Dbc_M001WriteEepromDataLtc_Unpack(msg, &writeEepromLtc))
-    {
-        CanIf_HandleM001WriteEepromDataLtc(&writeEepromLtc);
-        return;
-    }
-
-    if (Dbc_M001ReadEepromReq_Unpack(msg, &readEeprom))
-    {
-        CanIf_HandleM001ReadEepromReq(&readEeprom);
         return;
     }
 
