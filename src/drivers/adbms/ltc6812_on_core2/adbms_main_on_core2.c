@@ -24,6 +24,17 @@
 #define LTC6812_BW_AUX_MEASUREMENT_TIME_MS (8u)
 #define LTC6812_EEPROM_TEST_ADDRESS     (0x03F0u)
 #define LTC6812_EEPROM_TEST_LEN         (8u)
+#define LTC6812_EEPROM_SIZE_BYTES       (1024u)
+#define LTC6812_EEPROM_ID_CELL_TYPE_MAJOR_ADDR     (0x0002u)
+#define LTC6812_EEPROM_ID_CELL_TYPE_MINOR_ADDR     (0x0003u)
+#define LTC6812_EEPROM_ID_MODULE_TYPE_MAJOR_ADDR   (0x0004u)
+#define LTC6812_EEPROM_ID_MODULE_TYPE_MINOR_ADDR   (0x0005u)
+#define LTC6812_EEPROM_ID_PCB_TYPE_MAJOR_ADDR      (0x000Eu)
+#define LTC6812_EEPROM_ID_PCB_TYPE_MINOR_ADDR      (0x000Fu)
+#define LTC6812_EEPROM_STATIC1_IC_TYPE_MAJOR_ADDR  (0x001Eu)
+#define LTC6812_EEPROM_STATIC1_IC_TYPE_MINOR_ADDR  (0x001Fu)
+#define LTC6812_EEPROM_STATIC2_IC_TYPE_MAJOR_ADDR  (0x00BEu)
+#define LTC6812_EEPROM_STATIC2_IC_TYPE_MINOR_ADDR  (0x00BFu)
 
 #ifndef LTC6812_BALANCE_FORCE_CHARGING_ACTIVE
 /* DC3036A bench test hook. Set to 0 for application-controlled charging state. */
@@ -81,6 +92,8 @@ static uint16_t Ltc6812_GetDewSensor_mV(void);
 static void Ltc6812_ReadBoardAuxInputs(void);
 static Ltc6812_Status_t Ltc6812_SetSystemLed(bool on);
 static void Ltc6812_ApplyManualBalanceCommand(void);
+static bool Ltc6812_WriteEepromVerified(uint16_t address, const uint8_t *data, uint8_t length);
+static void Ltc6812_ProcessEepromRequests(void);
 #if LTC6812_CORE2_DEMO_MODE
 static void Ltc6812_PublishDemoSnapshot(void);
 #endif
@@ -299,6 +312,102 @@ static void Ltc6812_ApplyManualBalanceCommand(void)
 
         g_ltc6812Bal.result[afeIdx].dccMask = dccMask;
         g_ltc6812Bal.result[afeIdx].selectedParity = LTC6812_BALANCE_PARITY_NONE;
+    }
+}
+
+static bool Ltc6812_WriteEepromVerified(uint16_t address, const uint8_t *data, uint8_t length)
+{
+    uint8_t verify[4];
+    Ltc6812_Status_t st;
+
+    if ((data == 0) || (length == 0u) || (length > sizeof(verify)) ||
+        (((uint32_t)address + (uint32_t)length) > LTC6812_EEPROM_SIZE_BYTES))
+    {
+        return false;
+    }
+
+    st = Ltc6812_WakeUp(&g_ltc6812Drv, &g_ltc6812Hal);
+    if (st == LTC6812_OK)
+    {
+        st = Ltc6812_EepromWrite(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds, address, data, length);
+    }
+    if (st == LTC6812_OK)
+    {
+        st = Ltc6812_EepromRead(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds, address, verify, length);
+    }
+
+    if ((st != LTC6812_OK) || (memcmp(data, verify, length) != 0))
+    {
+        g_ltc6812State = ECU8TR_ADBMS6830_ERROR;
+        LTC6812_PRINT_DEBUG_STATUS(st);
+        return false;
+    }
+
+    g_ltc6812Drv.lastCommMs = g_ltc6812Drv.tickMs;
+    return true;
+}
+
+static void Ltc6812_ProcessEepromRequests(void)
+{
+    AdbmsRuntime_EepromRequest_t request;
+    uint8_t data[2];
+    bool ok = false;
+
+    if (AdbmsRuntime_TakeEepromRequest(&request) == false)
+    {
+        return;
+    }
+
+    if (request.kind == ADBMS_RUNTIME_EEPROM_REQ_WRITE)
+    {
+        ok = Ltc6812_WriteEepromVerified(request.address, request.data, request.length);
+    }
+    else if (request.kind == ADBMS_RUNTIME_EEPROM_REQ_CONFIG)
+    {
+        data[0] = request.major;
+        data[1] = request.minor;
+
+        switch (request.config_kind)
+        {
+            case ADBMS_RUNTIME_LTC_CONFIG_CELL_TYPE:
+                ok = Ltc6812_WriteEepromVerified(LTC6812_EEPROM_ID_CELL_TYPE_MAJOR_ADDR, data, 2u);
+                break;
+
+            case ADBMS_RUNTIME_LTC_CONFIG_MODULE_TYPE:
+                ok = Ltc6812_WriteEepromVerified(LTC6812_EEPROM_ID_MODULE_TYPE_MAJOR_ADDR, data, 2u);
+                break;
+
+            case ADBMS_RUNTIME_LTC_CONFIG_PCB_TYPE:
+                ok = Ltc6812_WriteEepromVerified(LTC6812_EEPROM_ID_PCB_TYPE_MAJOR_ADDR, data, 2u);
+                break;
+
+            case ADBMS_RUNTIME_LTC_CONFIG_IC_TYPE:
+                ok = Ltc6812_WriteEepromVerified(LTC6812_EEPROM_STATIC1_IC_TYPE_MAJOR_ADDR, data, 2u);
+                if (ok == true)
+                {
+                    ok = Ltc6812_WriteEepromVerified(LTC6812_EEPROM_STATIC2_IC_TYPE_MAJOR_ADDR, data, 2u);
+                }
+                break;
+
+            default:
+                ok = false;
+                break;
+        }
+    }
+
+    if (ok == true)
+    {
+        LTC6812_DEBUG_PRINTF("LTC6812 EEPROM request OK kind=%u addr=0x%04X len=%u\r\n",
+                             (uint32_t)request.kind,
+                             (uint32_t)request.address,
+                             (uint32_t)request.length);
+    }
+    else
+    {
+        LTC6812_DEBUG_PRINTF("LTC6812 EEPROM request FAIL kind=%u addr=0x%04X len=%u\r\n",
+                             (uint32_t)request.kind,
+                             (uint32_t)request.address,
+                             (uint32_t)request.length);
     }
 }
 
@@ -888,6 +997,8 @@ void ltc6812_main_on_core2(void)
         if (g_ltc6812Drv.svcState == LTC6812_SVC_STANDBY)
         {
             bool balanceDecisionFresh = (g_ltc6812Drv.lastMeasureMs != g_ltc6812LastBalanceDebugMeasureMs);
+
+            Ltc6812_ProcessEepromRequests();
 
 #if (ADBMS_BALANCE_CONTROL_MODE == ADBMS_BALANCE_CONTROL_CELL_VOLTAGE)
             Ltc6812_BalanceEvaluate(&g_ltc6812Bal, &g_ltc6812Drv);

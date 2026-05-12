@@ -24,6 +24,11 @@
 #define CANIF_TX_QUEUE_SEND_TIMEOUT_MS (10u)
 #define CANIF_TX_TASK_STACK_WORDS      (configMINIMAL_STACK_SIZE)
 #define CANIF_TX_TASK_PRIORITY         (1u)
+#define CANIF_LTC_EEPROM_SIZE_BYTES    (1024u)
+#define CANIF_M001_CONFIG_CELL_TYPE_MUX    (0xCE11AA55UL)
+#define CANIF_M001_CONFIG_IC_TYPE_MUX      (0xCEA1AA55UL)
+#define CANIF_M001_CONFIG_MODULE_TYPE_MUX  (0xADADAA55UL)
+#define CANIF_M001_CONFIG_PCB_TYPE_MUX     (0x11CEAA55UL)
 
 SemaphoreHandle_t canTxSemaphore = NULL;
 static QueueHandle_t g_canIfTxQueue = NULL;
@@ -34,6 +39,7 @@ typedef struct
     uint32_t write_eeprom_count;
     uint32_t write_eeprom_ltc_count;
     uint32_t read_eeprom_count;
+    uint32_t eeprom_request_rejected_count;
     uint32_t start_ltc_count;
     uint32_t balance_cells_count;
     uint32_t configuration_count;
@@ -62,6 +68,7 @@ static CanIf_TesterCommandStateType g_canIfTesterCommandState;
 
 static Bmu_ReturnType CanIf_TransmitBlocking(const CanIf_MsgType *msg);
 static void CanIf_TxTask(void *pvParameters);
+static bool CanIf_RequestLtcEepromWrite(uint16_t address, const uint8_t *data, uint8_t length);
 
 static void CanIf_TxTask(void *pvParameters)
 {
@@ -100,6 +107,9 @@ static void CanIf_HandleBmmControlDigitalOutputs(const Dbc_BmmControlDigitalOutp
 
 static void CanIf_HandleM001WriteEepromData(const Dbc_M001WriteEepromDataType *cmd)
 {
+    uint8_t data[4];
+    uint16_t address;
+
     if (cmd == 0)
     {
         return;
@@ -108,11 +118,22 @@ static void CanIf_HandleM001WriteEepromData(const Dbc_M001WriteEepromDataType *c
     g_canIfTesterCommandState.last_write_eeprom = *cmd;
     g_canIfTesterCommandState.write_eeprom_count++;
 
-    /* Stub: connect this to EEPROM/NVM write service later. */
+    address = (uint16_t)((uint16_t)cmd->eeprom_write_index * 4u);
+    data[0] = (uint8_t)(cmd->eeprom_write_data & 0xFFu);
+    data[1] = (uint8_t)((cmd->eeprom_write_data >> 8u) & 0xFFu);
+    data[2] = (uint8_t)((cmd->eeprom_write_data >> 16u) & 0xFFu);
+    data[3] = (uint8_t)((cmd->eeprom_write_data >> 24u) & 0xFFu);
+
+    if (CanIf_RequestLtcEepromWrite(address, data, 4u) == false)
+    {
+        g_canIfTesterCommandState.eeprom_request_rejected_count++;
+    }
 }
 
 static void CanIf_HandleM001WriteEepromDataLtc(const Dbc_M001WriteEepromDataLtcType *cmd)
 {
+    uint8_t data[4];
+
     if (cmd == 0)
     {
         return;
@@ -121,7 +142,15 @@ static void CanIf_HandleM001WriteEepromDataLtc(const Dbc_M001WriteEepromDataLtcT
     g_canIfTesterCommandState.last_write_eeprom_ltc = *cmd;
     g_canIfTesterCommandState.write_eeprom_ltc_count++;
 
-    /* Stub: connect this LTC-format EEPROM write to the NVM service later. */
+    data[0] = (uint8_t)(cmd->write_data & 0xFFu);
+    data[1] = (uint8_t)((cmd->write_data >> 8u) & 0xFFu);
+    data[2] = (uint8_t)((cmd->write_data >> 16u) & 0xFFu);
+    data[3] = (uint8_t)((cmd->write_data >> 24u) & 0xFFu);
+
+    if (CanIf_RequestLtcEepromWrite(cmd->write_address, data, cmd->write_length) == false)
+    {
+        g_canIfTesterCommandState.eeprom_request_rejected_count++;
+    }
 }
 
 static void CanIf_HandleM001ReadEepromReq(const Dbc_M001ReadEepromReqType *cmd)
@@ -166,6 +195,11 @@ static void CanIf_HandleM001BalanceCells(const Dbc_M001BalanceCellsType *cmd)
 
 static void CanIf_HandleM001ConfigurationMessage(const CanIf_MsgType *msg)
 {
+    uint32_t mux;
+    uint8_t major;
+    uint8_t minor;
+    bool accepted = false;
+
     if (msg == 0)
     {
         return;
@@ -174,7 +208,31 @@ static void CanIf_HandleM001ConfigurationMessage(const CanIf_MsgType *msg)
     g_canIfTesterCommandState.last_configuration = *msg;
     g_canIfTesterCommandState.configuration_count++;
 
-    /* Stub: decode mux-specific configuration payloads later. */
+    mux = Dbc_ReadLe32(&msg->data[0]);
+    major = msg->data[4];
+    minor = msg->data[5];
+
+    if (mux == CANIF_M001_CONFIG_CELL_TYPE_MUX)
+    {
+        accepted = AdbmsRuntime_RequestLtcConfigWrite(ADBMS_RUNTIME_LTC_CONFIG_CELL_TYPE, major, minor);
+    }
+    else if (mux == CANIF_M001_CONFIG_IC_TYPE_MUX)
+    {
+        accepted = AdbmsRuntime_RequestLtcConfigWrite(ADBMS_RUNTIME_LTC_CONFIG_IC_TYPE, major, minor);
+    }
+    else if (mux == CANIF_M001_CONFIG_MODULE_TYPE_MUX)
+    {
+        accepted = AdbmsRuntime_RequestLtcConfigWrite(ADBMS_RUNTIME_LTC_CONFIG_MODULE_TYPE, major, minor);
+    }
+    else if (mux == CANIF_M001_CONFIG_PCB_TYPE_MUX)
+    {
+        accepted = AdbmsRuntime_RequestLtcConfigWrite(ADBMS_RUNTIME_LTC_CONFIG_PCB_TYPE, major, minor);
+    }
+
+    if (accepted == false)
+    {
+        g_canIfTesterCommandState.eeprom_request_rejected_count++;
+    }
 }
 
 static void CanIf_HandleBmuDiagReq(const Dbc_BmuDiagReqType *cmd)
@@ -214,6 +272,24 @@ static void CanIf_HandleScu1HsSwitchReq(const Dbc_Scu1HsSwitchReqType *cmd)
     g_canIfTesterCommandState.scu1_hs_switch_req_count++;
 
     /* Stub: connect this to high-side switch output request handling later. */
+}
+
+static bool CanIf_RequestLtcEepromWrite(uint16_t address, const uint8_t *data, uint8_t length)
+{
+    uint32_t endAddress;
+
+    if ((data == 0) || (length == 0u) || (length > 4u))
+    {
+        return false;
+    }
+
+    endAddress = (uint32_t)address + (uint32_t)length;
+    if (endAddress > CANIF_LTC_EEPROM_SIZE_BYTES)
+    {
+        return false;
+    }
+
+    return AdbmsRuntime_RequestEepromWrite(address, data, length);
 }
 
 

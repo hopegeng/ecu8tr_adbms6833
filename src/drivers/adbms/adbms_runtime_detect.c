@@ -33,6 +33,8 @@ static uint16_t g_adbmsRuntimeDetectedDevice = ADBMS_RUNTIME_DEVICE_UNKNOWN;
 static volatile bool g_adbmsRuntimeStartRequested = false;
 static volatile bool g_adbmsRuntimeManualBalanceEnabled = false;
 static volatile uint32_t g_adbmsRuntimeBalanceMask20 = 0u;
+static volatile bool g_adbmsRuntimeEepromRequestPending = false;
+static volatile AdbmsRuntime_EepromRequest_t g_adbmsRuntimeEepromRequest;
 
 static bool AdbmsRuntime_QspiTransfer(const uint8_t *tx, uint8_t *rx, uint16_t len);
 static void AdbmsRuntime_WakeIsoSpi(void);
@@ -445,6 +447,90 @@ uint32_t AdbmsRuntime_GetBalanceMask(void)
 bool AdbmsRuntime_IsManualBalanceEnabled(void)
 {
     return g_adbmsRuntimeManualBalanceEnabled;
+}
+
+bool AdbmsRuntime_RequestEepromWrite(uint16_t address, const uint8_t *data, uint8_t length)
+{
+    uint8_t i;
+
+    if ((data == 0) || (length == 0u) || (length > 4u))
+    {
+        return false;
+    }
+
+    if (g_adbmsRuntimeEepromRequestPending == true)
+    {
+        return false;
+    }
+
+    g_adbmsRuntimeEepromRequest.kind = ADBMS_RUNTIME_EEPROM_REQ_WRITE;
+    g_adbmsRuntimeEepromRequest.address = address;
+    g_adbmsRuntimeEepromRequest.length = length;
+    g_adbmsRuntimeEepromRequest.config_kind = ADBMS_RUNTIME_LTC_CONFIG_CELL_TYPE;
+    g_adbmsRuntimeEepromRequest.major = 0u;
+    g_adbmsRuntimeEepromRequest.minor = 0u;
+
+    for (i = 0u; i < 4u; i++)
+    {
+        g_adbmsRuntimeEepromRequest.data[i] = (i < length) ? data[i] : 0u;
+    }
+
+    __dsync();
+    g_adbmsRuntimeEepromRequestPending = true;
+    __dsync();
+
+    return true;
+}
+
+bool AdbmsRuntime_RequestLtcConfigWrite(AdbmsRuntime_LtcConfigKind_t kind, uint8_t major, uint8_t minor)
+{
+    if (g_adbmsRuntimeEepromRequestPending == true)
+    {
+        return false;
+    }
+
+    if (kind > ADBMS_RUNTIME_LTC_CONFIG_PCB_TYPE)
+    {
+        return false;
+    }
+
+    g_adbmsRuntimeEepromRequest.kind = ADBMS_RUNTIME_EEPROM_REQ_CONFIG;
+    g_adbmsRuntimeEepromRequest.address = 0u;
+    g_adbmsRuntimeEepromRequest.length = 0u;
+    g_adbmsRuntimeEepromRequest.data[0] = 0u;
+    g_adbmsRuntimeEepromRequest.data[1] = 0u;
+    g_adbmsRuntimeEepromRequest.data[2] = 0u;
+    g_adbmsRuntimeEepromRequest.data[3] = 0u;
+    g_adbmsRuntimeEepromRequest.config_kind = kind;
+    g_adbmsRuntimeEepromRequest.major = major;
+    g_adbmsRuntimeEepromRequest.minor = minor;
+
+    __dsync();
+    g_adbmsRuntimeEepromRequestPending = true;
+    __dsync();
+
+    return true;
+}
+
+bool AdbmsRuntime_TakeEepromRequest(AdbmsRuntime_EepromRequest_t *request)
+{
+    if (request == 0)
+    {
+        return false;
+    }
+
+    if (g_adbmsRuntimeEepromRequestPending == false)
+    {
+        return false;
+    }
+
+    __dsync();
+    *request = g_adbmsRuntimeEepromRequest;
+    __dsync();
+    g_adbmsRuntimeEepromRequestPending = false;
+    __dsync();
+
+    return true;
 }
 
 bool AdbmsRuntime_SharedRead(AdbmsRuntime_SharedSnapshot_t *snapshot)

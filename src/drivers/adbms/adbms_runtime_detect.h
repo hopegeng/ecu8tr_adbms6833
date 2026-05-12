@@ -55,12 +55,41 @@ typedef struct
     bool valid;
 } AdbmsRuntime_SharedSnapshot_t;
 
+typedef enum
+{
+    ADBMS_RUNTIME_EEPROM_REQ_NONE = 0,
+    ADBMS_RUNTIME_EEPROM_REQ_WRITE,
+    ADBMS_RUNTIME_EEPROM_REQ_CONFIG
+} AdbmsRuntime_EepromRequestKind_t;
+
+typedef enum
+{
+    ADBMS_RUNTIME_LTC_CONFIG_CELL_TYPE = 0,
+    ADBMS_RUNTIME_LTC_CONFIG_IC_TYPE,
+    ADBMS_RUNTIME_LTC_CONFIG_MODULE_TYPE,
+    ADBMS_RUNTIME_LTC_CONFIG_PCB_TYPE
+} AdbmsRuntime_LtcConfigKind_t;
+
+typedef struct
+{
+    AdbmsRuntime_EepromRequestKind_t kind;
+    uint16_t address;
+    uint8_t length;
+    uint8_t data[4];
+    AdbmsRuntime_LtcConfigKind_t config_kind;
+    uint8_t major;
+    uint8_t minor;
+} AdbmsRuntime_EepromRequest_t;
+
 void adbms_runtime_main_on_core2(void);
 void AdbmsRuntime_RequestStart(void);
 bool AdbmsRuntime_IsStartRequested(void);
 void AdbmsRuntime_SetBalanceMask(uint32_t balanceMask20);
 uint32_t AdbmsRuntime_GetBalanceMask(void);
 bool AdbmsRuntime_IsManualBalanceEnabled(void);
+bool AdbmsRuntime_RequestEepromWrite(uint16_t address, const uint8_t *data, uint8_t length);
+bool AdbmsRuntime_RequestLtcConfigWrite(AdbmsRuntime_LtcConfigKind_t kind, uint8_t major, uint8_t minor);
+bool AdbmsRuntime_TakeEepromRequest(AdbmsRuntime_EepromRequest_t *request);
 bool AdbmsRuntime_SharedRead(AdbmsRuntime_SharedSnapshot_t *snapshot);
 ECU8TR_ADBMS6830_State_t AdbmsRuntime_GetState(void);
 uint16_t AdbmsRuntime_GetDetectedDevice(void);
