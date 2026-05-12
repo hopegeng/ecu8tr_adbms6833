@@ -112,6 +112,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.worker = worker
         self.cell_voltage_labels = []
         self.cell_gpio_labels = []
+        self.cell_temp_labels = []
         self.cell_balance_rx = []
         self.balance_checks = []
         self.temp_labels = {}
@@ -184,6 +185,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 border-radius: 6px;
                 selection-background-color: #dbeafe;
             }
+            QTableWidget#cellTable {
+                font-size: 9pt;
+            }
             QHeaderView::section {
                 background: #eef2f7;
                 color: #334155;
@@ -193,6 +197,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 font-weight: 600;
             }
             QCheckBox { background: transparent; }
+            QScrollArea {
+                background: transparent;
+                border: 0;
+            }
+            QWidget#metricsWidget {
+                background: transparent;
+            }
         """)
 
         top = QtWidgets.QHBoxLayout()
@@ -218,8 +229,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         cell_group = QtWidgets.QGroupBox("Cell Messages")
         cell_layout = QtWidgets.QVBoxLayout(cell_group)
-        cell_table = QtWidgets.QTableWidget(20, 5)
-        cell_table.setHorizontalHeaderLabels(["Cell", "Voltage mV", "GPIO mV", "AFE balance", "Command"])
+        cell_table = QtWidgets.QTableWidget(20, 6)
+        cell_table.setObjectName("cellTable")
+        cell_table.setHorizontalHeaderLabels(["Cell", "Voltage mV", "GPIO mV", "Cell temp C", "AFE balance", "Command"])
         cell_table.verticalHeader().setVisible(False)
         cell_table.setAlternatingRowColors(True)
         cell_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
@@ -228,17 +240,23 @@ class MainWindow(QtWidgets.QMainWindow):
         cell_table.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
         cell_table.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)
         cell_table.horizontalHeader().setSectionResizeMode(3, QtWidgets.QHeaderView.Stretch)
-        cell_table.horizontalHeader().setSectionResizeMode(4, QtWidgets.QHeaderView.ResizeToContents)
-        cell_table.setMinimumWidth(440)
+        cell_table.horizontalHeader().setSectionResizeMode(4, QtWidgets.QHeaderView.Stretch)
+        cell_table.horizontalHeader().setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeToContents)
+        cell_table.verticalHeader().setDefaultSectionSize(24)
+        cell_table.verticalHeader().setMinimumSectionSize(22)
+        cell_table.setMinimumWidth(1120)
+        cell_table.setMaximumWidth(1400)
 
         for i in range(20):
             cell_item = QtWidgets.QTableWidgetItem(f"{i + 1:02d}")
             v = QtWidgets.QTableWidgetItem("-")
             gpio = QtWidgets.QTableWidgetItem("-")
+            temp = QtWidgets.QTableWidgetItem("-")
             rx_bal = QtWidgets.QTableWidgetItem("-")
             cell_item.setTextAlignment(QtCore.Qt.AlignCenter)
             v.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
             gpio.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+            temp.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
             rx_bal.setTextAlignment(QtCore.Qt.AlignCenter)
             chk = QtWidgets.QCheckBox()
             chk_box = QtWidgets.QWidget()
@@ -247,20 +265,26 @@ class MainWindow(QtWidgets.QMainWindow):
             chk_layout.addWidget(chk, 0, QtCore.Qt.AlignCenter)
             self.cell_voltage_labels.append(v)
             self.cell_gpio_labels.append(gpio)
+            self.cell_temp_labels.append(temp)
             self.cell_balance_rx.append(rx_bal)
             self.balance_checks.append(chk)
             cell_table.setItem(i, 0, cell_item)
             cell_table.setItem(i, 1, v)
             cell_table.setItem(i, 2, gpio)
-            cell_table.setItem(i, 3, rx_bal)
-            cell_table.setCellWidget(i, 4, chk_box)
+            cell_table.setItem(i, 3, temp)
+            cell_table.setItem(i, 4, rx_bal)
+            cell_table.setCellWidget(i, 5, chk_box)
 
         cell_layout.addWidget(cell_table)
-        main_split.addWidget(cell_group, 2)
+        main_split.addWidget(cell_group, 3)
 
-        metrics_panel = QtWidgets.QVBoxLayout()
+        metrics_scroll = QtWidgets.QScrollArea()
+        metrics_scroll.setWidgetResizable(True)
+        metrics_scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
+        metrics_widget = QtWidgets.QWidget()
+        metrics_widget.setObjectName("metricsWidget")
+        metrics_panel = QtWidgets.QVBoxLayout(metrics_widget)
         metrics_panel.setSpacing(12)
-        main_split.addLayout(metrics_panel, 1)
 
         metrics_panel.addWidget(self._make_metric_group("Voltage Summary", [
             "Module voltage V",
@@ -271,6 +295,7 @@ class MainWindow(QtWidgets.QMainWindow):
         metrics_panel.addWidget(self._make_metric_group("Temperatures", [
             "Cell min C", "Cell max C", "Cell avg C",
             "Cell max temp number", "Cell min temp number",
+            "Split terminal neg C", "Split terminal pos C",
             "Terminal neg C", "Terminal pos C",
             "Terminal min C", "Terminal max C", "Terminal avg C",
             "Terminal max number", "Terminal min number",
@@ -281,20 +306,25 @@ class MainWindow(QtWidgets.QMainWindow):
             "IC1 temp C", "IC2 temp C",
         ]))
         metrics_panel.addStretch()
+        metrics_scroll.setWidget(metrics_widget)
+        metrics_scroll.setMinimumWidth(640)
+        metrics_scroll.setMaximumWidth(860)
+        main_split.addWidget(metrics_scroll, 2)
 
         self.setCentralWidget(root)
-        self.resize(980, 760)
+        self.resize(2000, 720)
 
     def _make_metric_group(self, title, names):
         group = QtWidgets.QGroupBox(title)
         grid = QtWidgets.QGridLayout(group)
-        grid.setColumnStretch(1, 1)
+        grid.setColumnStretch(0, 1)
 
         for row, name in enumerate(names):
             title_label = QtWidgets.QLabel(name)
             label = QtWidgets.QLabel("-")
             label.setObjectName("metricValue")
-            label.setMinimumWidth(90)
+            label.setMinimumWidth(74)
+            label.setMaximumWidth(108)
             label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
             self.temp_labels[name] = label
             grid.addWidget(title_label, row, 0)
@@ -328,12 +358,15 @@ class MainWindow(QtWidgets.QMainWindow):
             idx = can_id - ID_CELL_FIRST
             self.cell_voltage_labels[idx].setText(f"{u16(data, 0) * 0.1:.1f}")
             self.cell_gpio_labels[idx].setText(f"{u16(data, 4) * 0.1:.1f}")
+            self.cell_temp_labels[idx].setText(f"{s16(data, 2) * 0.01:.2f}")
             self.cell_balance_rx[idx].setText("ON" if (data[6] & 0x01) else "off")
         elif can_id == ID_M001_TERMINAL_TEMPS:
             self.temp_labels["Dew sensor mV"].setText(f"{u16(data, 2) * 0.1:.1f}")
             self.temp_labels["Terminal neg C"].setText(f"{s16(data, 4) * 0.01:.2f}")
             self.temp_labels["Terminal pos C"].setText(f"{s16(data, 6) * 0.01:.2f}")
         elif can_id == ID_M001_MODULE_STATUS:
+            self.temp_labels["Split terminal neg C"].setText(f"{s16(data, 0) * 0.01:.2f}")
+            self.temp_labels["Split terminal pos C"].setText(f"{s16(data, 2) * 0.01:.2f}")
             self.temp_labels["Module voltage V"].setText(f"{u16(data, 6) * 0.01:.2f}")
         elif can_id == ID_M001_MAX_MIN_VOLTAGES:
             self.temp_labels["M001 cell min mV"].setText(f"{u16(data, 0) * 0.1:.1f}")

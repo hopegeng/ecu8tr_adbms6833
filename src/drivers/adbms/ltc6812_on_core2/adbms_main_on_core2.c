@@ -21,7 +21,6 @@
 #define LTC6812_QSPI_WAIT_TIMEOUT_LOOPS (1000000u)
 #define LTC6812_BW_TEMP_COUNT           (14u)
 #define LTC6812_BW_DEW_THRESHOLD_MV     (1500u)
-#define LTC6812_BW_AUX_MEASUREMENT_TIME_MS (8u)
 #define LTC6812_EEPROM_TEST_ADDRESS     (0x03F0u)
 #define LTC6812_EEPROM_TEST_LEN         (8u)
 #define LTC6812_EEPROM_SIZE_BYTES       (1024u)
@@ -88,8 +87,8 @@ static void Ltc6812_PublishSharedSnapshot(void);
 static int16_t Ltc6812_NtcVoltageToTempRaw_0p01C(uint16_t voltage_mV);
 static uint16_t Ltc6812_GetExternalTempVoltage_mV(uint8_t tempIndex);
 static int16_t Ltc6812_GetExternalTempRaw_0p01C(uint8_t tempIndex);
+static uint8_t Ltc6812_GetCellTempIndex(uint8_t afeIdx, uint8_t usedCellIdx);
 static uint16_t Ltc6812_GetDewSensor_mV(void);
-static void Ltc6812_ReadBoardAuxInputs(void);
 static Ltc6812_Status_t Ltc6812_SetSystemLed(bool on);
 static void Ltc6812_ApplyManualBalanceCommand(void);
 static bool Ltc6812_WriteEepromVerified(uint16_t address, const uint8_t *data, uint8_t length);
@@ -191,6 +190,27 @@ static int16_t Ltc6812_GetExternalTempRaw_0p01C(uint8_t tempIndex)
     return Ltc6812_NtcVoltageToTempRaw_0p01C(Ltc6812_GetExternalTempVoltage_mV(tempIndex));
 }
 
+static uint8_t Ltc6812_GetCellTempIndex(uint8_t afeIdx, uint8_t usedCellIdx)
+{
+    static const uint8_t sideTempIndexByCellPair[5] =
+    {
+        2u,  /* GPIO3: SideLeft/SideRight1 -> cell 1, 2 */
+        3u,  /* GPIO6: SideLeft/SideRight2 -> cell 3, 4 */
+        4u,  /* GPIO7: SideLeft/SideRight3 -> cell 5, 6 */
+        5u,  /* GPIO8: SideLeft/SideRight4 -> cell 7, 8 */
+        6u   /* GPIO9: SideLeft/SideRight5 -> cell 9, 10 */
+    };
+    uint8_t pairIdx;
+
+    if ((afeIdx >= LTC6812_SHARED_AFE_COUNT) || (usedCellIdx >= LTC6812_SHARED_USED_CELLS_PER_AFE))
+    {
+        return 0xFFu;
+    }
+
+    pairIdx = (uint8_t)(usedCellIdx / 2u);
+    return (uint8_t)(((uint8_t)afeIdx * 7u) + sideTempIndexByCellPair[pairIdx]);
+}
+
 static uint16_t Ltc6812_GetDewSensor_mV(void)
 {
     if (g_ltc6812Drv.icCount <= 1u)
@@ -199,37 +219,6 @@ static uint16_t Ltc6812_GetDewSensor_mV(void)
     }
 
     return g_ltc6812Drv.aux[1].mV[3u];
-}
-
-static void Ltc6812_ReadBoardAuxInputs(void)
-{
-    Ltc6812_Status_t st;
-
-    st = Ltc6812_StartAuxConversion(&g_ltc6812Hal, &g_ltc6812Cmds);
-    if (st != LTC6812_OK)
-    {
-        g_ltc6812State = ECU8TR_ADBMS6830_ERROR;
-        LTC6812_PRINT_DEBUG_STATUS(st);
-        return;
-    }
-    g_ltc6812Drv.lastCommMs = g_ltc6812Drv.tickMs;
-
-    g_ltc6812Hal.delayMs(LTC6812_BW_AUX_MEASUREMENT_TIME_MS);
-    st = Ltc6812_WakeUp(&g_ltc6812Drv, &g_ltc6812Hal);
-    if (st == LTC6812_OK)
-    {
-        st = Ltc6812_ReadAuxVoltagesByGroup(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds);
-        if (st == LTC6812_OK)
-        {
-            g_ltc6812Drv.lastCommMs = g_ltc6812Drv.tickMs;
-        }
-    }
-
-    if (st != LTC6812_OK)
-    {
-        g_ltc6812State = ECU8TR_ADBMS6830_ERROR;
-        LTC6812_PRINT_DEBUG_STATUS(st);
-    }
 }
 
 static void Ltc6812_ReadIcStatusInputs(void)
@@ -451,6 +440,12 @@ static const char *Ltc6812_SvcStateToString(Ltc6812_ServiceState_t state)
             return "WAIT_MEAS";
         case LTC6812_SVC_READ_RESULTS:
             return "READ";
+        case LTC6812_SVC_START_AUX_MEASURE:
+            return "START_AUX";
+        case LTC6812_SVC_WAIT_AUX_MEASURE:
+            return "WAIT_AUX";
+        case LTC6812_SVC_READ_AUX_RESULTS:
+            return "READ_AUX";
         case LTC6812_SVC_PROCESS_RESULTS:
             return "PROCESS";
         case LTC6812_SVC_FAULT:
@@ -837,11 +832,11 @@ static void Ltc6812_PublishSharedSnapshot(void)
         for (usedCellIdx = 0u; usedCellIdx < LTC6812_SHARED_USED_CELLS_PER_AFE; usedCellIdx++)
         {
             uint8_t driverCellIdx = (uint8_t)(LTC6812_SHARED_FIRST_USED_CELL_0BASED + usedCellIdx);
+            uint8_t cellTempIdx = Ltc6812_GetCellTempIndex(afeIdx, usedCellIdx);
 
-            if (usedCellIdx < 7u)
+            if (cellTempIdx != 0xFFu)
             {
-                snapshot.cell_temp_raw_0p01C[afeIdx][usedCellIdx] =
-                    Ltc6812_GetExternalTempRaw_0p01C((uint8_t)(((uint8_t)afeIdx * 7u) + usedCellIdx));
+                snapshot.cell_temp_raw_0p01C[afeIdx][usedCellIdx] = Ltc6812_GetExternalTempRaw_0p01C(cellTempIdx);
             }
             else
             {
@@ -853,7 +848,7 @@ static void Ltc6812_PublishSharedSnapshot(void)
 
                 snapshot.cell_voltage_mV[afeIdx][usedCellIdx] = g_ltc6812Drv.cell[afeIdx].mV[driverCellIdx];
                 snapshot.gpio_voltage_mV[afeIdx][usedCellIdx] =
-                    (usedCellIdx < 7u) ? Ltc6812_GetExternalTempVoltage_mV((uint8_t)(((uint8_t)afeIdx * 7u) + usedCellIdx)) : 0u;
+                    (cellTempIdx != 0xFFu) ? Ltc6812_GetExternalTempVoltage_mV(cellTempIdx) : 0u;
                 snapshot.balancing[afeIdx][usedCellIdx] = ((dccMask & ((uint16_t)1u << driverCellIdx)) != 0u) ? 1u : 0u;
             }
             else
@@ -1008,7 +1003,6 @@ void ltc6812_main_on_core2(void)
 
             if (balanceDecisionFresh == true)
             {
-                Ltc6812_ReadBoardAuxInputs();
                 Ltc6812_ReadIcStatusInputs();
 #if 0
                 for (uint8_t afeIdx = 0u; afeIdx < g_ltc6812Drv.icCount; afeIdx++)

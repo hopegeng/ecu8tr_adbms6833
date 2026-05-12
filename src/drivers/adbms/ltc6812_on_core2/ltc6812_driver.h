@@ -72,6 +72,9 @@ typedef enum
     LTC6812_SVC_START_MEASURE,
     LTC6812_SVC_WAIT_MEASURE,
     LTC6812_SVC_READ_RESULTS,
+    LTC6812_SVC_START_AUX_MEASURE,
+    LTC6812_SVC_WAIT_AUX_MEASURE,
+    LTC6812_SVC_READ_AUX_RESULTS,
     LTC6812_SVC_PROCESS_RESULTS,
     LTC6812_SVC_FAULT
 } Ltc6812_ServiceState_t;
@@ -115,9 +118,11 @@ typedef struct
     uint32_t stateEntryMs;
     uint32_t lastCommMs;
     uint32_t lastMeasureMs;
+    uint32_t lastAuxMeasureMs;
     uint32_t pecErrorCount;
     uint32_t commErrorCount;
     uint32_t measureCount;
+    uint32_t auxMeasureCount;
     Ltc6812_DiagStep_t lastDiagStep;
     uint16_t lastDiagCmd;
     uint8_t lastDiagIc;

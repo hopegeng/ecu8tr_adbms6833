@@ -21,6 +21,7 @@
 #define LTC6812_SLEEP_WATCHDOG_TIMEOUT_MS  (2000u)
 #define LTC6812_CELL_MEASUREMENT_TIME_MS   (8u)
 #define LTC6812_AUX_MEASUREMENT_TIME_MS    (8u)
+#define LTC6812_AUX_SAMPLE_PERIOD_MS       (2000u)
 #define LTC6812_STCOMM_CLOCK_BYTES         (9u)
 #define LTC6812_EEPROM_I2C_ADDR_BASE       (0x50u)
 #define LTC6812_EEPROM_WRITE_DELAY_MS      (5u)
@@ -1148,6 +1149,7 @@ Ltc6812_Status_t Ltc6812_Task(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, 
 {
     uint32_t timeSinceLastComm;
     uint32_t timeSinceLastMeasure;
+    uint32_t timeSinceLastAuxMeasure;
 
     if ((ctx == 0) || (hal == 0) || (cmds == 0))
     {
@@ -1156,6 +1158,7 @@ Ltc6812_Status_t Ltc6812_Task(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, 
 
     timeSinceLastComm = ctx->tickMs - ctx->lastCommMs;
     timeSinceLastMeasure = ctx->tickMs - ctx->lastMeasureMs;
+    timeSinceLastAuxMeasure = ctx->tickMs - ctx->lastAuxMeasureMs;
 
     switch (ctx->svcState)
     {
@@ -1210,6 +1213,33 @@ Ltc6812_Status_t Ltc6812_Task(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, 
                 else
                 {
                     ctx->svcState = LTC6812_SVC_START_MEASURE;
+                }
+                ctx->stateEntryMs = ctx->tickMs;
+            }
+            else if (timeSinceLastAuxMeasure >= LTC6812_AUX_SAMPLE_PERIOD_MS)
+            {
+                if (timeSinceLastComm >= LTC6812_SLEEP_WATCHDOG_TIMEOUT_MS)
+                {
+                    ctx->configured = false;
+                    ctx->svcState = LTC6812_SVC_WAKE_STACK;
+                }
+                else if (timeSinceLastComm >= LTC6812_LINK_IDLE_TIMEOUT_MS)
+                {
+                    if (Ltc6812_WakeUp(ctx, hal) != LTC6812_OK)
+                    {
+                        ctx->commErrorCount++;
+                        ctx->linkState = LTC6812_LINK_ERROR;
+                        ctx->svcState = LTC6812_SVC_FAULT;
+                        return LTC6812_ERR_COMM;
+                    }
+
+                    ctx->lastCommMs = ctx->tickMs;
+                    ctx->linkState = LTC6812_LINK_READY;
+                    ctx->svcState = LTC6812_SVC_START_AUX_MEASURE;
+                }
+                else
+                {
+                    ctx->svcState = LTC6812_SVC_START_AUX_MEASURE;
                 }
                 ctx->stateEntryMs = ctx->tickMs;
             }
@@ -1279,6 +1309,73 @@ Ltc6812_Status_t Ltc6812_Task(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, 
             ctx->linkState = LTC6812_LINK_READY;
             ctx->lastCommMs = ctx->tickMs;
             ctx->lastMeasureMs = ctx->tickMs;
+            ctx->svcState = LTC6812_SVC_PROCESS_RESULTS;
+            break;
+
+        case LTC6812_SVC_START_AUX_MEASURE:
+            if (timeSinceLastComm >= LTC6812_SLEEP_WATCHDOG_TIMEOUT_MS)
+            {
+                ctx->configured = false;
+                ctx->svcState = LTC6812_SVC_WAKE_STACK;
+                break;
+            }
+
+            if (timeSinceLastComm >= LTC6812_LINK_IDLE_TIMEOUT_MS)
+            {
+                ctx->svcState = LTC6812_SVC_WAKE_STACK;
+                break;
+            }
+
+            ctx->lastDiagStep = LTC6812_DIAG_ADAX;
+            ctx->lastDiagCmd = cmds->ADAX;
+            if (Ltc6812_StartAuxConversion(hal, cmds) != LTC6812_OK)
+            {
+                ctx->commErrorCount++;
+                ctx->linkState = LTC6812_LINK_ERROR;
+                ctx->svcState = LTC6812_SVC_FAULT;
+                return LTC6812_ERR_COMM;
+            }
+
+            ctx->linkState = LTC6812_LINK_XFER;
+            ctx->lastCommMs = ctx->tickMs;
+            ctx->stateEntryMs = ctx->tickMs;
+            ctx->auxMeasureCount++;
+            ctx->svcState = LTC6812_SVC_WAIT_AUX_MEASURE;
+            break;
+
+        case LTC6812_SVC_WAIT_AUX_MEASURE:
+            if ((ctx->tickMs - ctx->stateEntryMs) > LTC6812_AUX_MEASUREMENT_TIME_MS)
+            {
+                if ((ctx->tickMs - ctx->lastCommMs) >= LTC6812_LINK_IDLE_TIMEOUT_MS)
+                {
+                    if (Ltc6812_WakeUp(ctx, hal) != LTC6812_OK)
+                    {
+                        ctx->commErrorCount++;
+                        ctx->linkState = LTC6812_LINK_ERROR;
+                        ctx->svcState = LTC6812_SVC_FAULT;
+                        return LTC6812_ERR_COMM;
+                    }
+
+                    ctx->lastCommMs = ctx->tickMs;
+                    ctx->linkState = LTC6812_LINK_READY;
+                }
+
+                ctx->svcState = LTC6812_SVC_READ_AUX_RESULTS;
+            }
+            break;
+
+        case LTC6812_SVC_READ_AUX_RESULTS:
+            if (Ltc6812_ReadAuxVoltagesByGroup(ctx, hal, cmds) != LTC6812_OK)
+            {
+                ctx->commErrorCount++;
+                ctx->linkState = LTC6812_LINK_ERROR;
+                ctx->svcState = LTC6812_SVC_FAULT;
+                return LTC6812_ERR_COMM;
+            }
+
+            ctx->linkState = LTC6812_LINK_READY;
+            ctx->lastCommMs = ctx->tickMs;
+            ctx->lastAuxMeasureMs = ctx->tickMs;
             ctx->svcState = LTC6812_SVC_PROCESS_RESULTS;
             break;
 
