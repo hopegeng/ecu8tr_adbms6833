@@ -42,10 +42,13 @@ typedef enum
     LTC6812_DIAG_CFGB_COMPARE,
     LTC6812_DIAG_ADCV,
     LTC6812_DIAG_ADAX,
+    LTC6812_DIAG_ADSTAT,
     LTC6812_DIAG_RDCV,
     LTC6812_DIAG_RDCV_PEC,
     LTC6812_DIAG_RDAUX,
     LTC6812_DIAG_RDAUX_PEC,
+    LTC6812_DIAG_RDSTAT,
+    LTC6812_DIAG_RDSTAT_PEC,
     LTC6812_DIAG_WRCOMM,
     LTC6812_DIAG_RDCOMM,
     LTC6812_DIAG_STCOMM
@@ -94,6 +97,17 @@ typedef struct
 
 typedef struct
 {
+    uint16_t scRaw;
+    uint16_t itmpRaw;
+    uint16_t vaRaw;
+    uint16_t vdRaw;
+    uint16_t sumCellRaw_0p01V;
+    int16_t internalTempRaw_0p01C;
+    bool valid;
+} Ltc6812_StatusData_t;
+
+typedef struct
+{
     uint8_t icCount;
     Ltc6812_LinkState_t linkState;
     Ltc6812_ServiceState_t svcState;
@@ -118,6 +132,7 @@ typedef struct
     Ltc6812_CfgReg_t cfgb[LTC6812_MAX_ICS];
     Ltc6812_CellData_t cell[LTC6812_MAX_ICS];
     Ltc6812_AuxData_t aux[LTC6812_MAX_ICS];
+    Ltc6812_StatusData_t status[LTC6812_MAX_ICS];
 } Ltc6812_Context_t;
 
 typedef struct
@@ -143,10 +158,13 @@ typedef struct
     uint16_t RDCVE;
     uint16_t ADCV;
     uint16_t ADAX;
+    uint16_t ADSTAT;
     uint16_t RDAUXA;
     uint16_t RDAUXB;
     uint16_t RDAUXC;
     uint16_t RDAUXD;
+    uint16_t RDSTATA;
+    uint16_t RDSTATB;
     uint16_t CLRCELL;
     uint16_t MUTE;
     uint16_t UNMUTE;
@@ -159,12 +177,14 @@ uint32_t Ltc6812_RawTo_uV(uint16_t raw);
 Ltc6812_Status_t Ltc6812_WakeUp(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal);
 Ltc6812_Status_t Ltc6812_StartCellConversion(const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds);
 Ltc6812_Status_t Ltc6812_StartAuxConversion(const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds);
+Ltc6812_Status_t Ltc6812_StartStatusConversion(const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds);
 Ltc6812_Status_t Ltc6812_WriteCfga(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds);
 Ltc6812_Status_t Ltc6812_WriteCfgb(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds);
 Ltc6812_Status_t Ltc6812_ReadCfga(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds);
 Ltc6812_Status_t Ltc6812_ReadCfgb(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds);
 Ltc6812_Status_t Ltc6812_ReadCellVoltagesByGroup(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds);
 Ltc6812_Status_t Ltc6812_ReadAuxVoltagesByGroup(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds);
+Ltc6812_Status_t Ltc6812_ReadStatus(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds);
 Ltc6812_Status_t Ltc6812_FullInitialize(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds);
 Ltc6812_Status_t Ltc6812_SendMute(const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds);
 Ltc6812_Status_t Ltc6812_SendUnmute(const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds);

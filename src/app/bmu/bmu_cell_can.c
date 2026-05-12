@@ -185,12 +185,41 @@ void Bmu_CellCan_MainTask_10ms(uint32_t now_ms, bool measurementActive)
     }
 }
 
+/* M001_IC_CellSumVoltages */
+/* 0x1000c801 */
 static Bmu_ReturnType Bmu_CellCan_SendIcCellSumVoltages(void)
 {
     CanIf_MsgType msg;
+    AdbmsSharedSnapshot_t snapshot;
+    bool useIcStatus = false;
     uint8_t afe;
 
     Bmu_CellCan_InitExt8(&msg, BMU_CAN_ID_M001_IC_CELL_SUM_VOLTAGES);
+
+    if (Bmu_CscAcq_GetLastSnapshot(&snapshot) == true)
+    {
+        uint8_t icIdx;
+
+        for (icIdx = 0u; icIdx < BMU_IC_STATUS_COUNT; icIdx++)
+        {
+            if (snapshot.ic_status_valid[icIdx] != 0u)
+            {
+                useIcStatus = true;
+                break;
+            }
+        }
+
+        if (useIcStatus == true)
+        {
+            for (icIdx = 0u; icIdx < BMU_IC_STATUS_COUNT; icIdx++)
+            {
+                Bmu_CellCan_PutLe16(&msg.data[(uint16_t)icIdx * 2u],
+                                    snapshot.ic_cell_sum_raw_0p01V[icIdx]);
+            }
+
+            return CanIf_Transmit(&msg);
+        }
+    }
 
     for (afe = 0u; afe < BMU_AFE_COUNT_PER_CSC; afe++)
     {
@@ -214,6 +243,8 @@ static Bmu_ReturnType Bmu_CellCan_SendIcCellSumVoltages(void)
     return CanIf_Transmit(&msg);
 }
 
+/* M001_MaxMinVoltages */
+/* 0x10003801 */
 static Bmu_ReturnType Bmu_CellCan_SendMaxMinVoltages(void)
 {
     CanIf_MsgType msg;
@@ -259,6 +290,8 @@ static Bmu_ReturnType Bmu_CellCan_SendMaxMinVoltages(void)
     return CanIf_Transmit(&msg);
 }
 
+/* BMMp_CellVoltages */
+/* 0x0x1E000001 */
 static Bmu_ReturnType Bmu_CellCan_SendBmmpCellVoltages(void)
 {
     CanIf_MsgType msg;
@@ -311,6 +344,8 @@ static Bmu_ReturnType Bmu_CellCan_SendBmmpCellVoltages(void)
     return CanIf_Transmit(&msg);
 }
 
+/* M001_ModuleStatus */
+/* 0x10002801 */
 static Bmu_ReturnType Bmu_CellCan_SendModuleStatus(void)
 {
     CanIf_MsgType msg;
@@ -343,6 +378,8 @@ static Bmu_ReturnType Bmu_CellCan_SendModuleStatus(void)
     return CanIf_Transmit(&msg);
 }
 
+/* M001_TerminalTemperatures and BMMp_TerminalTemperatures */
+/* 0x10001801 and 0x1e002001 */
 static Bmu_ReturnType Bmu_CellCan_SendTerminalTemperatures(void)
 {
     CanIf_MsgType msg;
@@ -377,6 +414,8 @@ static Bmu_ReturnType Bmu_CellCan_SendTerminalTemperatures(void)
     return CanIf_Transmit(&msg);
 }
 
+/* BMMp_CellTemperatures */
+/* 0x1e001001 */
 static Bmu_ReturnType Bmu_CellCan_SendCellTemperatures(void)
 {
     CanIf_MsgType msg;
@@ -429,11 +468,28 @@ static Bmu_ReturnType Bmu_CellCan_SendCellTemperatures(void)
     return CanIf_Transmit(&msg);
 }
 
+/* M001_IC_InternalTemperature: The command ADSTAT */
+/* 0x10008801UL */
 static Bmu_ReturnType Bmu_CellCan_SendIcInternalTemperature(void)
 {
     CanIf_MsgType msg;
+    AdbmsSharedSnapshot_t snapshot;
+    uint8_t icIdx;
 
     Bmu_CellCan_InitExt8(&msg, BMU_CAN_ID_M001_IC_INTERNAL_TEMP);
+
+    if (Bmu_CscAcq_GetLastSnapshot(&snapshot) == true)
+    {
+        for (icIdx = 0u; icIdx < BMU_IC_STATUS_COUNT; icIdx++)
+        {
+            if (snapshot.ic_status_valid[icIdx] != 0u)
+            {
+                Bmu_CellCan_PutLe16(&msg.data[(uint16_t)icIdx * 2u],
+                                    (uint16_t)snapshot.ic_internal_temp_raw_0p01C[icIdx]);
+            }
+        }
+    }
+
     return CanIf_Transmit(&msg);
 }
 

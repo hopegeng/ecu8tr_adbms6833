@@ -219,6 +219,31 @@ static void Ltc6812_ReadBoardAuxInputs(void)
     }
 }
 
+static void Ltc6812_ReadIcStatusInputs(void)
+{
+    Ltc6812_Status_t st;
+
+    st = Ltc6812_StartStatusConversion(&g_ltc6812Hal, &g_ltc6812Cmds);
+    if (st != LTC6812_OK)
+    {
+        LTC6812_PRINT_DEBUG_STATUS(st);
+        return;
+    }
+
+    if (g_ltc6812Hal.delayMs != 0)
+    {
+        g_ltc6812Hal.delayMs(10u);
+    }
+
+    Ltc6812_WakeUp( &g_ltc6812Drv, &g_ltc6812Hal );
+
+    st = Ltc6812_ReadStatus(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds);
+    if (st != LTC6812_OK)
+    {
+        LTC6812_PRINT_DEBUG_STATUS(st);
+    }
+}
+
 static Ltc6812_Status_t Ltc6812_SetSystemLed(bool on)
 {
     Ltc6812_Status_t st;
@@ -348,10 +373,22 @@ static const char *Ltc6812_DiagStepToString(Ltc6812_DiagStep_t step)
             return "CFGB_CMP";
         case LTC6812_DIAG_ADCV:
             return "ADCV";
+        case LTC6812_DIAG_ADAX:
+            return "ADAX";
+        case LTC6812_DIAG_ADSTAT:
+            return "ADSTAT";
         case LTC6812_DIAG_RDCV:
             return "RDCV";
         case LTC6812_DIAG_RDCV_PEC:
             return "RDCV_PEC";
+        case LTC6812_DIAG_RDAUX:
+            return "RDAUX";
+        case LTC6812_DIAG_RDAUX_PEC:
+            return "RDAUX_PEC";
+        case LTC6812_DIAG_RDSTAT:
+            return "RDSTAT";
+        case LTC6812_DIAG_RDSTAT_PEC:
+            return "RDSTAT_PEC";
         default:
             return "UNKNOWN";
     }
@@ -408,6 +445,7 @@ void Ltc6812_SharedInit(void)
 {
     uint8_t afeIdx;
     uint8_t cellIdx;
+    uint8_t icIdx;
     uint8_t tempIdx;
 
     g_ltc6812Shared.sequence = 0u;
@@ -432,6 +470,13 @@ void Ltc6812_SharedInit(void)
         g_ltc6812Shared.snapshot.external_temp_voltage_mV[tempIdx] = 0u;
     }
 
+    for (icIdx = 0u; icIdx < LTC6812_SHARED_IC_STATUS_COUNT; icIdx++)
+    {
+        g_ltc6812Shared.snapshot.ic_cell_sum_raw_0p01V[icIdx] = 0u;
+        g_ltc6812Shared.snapshot.ic_internal_temp_raw_0p01C[icIdx] = 0;
+        g_ltc6812Shared.snapshot.ic_status_valid[icIdx] = 0u;
+    }
+
     g_ltc6812Shared.snapshot.dew_sensor_mV = 0u;
     g_ltc6812Shared.snapshot.dew_sensor_state = 0u;
     g_ltc6812Shared.snapshot.led_on = 0u;
@@ -441,6 +486,7 @@ void Ltc6812_SharedPublish(const Ltc6812_SharedSnapshot_t *snapshot)
 {
     uint8_t afeIdx;
     uint8_t cellIdx;
+    uint8_t icIdx;
     uint8_t tempIdx;
 
     if (snapshot == 0)
@@ -471,6 +517,14 @@ void Ltc6812_SharedPublish(const Ltc6812_SharedSnapshot_t *snapshot)
         g_ltc6812Shared.snapshot.external_temp_raw_0p01C[tempIdx] = snapshot->external_temp_raw_0p01C[tempIdx];
         g_ltc6812Shared.snapshot.external_temp_voltage_mV[tempIdx] = snapshot->external_temp_voltage_mV[tempIdx];
     }
+
+    for (icIdx = 0u; icIdx < LTC6812_SHARED_IC_STATUS_COUNT; icIdx++)
+    {
+        g_ltc6812Shared.snapshot.ic_cell_sum_raw_0p01V[icIdx] = snapshot->ic_cell_sum_raw_0p01V[icIdx];
+        g_ltc6812Shared.snapshot.ic_internal_temp_raw_0p01C[icIdx] = snapshot->ic_internal_temp_raw_0p01C[icIdx];
+        g_ltc6812Shared.snapshot.ic_status_valid[icIdx] = snapshot->ic_status_valid[icIdx];
+    }
+
     g_ltc6812Shared.snapshot.dew_sensor_mV = snapshot->dew_sensor_mV;
     g_ltc6812Shared.snapshot.dew_sensor_state = snapshot->dew_sensor_state;
     g_ltc6812Shared.snapshot.led_on = snapshot->led_on;
@@ -486,6 +540,7 @@ bool Ltc6812_SharedRead(Ltc6812_SharedSnapshot_t *snapshot)
     uint32_t seqEnd;
     uint8_t afeIdx;
     uint8_t cellIdx;
+    uint8_t icIdx;
     uint8_t tempIdx;
 
     if (snapshot == 0)
@@ -524,6 +579,14 @@ bool Ltc6812_SharedRead(Ltc6812_SharedSnapshot_t *snapshot)
             snapshot->external_temp_raw_0p01C[tempIdx] = g_ltc6812Shared.snapshot.external_temp_raw_0p01C[tempIdx];
             snapshot->external_temp_voltage_mV[tempIdx] = g_ltc6812Shared.snapshot.external_temp_voltage_mV[tempIdx];
         }
+
+        for (icIdx = 0u; icIdx < LTC6812_SHARED_IC_STATUS_COUNT; icIdx++)
+        {
+            snapshot->ic_cell_sum_raw_0p01V[icIdx] = g_ltc6812Shared.snapshot.ic_cell_sum_raw_0p01V[icIdx];
+            snapshot->ic_internal_temp_raw_0p01C[icIdx] = g_ltc6812Shared.snapshot.ic_internal_temp_raw_0p01C[icIdx];
+            snapshot->ic_status_valid[icIdx] = g_ltc6812Shared.snapshot.ic_status_valid[icIdx];
+        }
+
         snapshot->dew_sensor_mV = g_ltc6812Shared.snapshot.dew_sensor_mV;
         snapshot->dew_sensor_state = g_ltc6812Shared.snapshot.dew_sensor_state;
         snapshot->led_on = g_ltc6812Shared.snapshot.led_on;
@@ -652,6 +715,7 @@ static void Ltc6812_PublishSharedSnapshot(void)
     Ltc6812_SharedSnapshot_t snapshot;
     uint8_t afeIdx;
     uint8_t usedCellIdx;
+    uint8_t icIdx;
     uint8_t tempIdx;
 
     (void)memset(&snapshot, 0, sizeof(snapshot));
@@ -698,6 +762,22 @@ static void Ltc6812_PublishSharedSnapshot(void)
         snapshot.external_temp_raw_0p01C[tempIdx] = Ltc6812_GetExternalTempRaw_0p01C(tempIdx);
     }
 
+    for (icIdx = 0u; icIdx < LTC6812_SHARED_IC_STATUS_COUNT; icIdx++)
+    {
+        if ((icIdx < g_ltc6812Drv.icCount) && (g_ltc6812Drv.status[icIdx].valid == true))
+        {
+            snapshot.ic_cell_sum_raw_0p01V[icIdx] = g_ltc6812Drv.status[icIdx].sumCellRaw_0p01V;
+            snapshot.ic_internal_temp_raw_0p01C[icIdx] = g_ltc6812Drv.status[icIdx].internalTempRaw_0p01C;
+            snapshot.ic_status_valid[icIdx] = 1u;
+        }
+        else
+        {
+            snapshot.ic_cell_sum_raw_0p01V[icIdx] = 0u;
+            snapshot.ic_internal_temp_raw_0p01C[icIdx] = 0;
+            snapshot.ic_status_valid[icIdx] = 0u;
+        }
+    }
+
     snapshot.dew_sensor_mV = Ltc6812_GetDewSensor_mV();
     snapshot.dew_sensor_state = (snapshot.dew_sensor_mV >= LTC6812_BW_DEW_THRESHOLD_MV) ? 1u : 0u;
     snapshot.led_on = g_ltc6812LedOn;
@@ -726,6 +806,10 @@ static void Ltc6812_PublishDemoSnapshot(void)
             snapshot.cell_temp_raw_0p01C[afeIdx][cellIdx] = 0;
             snapshot.balancing[afeIdx][cellIdx] = 0u;
         }
+
+        snapshot.ic_cell_sum_raw_0p01V[afeIdx] = (uint16_t)(3650u + ((uint16_t)afeIdx * 20u));
+        snapshot.ic_internal_temp_raw_0p01C[afeIdx] = (int16_t)(2500 + ((int16_t)afeIdx * 100));
+        snapshot.ic_status_valid[afeIdx] = 1u;
     }
 
     g_ltc6812State = ECU8TR_ADBMS6830_OK;
@@ -814,6 +898,7 @@ void ltc6812_main_on_core2(void)
             if (balanceDecisionFresh == true)
             {
                 Ltc6812_ReadBoardAuxInputs();
+                Ltc6812_ReadIcStatusInputs();
 #if 0
                 for (uint8_t afeIdx = 0u; afeIdx < g_ltc6812Drv.icCount; afeIdx++)
                 {

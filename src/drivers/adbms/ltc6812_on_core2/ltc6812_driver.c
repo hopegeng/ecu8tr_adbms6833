@@ -245,6 +245,44 @@ static void Ltc6812_ParseAuxGroup(Ltc6812_AuxData_t *aux,
     }
 }
 
+static uint16_t Ltc6812_ScRawToSumRaw_0p01V(uint16_t scRaw)
+{
+    return (uint16_t)(((uint32_t)scRaw * 3u + 5u) / 10u);
+}
+
+static int16_t Ltc6812_ItmpRawToTempRaw_0p01C(uint16_t itmpRaw)
+{
+    int32_t tempRaw_0p01C = (((int32_t)itmpRaw * 100) / 76) - 27600;
+
+    if (tempRaw_0p01C > 32767)
+    {
+        return 32767;
+    }
+    if (tempRaw_0p01C < -32768)
+    {
+        return -32768;
+    }
+    return (int16_t)tempRaw_0p01C;
+}
+
+static void Ltc6812_ParseStatusGroups(Ltc6812_StatusData_t *status,
+                                      const uint8_t *stata,
+                                      const uint8_t *statb)
+{
+    if ((status == 0) || (stata == 0) || (statb == 0))
+    {
+        return;
+    }
+
+    status->scRaw = Ltc6812_ParseRaw16(stata, 0u);
+    status->itmpRaw = Ltc6812_ParseRaw16(stata, 1u);
+    status->vaRaw = Ltc6812_ParseRaw16(stata, 2u);
+    status->vdRaw = Ltc6812_ParseRaw16(statb, 0u);
+    status->sumCellRaw_0p01V = Ltc6812_ScRawToSumRaw_0p01V(status->scRaw);
+    status->internalTempRaw_0p01C = Ltc6812_ItmpRawToTempRaw_0p01C(status->itmpRaw);
+    status->valid = true;
+}
+
 static void Ltc6812_PackCommByte(uint8_t icom, uint8_t data, uint8_t fcom, uint8_t *commHi, uint8_t *commLo)
 {
     if ((commHi == 0) || (commLo == 0))
@@ -320,10 +358,13 @@ void Ltc6812_SetDefaultCommands(Ltc6812_CommandSet_t *cmds)
     cmds->RDCVE = LTC6812_RDCVE_REG;
     cmds->ADCV = LTC6812_ADCV_BASE_REG;
     cmds->ADAX = LTC6812_ADAX_BASE_REG;
+    cmds->ADSTAT = LTC6812_ADSTAT_BASE_REG;
     cmds->RDAUXA = LTC6812_RDAUXA_REG;
     cmds->RDAUXB = LTC6812_RDAUXB_REG;
     cmds->RDAUXC = LTC6812_RDAUXC_REG;
     cmds->RDAUXD = LTC6812_RDAUXD_REG;
+    cmds->RDSTATA = LTC6812_RDSTATA_REG;
+    cmds->RDSTATB = LTC6812_RDSTATB_REG;
     cmds->CLRCELL = LTC6812_CLRCELL_REG;
     cmds->MUTE = LTC6812_MUTE_REG;
     cmds->UNMUTE = LTC6812_UNMUTE_REG;
@@ -392,6 +433,16 @@ Ltc6812_Status_t Ltc6812_StartAuxConversion(const Ltc6812_Hal_t *hal, const Ltc6
     }
 
     return Ltc6812_SendCommandOnly(hal, cmds->ADAX);
+}
+
+Ltc6812_Status_t Ltc6812_StartStatusConversion(const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds)
+{
+    if (cmds == 0)
+    {
+        return LTC6812_ERR_PARAM;
+    }
+
+    return Ltc6812_SendCommandOnly(hal, cmds->ADSTAT);
 }
 
 Ltc6812_Status_t Ltc6812_WriteCfga(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds)
@@ -613,6 +664,66 @@ Ltc6812_Status_t Ltc6812_ReadAuxVoltagesByGroup(Ltc6812_Context_t *ctx, const Lt
         ctx->lastDiagCmd = groupCmds[group];
         ctx->lastDiagGroup = group;
     }
+
+    return LTC6812_OK;
+}
+
+Ltc6812_Status_t Ltc6812_ReadStatus(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds)
+{
+    uint8_t stata[LTC6812_MAX_ICS * LTC6812_REG_GROUP_DATA_LEN];
+    uint8_t statb[LTC6812_MAX_ICS * LTC6812_REG_GROUP_DATA_LEN];
+    uint8_t ic;
+    Ltc6812_Status_t st;
+
+    if ((ctx == 0) || (hal == 0) || (cmds == 0) || (hal->spiTransfer == 0))
+    {
+        return LTC6812_ERR_PARAM;
+    }
+
+    st = Ltc6812_ReadRegisterGroup(hal,
+                                   cmds->RDSTATA,
+                                   stata,
+                                   LTC6812_REG_GROUP_DATA_LEN,
+                                   ctx->icCount,
+                                   ctx,
+                                   0u);
+    if (st != LTC6812_OK)
+    {
+        if (st == LTC6812_ERR_PEC)
+        {
+            ctx->pecErrorCount++;
+            ctx->lastDiagStep = LTC6812_DIAG_RDSTAT_PEC;
+        }
+        return st;
+    }
+
+    st = Ltc6812_ReadRegisterGroup(hal,
+                                   cmds->RDSTATB,
+                                   statb,
+                                   LTC6812_REG_GROUP_DATA_LEN,
+                                   ctx->icCount,
+                                   ctx,
+                                   1u);
+    if (st != LTC6812_OK)
+    {
+        if (st == LTC6812_ERR_PEC)
+        {
+            ctx->pecErrorCount++;
+            ctx->lastDiagStep = LTC6812_DIAG_RDSTAT_PEC;
+        }
+        return st;
+    }
+
+    for (ic = 0u; ic < ctx->icCount; ic++)
+    {
+        Ltc6812_ParseStatusGroups(&ctx->status[ic],
+                                  &stata[(uint16_t)ic * LTC6812_REG_GROUP_DATA_LEN],
+                                  &statb[(uint16_t)ic * LTC6812_REG_GROUP_DATA_LEN]);
+    }
+
+    ctx->lastDiagStep = LTC6812_DIAG_RDSTAT;
+    ctx->lastDiagCmd = cmds->RDSTATB;
+    ctx->lastDiagGroup = 1u;
 
     return LTC6812_OK;
 }

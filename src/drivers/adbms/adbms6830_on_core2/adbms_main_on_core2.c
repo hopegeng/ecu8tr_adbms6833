@@ -176,6 +176,7 @@ void Adbms6830_SharedInit(void)
 {
     uint8_t afeIdx;
     uint8_t cellIdx;
+    uint8_t icIdx;
 
     g_adbms6830Shared.sequence = 0u;
     g_adbms6830Shared.snapshot.sample_counter = 0u;
@@ -192,12 +193,20 @@ void Adbms6830_SharedInit(void)
             g_adbms6830Shared.snapshot.balancing[afeIdx][cellIdx] = 0u;
         }
     }
+
+    for (icIdx = 0u; icIdx < ADBMS6830_SHARED_IC_STATUS_COUNT; icIdx++)
+    {
+        g_adbms6830Shared.snapshot.ic_cell_sum_raw_0p01V[icIdx] = 0u;
+        g_adbms6830Shared.snapshot.ic_internal_temp_raw_0p01C[icIdx] = 0;
+        g_adbms6830Shared.snapshot.ic_status_valid[icIdx] = 0u;
+    }
 }
 
 void Adbms6830_SharedPublish(const Adbms6830_SharedSnapshot_t *snapshot)
 {
     uint8_t afeIdx;
     uint8_t cellIdx;
+    uint8_t icIdx;
 
     if (snapshot == 0)
     {
@@ -226,6 +235,13 @@ void Adbms6830_SharedPublish(const Adbms6830_SharedSnapshot_t *snapshot)
         }
     }
 
+    for (icIdx = 0u; icIdx < ADBMS6830_SHARED_IC_STATUS_COUNT; icIdx++)
+    {
+        g_adbms6830Shared.snapshot.ic_cell_sum_raw_0p01V[icIdx] = snapshot->ic_cell_sum_raw_0p01V[icIdx];
+        g_adbms6830Shared.snapshot.ic_internal_temp_raw_0p01C[icIdx] = snapshot->ic_internal_temp_raw_0p01C[icIdx];
+        g_adbms6830Shared.snapshot.ic_status_valid[icIdx] = snapshot->ic_status_valid[icIdx];
+    }
+
     Adbms6830_SharedMemoryBarrier();
     g_adbms6830Shared.sequence++;
     Adbms6830_SharedMemoryBarrier();
@@ -237,6 +253,7 @@ bool Adbms6830_SharedRead(Adbms6830_SharedSnapshot_t *snapshot)
     uint32_t seqEnd;
     uint8_t afeIdx;
     uint8_t cellIdx;
+    uint8_t icIdx;
 
     if (snapshot == 0)
     {
@@ -270,6 +287,13 @@ bool Adbms6830_SharedRead(Adbms6830_SharedSnapshot_t *snapshot)
                 snapshot->balancing[afeIdx][cellIdx] =
                     g_adbms6830Shared.snapshot.balancing[afeIdx][cellIdx];
             }
+        }
+
+        for (icIdx = 0u; icIdx < ADBMS6830_SHARED_IC_STATUS_COUNT; icIdx++)
+        {
+            snapshot->ic_cell_sum_raw_0p01V[icIdx] = g_adbms6830Shared.snapshot.ic_cell_sum_raw_0p01V[icIdx];
+            snapshot->ic_internal_temp_raw_0p01C[icIdx] = g_adbms6830Shared.snapshot.ic_internal_temp_raw_0p01C[icIdx];
+            snapshot->ic_status_valid[icIdx] = g_adbms6830Shared.snapshot.ic_status_valid[icIdx];
         }
 
         Adbms6830_SharedMemoryBarrier();

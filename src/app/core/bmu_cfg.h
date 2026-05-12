@@ -18,6 +18,7 @@
 #define BMU_AFE_COUNT_PER_CSC			(2u)
 #define BMU_AFE_COUNT					((BMU_CSC_COUNT) * (BMU_AFE_COUNT_PER_CSC) )
 #define BMU_CELL_COUNT_PER_AFE			(10u)
+#define BMU_IC_STATUS_COUNT             (4u)
 #define BMU_TOTAL_CELL_COUNT			((BMU_AFE_COUNT) * (BMU_CELL_COUNT_PER_AFE))
 #define BMU_NTC_COUNT_PER_AFE			(5u)
 

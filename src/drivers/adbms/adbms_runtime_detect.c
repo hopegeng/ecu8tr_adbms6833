@@ -285,6 +285,7 @@ static void AdbmsRuntime_Copy6830Snapshot(AdbmsRuntime_SharedSnapshot_t *dst, co
 {
     uint8_t afeIdx;
     uint8_t cellIdx;
+    uint8_t icIdx;
 
     (void)memset(dst, 0, sizeof(*dst));
     dst->sample_counter = src->sample_counter;
@@ -300,6 +301,13 @@ static void AdbmsRuntime_Copy6830Snapshot(AdbmsRuntime_SharedSnapshot_t *dst, co
             dst->cell_temp_raw_0p01C[afeIdx][cellIdx] = src->cell_temp_raw_0p01C[afeIdx][cellIdx];
             dst->balancing[afeIdx][cellIdx] = src->balancing[afeIdx][cellIdx];
         }
+    }
+
+    for (icIdx = 0u; icIdx < ADBMS_RUNTIME_SHARED_IC_STATUS_COUNT; icIdx++)
+    {
+        dst->ic_cell_sum_raw_0p01V[icIdx] = 0u;
+        dst->ic_internal_temp_raw_0p01C[icIdx] = 0;
+        dst->ic_status_valid[icIdx] = 0u;
     }
 }
 
@@ -307,6 +315,7 @@ static void AdbmsRuntime_Copy6833Snapshot(AdbmsRuntime_SharedSnapshot_t *dst, co
 {
     uint8_t afeIdx;
     uint8_t cellIdx;
+    uint8_t icIdx;
 
     (void)memset(dst, 0, sizeof(*dst));
     dst->sample_counter = src->sample_counter;
@@ -323,12 +332,20 @@ static void AdbmsRuntime_Copy6833Snapshot(AdbmsRuntime_SharedSnapshot_t *dst, co
             dst->balancing[afeIdx][cellIdx] = src->balancing[afeIdx][cellIdx];
         }
     }
+
+    for (icIdx = 0u; icIdx < ADBMS_RUNTIME_SHARED_IC_STATUS_COUNT; icIdx++)
+    {
+        dst->ic_cell_sum_raw_0p01V[icIdx] = 0u;
+        dst->ic_internal_temp_raw_0p01C[icIdx] = 0;
+        dst->ic_status_valid[icIdx] = 0u;
+    }
 }
 
 static void AdbmsRuntime_CopyLtc6812Snapshot(AdbmsRuntime_SharedSnapshot_t *dst, const Ltc6812_SharedSnapshot_t *src)
 {
     uint8_t afeIdx;
     uint8_t cellIdx;
+    uint8_t icIdx;
     uint8_t tempIdx;
 
     (void)memset(dst, 0, sizeof(*dst));
@@ -348,6 +365,13 @@ static void AdbmsRuntime_CopyLtc6812Snapshot(AdbmsRuntime_SharedSnapshot_t *dst,
             dst->cell_temp_raw_0p01C[afeIdx][cellIdx] = src->cell_temp_raw_0p01C[afeIdx][cellIdx];
             dst->balancing[afeIdx][cellIdx] = src->balancing[afeIdx][cellIdx];
         }
+    }
+
+    for (icIdx = 0u; icIdx < ADBMS_RUNTIME_SHARED_IC_STATUS_COUNT; icIdx++)
+    {
+        dst->ic_cell_sum_raw_0p01V[icIdx] = src->ic_cell_sum_raw_0p01V[icIdx];
+        dst->ic_internal_temp_raw_0p01C[icIdx] = src->ic_internal_temp_raw_0p01C[icIdx];
+        dst->ic_status_valid[icIdx] = src->ic_status_valid[icIdx];
     }
 
     for (tempIdx = 0u; tempIdx < ADBMS_RUNTIME_SHARED_EXTERNAL_TEMP_COUNT; tempIdx++)
