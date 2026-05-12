@@ -59,8 +59,17 @@ typedef enum
 {
     ADBMS_RUNTIME_EEPROM_REQ_NONE = 0,
     ADBMS_RUNTIME_EEPROM_REQ_WRITE,
-    ADBMS_RUNTIME_EEPROM_REQ_CONFIG
+    ADBMS_RUNTIME_EEPROM_REQ_CONFIG,
+    ADBMS_RUNTIME_EEPROM_REQ_READ
 } AdbmsRuntime_EepromRequestKind_t;
+
+typedef struct
+{
+    bool valid;
+    uint16_t address;
+    uint8_t length;
+    uint8_t data[4];
+} AdbmsRuntime_EepromReadResult_t;
 
 typedef enum
 {
@@ -88,8 +97,11 @@ void AdbmsRuntime_SetBalanceMask(uint32_t balanceMask20);
 uint32_t AdbmsRuntime_GetBalanceMask(void);
 bool AdbmsRuntime_IsManualBalanceEnabled(void);
 bool AdbmsRuntime_RequestEepromWrite(uint16_t address, const uint8_t *data, uint8_t length);
+bool AdbmsRuntime_RequestEepromRead(uint16_t address, uint8_t length);
 bool AdbmsRuntime_RequestLtcConfigWrite(AdbmsRuntime_LtcConfigKind_t kind, uint8_t major, uint8_t minor);
 bool AdbmsRuntime_TakeEepromRequest(AdbmsRuntime_EepromRequest_t *request);
+void AdbmsRuntime_PublishEepromReadResult(uint16_t address, const uint8_t *data, uint8_t length);
+bool AdbmsRuntime_TakeEepromReadResult(AdbmsRuntime_EepromReadResult_t *result);
 bool AdbmsRuntime_SharedRead(AdbmsRuntime_SharedSnapshot_t *snapshot);
 ECU8TR_ADBMS6830_State_t AdbmsRuntime_GetState(void);
 uint16_t AdbmsRuntime_GetDetectedDevice(void);

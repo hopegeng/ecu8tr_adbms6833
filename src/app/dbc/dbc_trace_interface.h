@@ -21,17 +21,18 @@ extern "C" {
 #define DBC_TRACE_EXTENDED_FRAME                     (1u)
 
 #define DBC_BMM_CONTROL_DIGITAL_OUTPUTS_ID           (0x0A181400UL)
+#define DBC_M001_EEPROM_DATA_ID                      (0x10007801UL)
 #define DBC_M001_WRITE_EEPROM_DATA_ID                (0x10087801UL)
 #define DBC_M001_START_LTC_TRANSMISSION_ID           (0x10088801UL)
 #define DBC_M001_BALANCE_CELLS_ID                    (0x12181801UL)
 #define DBC_M001_CONFIGURATION_MESSAGE_ID            (0x1808D801UL)
 #define DBC_SCU1_HS_SWITCH_REQ_ID                    (0x12182401UL)
 #define DBC_BMU_DIAG_COMMAND_ID                      (0x1E05D401UL)
-#define DBC_M001_WRITE_EEPROM_DATA_LTC_ID            (0x1E093801UL)
-#define DBC_M001_READ_EEPROM_DATA_LTC_ID             (0x1E093901UL)
 #define DBC_SCU1_LIMIT_CONFIG_INFO_ID                (0x12013401UL)
 #define DBC_BMM_DIAG_REQ_ID                          DBC_BMU_DIAG_COMMAND_ID
 #define DBC_THRESHOLD_SETTINGS_ID                    DBC_SCU1_LIMIT_CONFIG_INFO_ID
+/* Mux value in M001_WriteEEPROMData that triggers an EEPROM read-back response */
+#define DBC_M001_EEPROM_READ_MUX                     (0xEE5200UL)
 
 typedef enum
 {
@@ -71,22 +72,6 @@ typedef struct
     uint8_t eeprom_write_index;
     uint32_t eeprom_write_data;
 } Dbc_M001WriteEepromDataType;
-
-typedef struct
-{
-    uint8_t write_length;
-    uint8_t write_index;
-    uint16_t write_address;
-    uint32_t write_data;
-} Dbc_M001WriteEepromDataLtcType;
-
-typedef struct
-{
-    uint8_t mux;
-    uint8_t eeprom_area;
-    uint8_t eeprom_address;
-    uint32_t eeprom_data;
-} Dbc_M001ReadEepromReqType;
 
 typedef struct
 {
@@ -248,8 +233,6 @@ static inline bool Dbc_TraceMessage_IsTesterInputId(uint32_t can_id)
         (can_id == DBC_M001_CONFIGURATION_MESSAGE_ID) ||
         (can_id == DBC_SCU1_HS_SWITCH_REQ_ID) ||
         (can_id == DBC_BMU_DIAG_COMMAND_ID) ||
-        (can_id == DBC_M001_WRITE_EEPROM_DATA_LTC_ID) ||
-        (can_id == DBC_M001_READ_EEPROM_DATA_LTC_ID) ||
         (can_id == DBC_SCU1_LIMIT_CONFIG_INFO_ID))
     {
         return true;
@@ -401,38 +384,30 @@ static inline bool Dbc_M001WriteEepromData_Unpack(
     return true;
 }
 
-static inline bool Dbc_M001WriteEepromDataLtc_Unpack(
-    const CanIf_MsgType *msg,
-    Dbc_M001WriteEepromDataLtcType *sig)
+static inline void Dbc_M001EepromData_Pack(CanIf_MsgType *msg,
+                                           uint16_t address,
+                                           uint8_t index,
+                                           const uint8_t *data,
+                                           uint8_t length)
 {
-    if ((sig == 0) || (!Dbc_IsExpectedExtended8(msg, DBC_M001_WRITE_EEPROM_DATA_LTC_ID)))
+    uint8_t i;
+
+    if ((msg == 0) || (data == 0))
     {
-        return false;
+        return;
     }
 
-    sig->write_length = msg->data[0];
-    sig->write_index = msg->data[1];
-    sig->write_address = Dbc_ReadLe16(&msg->data[2]);
-    sig->write_data = Dbc_ReadLe32(&msg->data[4]);
-
-    return true;
-}
-
-static inline bool Dbc_M001ReadEepromReq_Unpack(
-    const CanIf_MsgType *msg,
-    Dbc_M001ReadEepromReqType *sig)
-{
-    if ((sig == 0) || (!Dbc_IsExpectedExtended8(msg, DBC_M001_READ_EEPROM_DATA_LTC_ID)))
+    msg->id = DBC_M001_EEPROM_DATA_ID;
+    msg->dlc = 8u;
+    msg->is_extended = true;
+    msg->data[0] = (uint8_t)(address & 0xFFu);
+    msg->data[1] = (uint8_t)((address >> 8u) & 0xFFu);
+    msg->data[2] = index;
+    msg->data[3] = length;
+    for (i = 0u; i < 4u; i++)
     {
-        return false;
+        msg->data[4u + i] = (i < length) ? data[i] : 0u;
     }
-
-    sig->mux = msg->data[0];
-    sig->eeprom_area = msg->data[1];
-    sig->eeprom_address = msg->data[3];
-    sig->eeprom_data = Dbc_ReadLe32(&msg->data[4]);
-
-    return true;
 }
 
 static inline bool Dbc_M001StartLtcTransmission_Unpack(

@@ -19,7 +19,9 @@ ID_CELL_LAST          = 0x10000C14
 ID_M001_TERMINAL_TEMPS   = 0x10001801
 ID_M001_MODULE_STATUS    = 0x10002801
 ID_M001_MAX_MIN_VOLTAGES = 0x10003801
+ID_M001_EEPROM_DATA      = 0x10007801
 ID_M001_IC_INTERNAL_TEMP = 0x10008801
+ID_M001_WRITE_EEPROM     = 0x10087801
 ID_M001_IC_CELL_SUM      = 0x1000C801
 ID_M001_OV_FLAGS         = 0x1000D801
 ID_M001_UV_FLAGS         = 0x1000E801
@@ -27,6 +29,9 @@ ID_BMMP_CELL_VOLTAGES    = 0x1E000001
 ID_BMMP_CELL_TEMPS       = 0x1E001001
 ID_BMMP_TERMINAL_TEMPS   = 0x1E002001
 ID_SCU1_LIMIT_CONFIG     = 0x12013401
+
+# Mux value sent in M001_WriteEEPROMData to request a read-back (must match firmware)
+M001_EEPROM_READ_MUX = 0xEE5200
 
 # Voltage-column highlight colours
 _COLOR_OV_BG = QtGui.QColor("#fee2e2")   # light red
@@ -92,6 +97,37 @@ class CanWorker(QtCore.QObject):
         payload[0:4] = int(mask & 0x000FFFFF).to_bytes(4, "little")
         self._send(ID_BALANCE_CELLS, payload)
 
+    def send_eeprom_write(self, index, data_uint32):
+        """Transmit M001_WriteEEPROMData (0x10087801) — write 4 bytes at index*4.
+
+        Layout (little-endian):
+          bytes 0-2  mux       uint24  0 = normal write
+          byte  3    index     uint8   address = index * 4
+          bytes 4-7  data      uint32  4 bytes to write
+        """
+        payload = bytearray(8)
+        payload[0] = 0x00
+        payload[1] = 0x00
+        payload[2] = 0x00
+        payload[3] = int(index) & 0xFF
+        struct.pack_into("<I", payload, 4, int(data_uint32) & 0xFFFFFFFF)
+        self._send(ID_M001_WRITE_EEPROM, payload)
+
+    def send_eeprom_read(self, index):
+        """Transmit M001_WriteEEPROMData with read-mux to request EEPROM read-back.
+
+        Layout (little-endian):
+          bytes 0-2  mux       uint24  0xEE5200 = read request
+          byte  3    index     uint8   address = index * 4
+          bytes 4-7  (ignored by BMU)
+        """
+        payload = bytearray(8)
+        payload[0] = (M001_EEPROM_READ_MUX >> 0) & 0xFF
+        payload[1] = (M001_EEPROM_READ_MUX >> 8) & 0xFF
+        payload[2] = (M001_EEPROM_READ_MUX >> 16) & 0xFF
+        payload[3] = int(index) & 0xFF
+        self._send(ID_M001_WRITE_EEPROM, payload)
+
     def send_thresholds(self, uv_mV, ov_mV, min_temp_C, max_temp_C):
         """Transmit SCU1_LimitConfigInfo (0x12013401).
 
@@ -147,6 +183,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.rx_count_label = None
         self._ov_flags = set()   # 0-based cell indices currently in OV
         self._uv_flags = set()   # 0-based cell indices currently in UV
+        self._eeprom_resp_label = None
         self.setWindowTitle("Ecu8TR BMU ADBMS/LTC Tester")
         self._build_ui()
 
@@ -286,6 +323,40 @@ class MainWindow(QtWidgets.QMainWindow):
         thresh_row.addWidget(send_thresh_btn)
         thresh_row.addStretch()
         layout.addWidget(thresh_group)
+
+        # ── EEPROM read/write row ─────────────────────────────────────────
+        eeprom_group = QtWidgets.QGroupBox("EEPROM (M001_WriteEEPROMData / M001_EEPROMData)")
+        eeprom_row = QtWidgets.QHBoxLayout(eeprom_group)
+        eeprom_row.setSpacing(10)
+
+        eeprom_row.addWidget(QtWidgets.QLabel("Index (0-255):"))
+        self._sb_eeprom_idx = QtWidgets.QSpinBox()
+        self._sb_eeprom_idx.setRange(0, 255)
+        self._sb_eeprom_idx.setFixedWidth(75)
+        eeprom_row.addWidget(self._sb_eeprom_idx)
+
+        eeprom_row.addWidget(QtWidgets.QLabel("Data (hex uint32):"))
+        self._le_eeprom_data = QtWidgets.QLineEdit("00000000")
+        self._le_eeprom_data.setFixedWidth(100)
+        self._le_eeprom_data.setPlaceholderText("XXXXXXXX")
+        eeprom_row.addWidget(self._le_eeprom_data)
+
+        write_eeprom_btn = QtWidgets.QPushButton("Write EEPROM")
+        write_eeprom_btn.clicked.connect(self._send_eeprom_write)
+        eeprom_row.addWidget(write_eeprom_btn)
+
+        read_eeprom_btn = QtWidgets.QPushButton("Read EEPROM")
+        read_eeprom_btn.setObjectName("secondaryButton")
+        read_eeprom_btn.clicked.connect(self._send_eeprom_read)
+        eeprom_row.addWidget(read_eeprom_btn)
+
+        eeprom_row.addWidget(QtWidgets.QLabel("Response:"))
+        self._eeprom_resp_label = QtWidgets.QLabel("-")
+        self._eeprom_resp_label.setObjectName("metricValue")
+        self._eeprom_resp_label.setMinimumWidth(260)
+        eeprom_row.addWidget(self._eeprom_resp_label)
+        eeprom_row.addStretch()
+        layout.addWidget(eeprom_group)
 
         main_split = QtWidgets.QHBoxLayout()
         main_split.setSpacing(12)
@@ -430,6 +501,21 @@ class MainWindow(QtWidgets.QMainWindow):
             self._sb_max_t.value(),
         )
 
+    def _send_eeprom_write(self):
+        idx = self._sb_eeprom_idx.value()
+        try:
+            data_val = int(self._le_eeprom_data.text().strip(), 16)
+        except ValueError:
+            self._eeprom_resp_label.setText("Invalid hex data")
+            return
+        self.worker.send_eeprom_write(idx, data_val)
+        self._eeprom_resp_label.setText(f"Write sent: idx={idx}, data=0x{data_val:08X}")
+
+    def _send_eeprom_read(self):
+        idx = self._sb_eeprom_idx.value()
+        self.worker.send_eeprom_read(idx)
+        self._eeprom_resp_label.setText(f"Read request sent: idx={idx}, waiting...")
+
     def _apply_cell_flag_colors(self, idx):
         item = self.cell_voltage_labels[idx]
         if idx in self._ov_flags:
@@ -503,6 +589,17 @@ class MainWindow(QtWidgets.QMainWindow):
                     self._uv_flags.discard(i)
             for i in range(20):
                 self._apply_cell_flag_colors(i)
+        elif can_id == ID_M001_EEPROM_DATA:
+            addr  = u16(data, 0)
+            index = data[2]
+            length = data[3]
+            d0, d1, d2, d3 = data[4], data[5], data[6], data[7]
+            val32 = d0 | (d1 << 8) | (d2 << 16) | (d3 << 24)
+            if self._eeprom_resp_label is not None:
+                self._eeprom_resp_label.setText(
+                    f"addr=0x{addr:04X}  idx={index}  len={length}  "
+                    f"data=0x{val32:08X}  [{d0:02X} {d1:02X} {d2:02X} {d3:02X}]"
+                )
         elif can_id == ID_BMMP_TERMINAL_TEMPS:
             self.temp_labels["Terminal max C"].setText(f"{s16(data, 0) * 0.1:.1f}")
             self.temp_labels["Terminal min C"].setText(f"{s16(data, 2) * 0.1:.1f}")

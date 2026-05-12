@@ -35,6 +35,8 @@ static volatile bool g_adbmsRuntimeManualBalanceEnabled = false;
 static volatile uint32_t g_adbmsRuntimeBalanceMask20 = 0u;
 static volatile bool g_adbmsRuntimeEepromRequestPending = false;
 static volatile AdbmsRuntime_EepromRequest_t g_adbmsRuntimeEepromRequest;
+static volatile bool g_adbmsRuntimeEepromReadResultReady = false;
+static volatile AdbmsRuntime_EepromReadResult_t g_adbmsRuntimeEepromReadResult;
 
 static bool AdbmsRuntime_QspiTransfer(const uint8_t *tx, uint8_t *rx, uint16_t len);
 static void AdbmsRuntime_WakeIsoSpi(void);
@@ -482,6 +484,36 @@ bool AdbmsRuntime_RequestEepromWrite(uint16_t address, const uint8_t *data, uint
     return true;
 }
 
+bool AdbmsRuntime_RequestEepromRead(uint16_t address, uint8_t length)
+{
+    if ((length == 0u) || (length > 4u))
+    {
+        return false;
+    }
+
+    if (g_adbmsRuntimeEepromRequestPending == true)
+    {
+        return false;
+    }
+
+    g_adbmsRuntimeEepromRequest.kind = ADBMS_RUNTIME_EEPROM_REQ_READ;
+    g_adbmsRuntimeEepromRequest.address = address;
+    g_adbmsRuntimeEepromRequest.length = length;
+    g_adbmsRuntimeEepromRequest.config_kind = ADBMS_RUNTIME_LTC_CONFIG_CELL_TYPE;
+    g_adbmsRuntimeEepromRequest.major = 0u;
+    g_adbmsRuntimeEepromRequest.minor = 0u;
+    g_adbmsRuntimeEepromRequest.data[0] = 0u;
+    g_adbmsRuntimeEepromRequest.data[1] = 0u;
+    g_adbmsRuntimeEepromRequest.data[2] = 0u;
+    g_adbmsRuntimeEepromRequest.data[3] = 0u;
+
+    __dsync();
+    g_adbmsRuntimeEepromRequestPending = true;
+    __dsync();
+
+    return true;
+}
+
 bool AdbmsRuntime_RequestLtcConfigWrite(AdbmsRuntime_LtcConfigKind_t kind, uint8_t major, uint8_t minor)
 {
     if (g_adbmsRuntimeEepromRequestPending == true)
@@ -597,4 +629,56 @@ ECU8TR_ADBMS6830_State_t AdbmsRuntime_GetState(void)
 uint16_t AdbmsRuntime_GetDetectedDevice(void)
 {
     return g_adbmsRuntimeDetectedDevice;
+}
+
+void AdbmsRuntime_PublishEepromReadResult(uint16_t address, const uint8_t *data, uint8_t length)
+{
+    uint8_t i;
+
+    if ((data == 0) || (length == 0u) || (length > 4u))
+    {
+        return;
+    }
+
+    g_adbmsRuntimeEepromReadResult.address = address;
+    g_adbmsRuntimeEepromReadResult.length = length;
+    for (i = 0u; i < 4u; i++)
+    {
+        g_adbmsRuntimeEepromReadResult.data[i] = (i < length) ? data[i] : 0u;
+    }
+    __dsync();
+    g_adbmsRuntimeEepromReadResult.valid = true;
+    __dsync();
+    g_adbmsRuntimeEepromReadResultReady = true;
+    __dsync();
+}
+
+bool AdbmsRuntime_TakeEepromReadResult(AdbmsRuntime_EepromReadResult_t *result)
+{
+    uint8_t i;
+
+    if (result == 0)
+    {
+        return false;
+    }
+
+    if (g_adbmsRuntimeEepromReadResultReady == false)
+    {
+        return false;
+    }
+
+    __dsync();
+    result->valid   = g_adbmsRuntimeEepromReadResult.valid;
+    result->address = g_adbmsRuntimeEepromReadResult.address;
+    result->length  = g_adbmsRuntimeEepromReadResult.length;
+    for (i = 0u; i < 4u; i++)
+    {
+        result->data[i] = g_adbmsRuntimeEepromReadResult.data[i];
+    }
+    __dsync();
+    g_adbmsRuntimeEepromReadResultReady = false;
+    g_adbmsRuntimeEepromReadResult.valid = false;
+    __dsync();
+
+    return true;
 }

@@ -24,6 +24,7 @@ typedef struct
 void CanIf_Init(void);
 Bmu_ReturnType CanIf_Transmit(const CanIf_MsgType *msg);
 void CanIf_RxIndication(const CanIf_MsgType *msg);
+void CanIf_PollEepromReadResult(void);
 
 
 #endif /* SRC_MIDDLEWARE_CAN_CAN_IF_H_ */
