@@ -12,6 +12,7 @@
 #include "../bmu/bmu_cell_db.h"
 #include "../bmu/bmu_cell_mapping.h"
 #include "../bmu/bmu_csc_acq.h"
+#include "../bmu/bmu_thresholds.h"
 #include "../dbc/dbc_trace_interface.h"
 #include "bmu_cfg.h"
 
@@ -23,6 +24,8 @@
 #define BMU_CAN_ID_M001_MAX_MIN_VOLTAGES        (0x10003801UL)
 #define BMU_CAN_ID_M001_IC_INTERNAL_TEMP        (0x10008801UL)
 #define BMU_CAN_ID_M001_IC_CELL_SUM_VOLTAGES    (0x1000C801UL)
+#define BMU_CAN_ID_M001_OVER_VOLTAGE_FLAGS      (0x1000D801UL)
+#define BMU_CAN_ID_M001_UNDER_VOLTAGE_FLAGS     (0x1000E801UL)
 
 static uint16_t g_bmuCellCanNextCellToTx = 0u;
 static uint32_t g_bmuCellCanNextCellTxMs = 0u;
@@ -493,6 +496,52 @@ static Bmu_ReturnType Bmu_CellCan_SendIcInternalTemperature(void)
     return CanIf_Transmit(&msg);
 }
 
+/* M001_OverVoltageFlags */
+/* 0x1000D801 */
+static Bmu_ReturnType Bmu_CellCan_SendOverVoltageFlags(void)
+{
+    CanIf_MsgType msg;
+    uint16_t i;
+
+    Bmu_CellCan_InitExt8(&msg, BMU_CAN_ID_M001_OVER_VOLTAGE_FLAGS);
+
+    for (i = 0u; i < BMU_TOTAL_CELLS; i++)
+    {
+        const Bmu_CellRecordType *rec = Bmu_CellDb_GetByGlobal0(i);
+
+        if ((rec != 0) && (rec->valid == true) &&
+            Bmu_Thresholds_IsCellOv(rec->dbc_cell_sig.cell_voltage_raw_0p1mV))
+        {
+            msg.data[i >> 3u] |= (uint8_t)(1u << (i & 7u));
+        }
+    }
+
+    return CanIf_Transmit(&msg);
+}
+
+/* M001_UnderVoltageFlags */
+/* 0x1000E801 */
+static Bmu_ReturnType Bmu_CellCan_SendUnderVoltageFlags(void)
+{
+    CanIf_MsgType msg;
+    uint16_t i;
+
+    Bmu_CellCan_InitExt8(&msg, BMU_CAN_ID_M001_UNDER_VOLTAGE_FLAGS);
+
+    for (i = 0u; i < BMU_TOTAL_CELLS; i++)
+    {
+        const Bmu_CellRecordType *rec = Bmu_CellDb_GetByGlobal0(i);
+
+        if ((rec != 0) && (rec->valid == true) &&
+            Bmu_Thresholds_IsCellUv(rec->dbc_cell_sig.cell_voltage_raw_0p1mV))
+        {
+            msg.data[i >> 3u] |= (uint8_t)(1u << (i & 7u));
+        }
+    }
+
+    return CanIf_Transmit(&msg);
+}
+
 Bmu_ReturnType Bmu_CellCan_SendMeasurementSummary(void)
 {
     Bmu_ReturnType ret;
@@ -510,5 +559,9 @@ Bmu_ReturnType Bmu_CellCan_SendMeasurementSummary(void)
     ret = Bmu_CellCan_SendCellTemperatures();
     if (ret != BMU_OK) { return ret; }
 
-    return Bmu_CellCan_SendIcInternalTemperature();
+    ret = Bmu_CellCan_SendIcInternalTemperature();
+    if (ret != BMU_OK) { return ret; }
+    ret = Bmu_CellCan_SendOverVoltageFlags();
+    if (ret != BMU_OK) { return ret; }
+    return Bmu_CellCan_SendUnderVoltageFlags();
 }

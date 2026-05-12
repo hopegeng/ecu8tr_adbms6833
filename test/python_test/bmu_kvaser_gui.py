@@ -9,21 +9,30 @@ import threading
 import time
 
 import can
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 
-ID_START_LTC = 0x10088801
-ID_BALANCE_CELLS = 0x12181801
-ID_CELL_FIRST = 0x10000C01
-ID_CELL_LAST = 0x10000C14
-ID_M001_TERMINAL_TEMPS = 0x10001801
-ID_M001_MODULE_STATUS = 0x10002801
+ID_START_LTC          = 0x10088801
+ID_BALANCE_CELLS      = 0x12181801
+ID_CELL_FIRST         = 0x10000C01
+ID_CELL_LAST          = 0x10000C14
+ID_M001_TERMINAL_TEMPS   = 0x10001801
+ID_M001_MODULE_STATUS    = 0x10002801
 ID_M001_MAX_MIN_VOLTAGES = 0x10003801
 ID_M001_IC_INTERNAL_TEMP = 0x10008801
-ID_M001_IC_CELL_SUM = 0x1000C801
-ID_BMMP_CELL_VOLTAGES = 0x1E000001
-ID_BMMP_CELL_TEMPS = 0x1E001001
-ID_BMMP_TERMINAL_TEMPS = 0x1E002001
+ID_M001_IC_CELL_SUM      = 0x1000C801
+ID_M001_OV_FLAGS         = 0x1000D801
+ID_M001_UV_FLAGS         = 0x1000E801
+ID_BMMP_CELL_VOLTAGES    = 0x1E000001
+ID_BMMP_CELL_TEMPS       = 0x1E001001
+ID_BMMP_TERMINAL_TEMPS   = 0x1E002001
+ID_SCU1_LIMIT_CONFIG     = 0x12013401
+
+# Voltage-column highlight colours
+_COLOR_OV_BG = QtGui.QColor("#fee2e2")   # light red
+_COLOR_OV_FG = QtGui.QColor("#991b1b")   # dark red
+_COLOR_UV_BG = QtGui.QColor("#dbeafe")   # light blue
+_COLOR_UV_FG = QtGui.QColor("#1e40af")   # dark blue
 
 START_MAGIC = 0xA83C95
 START_ACTION = 0x04
@@ -83,6 +92,24 @@ class CanWorker(QtCore.QObject):
         payload[0:4] = int(mask & 0x000FFFFF).to_bytes(4, "little")
         self._send(ID_BALANCE_CELLS, payload)
 
+    def send_thresholds(self, uv_mV, ov_mV, min_temp_C, max_temp_C):
+        """Transmit SCU1_LimitConfigInfo (0x12013401).
+
+        Layout (little-endian):
+          bytes 0-1  UV threshold  uint16  0.001 V/bit = 1 mV/bit
+          bytes 2-3  OV threshold  uint16  0.001 V/bit = 1 mV/bit
+          bytes 4-5  min temp      int16   0.1 °C/bit
+          bytes 6-7  max temp      int16   0.1 °C/bit
+        """
+        payload = struct.pack(
+            "<HHhh",
+            int(uv_mV) & 0xFFFF,
+            int(ov_mV) & 0xFFFF,
+            int(round(min_temp_C * 10)),
+            int(round(max_temp_C * 10)),
+        )
+        self._send(ID_SCU1_LIMIT_CONFIG, bytearray(payload))
+
     def _send(self, arbitration_id, payload):
         if self.bus is None:
             self.status_changed.emit("CAN bus is not open")
@@ -118,6 +145,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.temp_labels = {}
         self.rx_count = 0
         self.rx_count_label = None
+        self._ov_flags = set()   # 0-based cell indices currently in OV
+        self._uv_flags = set()   # 0-based cell indices currently in UV
         self.setWindowTitle("Ecu8TR BMU ADBMS/LTC Tester")
         self._build_ui()
 
@@ -223,6 +252,41 @@ class MainWindow(QtWidgets.QMainWindow):
         top.addWidget(self.rx_count_label)
         layout.addLayout(top)
 
+        # ── Threshold settings row ────────────────────────────────────────
+        thresh_group = QtWidgets.QGroupBox("Threshold Settings (SCU1_LimitConfigInfo)")
+        thresh_row = QtWidgets.QHBoxLayout(thresh_group)
+        thresh_row.setSpacing(10)
+
+        def _spin(lo, hi, val, suffix):
+            sb = QtWidgets.QSpinBox()
+            sb.setRange(lo, hi)
+            sb.setValue(val)
+            sb.setSuffix(suffix)
+            sb.setFixedWidth(110)
+            return sb
+
+        thresh_row.addWidget(QtWidgets.QLabel("UV threshold:"))
+        self._sb_uv = _spin(0, 6000, 2800, " mV")
+        thresh_row.addWidget(self._sb_uv)
+
+        thresh_row.addWidget(QtWidgets.QLabel("OV threshold:"))
+        self._sb_ov = _spin(0, 6000, 4200, " mV")
+        thresh_row.addWidget(self._sb_ov)
+
+        thresh_row.addWidget(QtWidgets.QLabel("Min temp:"))
+        self._sb_min_t = _spin(-100, 100, -20, " °C")
+        thresh_row.addWidget(self._sb_min_t)
+
+        thresh_row.addWidget(QtWidgets.QLabel("Max temp:"))
+        self._sb_max_t = _spin(-100, 100, 60, " °C")
+        thresh_row.addWidget(self._sb_max_t)
+
+        send_thresh_btn = QtWidgets.QPushButton("Send thresholds")
+        send_thresh_btn.clicked.connect(self._send_thresholds)
+        thresh_row.addWidget(send_thresh_btn)
+        thresh_row.addStretch()
+        layout.addWidget(thresh_group)
+
         main_split = QtWidgets.QHBoxLayout()
         main_split.setSpacing(12)
         layout.addLayout(main_split, 1)
@@ -276,6 +340,17 @@ class MainWindow(QtWidgets.QMainWindow):
             cell_table.setCellWidget(i, 5, chk_box)
 
         cell_layout.addWidget(cell_table)
+
+        legend = QtWidgets.QLabel(
+            '<span style="background:#fee2e2;color:#991b1b;padding:2px 6px;'
+            'border-radius:3px;font-weight:600;">&#9632; OV</span>'
+            '&nbsp;&nbsp;'
+            '<span style="background:#dbeafe;color:#1e40af;padding:2px 6px;'
+            'border-radius:3px;font-weight:600;">&#9632; UV</span>'
+            '&nbsp;&nbsp;<small>Voltage column colour</small>'
+        )
+        legend.setTextFormat(QtCore.Qt.RichText)
+        cell_layout.addWidget(legend)
         main_split.addWidget(cell_group, 3)
 
         metrics_scroll = QtWidgets.QScrollArea()
@@ -347,6 +422,26 @@ class MainWindow(QtWidgets.QMainWindow):
             chk.setChecked(False)
         self.worker.send_balance_mask(0)
 
+    def _send_thresholds(self):
+        self.worker.send_thresholds(
+            self._sb_uv.value(),
+            self._sb_ov.value(),
+            self._sb_min_t.value(),
+            self._sb_max_t.value(),
+        )
+
+    def _apply_cell_flag_colors(self, idx):
+        item = self.cell_voltage_labels[idx]
+        if idx in self._ov_flags:
+            item.setBackground(_COLOR_OV_BG)
+            item.setForeground(_COLOR_OV_FG)
+        elif idx in self._uv_flags:
+            item.setBackground(_COLOR_UV_BG)
+            item.setForeground(_COLOR_UV_FG)
+        else:
+            item.setBackground(QtGui.QBrush())
+            item.setForeground(QtGui.QBrush())
+
     def _handle_can(self, msg):
         data = bytes(msg.data).ljust(8, b"\x00")
         can_id = msg.arbitration_id
@@ -390,6 +485,24 @@ class MainWindow(QtWidgets.QMainWindow):
             self.temp_labels["Cell avg C"].setText(f"{s16(data, 4) * 0.1:.1f}")
             self.temp_labels["Cell max temp number"].setText(f"{data[6]}")
             self.temp_labels["Cell min temp number"].setText(f"{data[7]}")
+        elif can_id == ID_M001_OV_FLAGS:
+            word = u16(data, 0) | (u16(data, 2) << 16)
+            for i in range(20):
+                if word & (1 << i):
+                    self._ov_flags.add(i)
+                else:
+                    self._ov_flags.discard(i)
+            for i in range(20):
+                self._apply_cell_flag_colors(i)
+        elif can_id == ID_M001_UV_FLAGS:
+            word = u16(data, 0) | (u16(data, 2) << 16)
+            for i in range(20):
+                if word & (1 << i):
+                    self._uv_flags.add(i)
+                else:
+                    self._uv_flags.discard(i)
+            for i in range(20):
+                self._apply_cell_flag_colors(i)
         elif can_id == ID_BMMP_TERMINAL_TEMPS:
             self.temp_labels["Terminal max C"].setText(f"{s16(data, 0) * 0.1:.1f}")
             self.temp_labels["Terminal min C"].setText(f"{s16(data, 2) * 0.1:.1f}")
