@@ -18,6 +18,7 @@
 #include "tools.h"
 #include "bmu_cell_db.h"
 #include "bmu_csc_acq.h"
+#include "bmu_thresholds.h"
 #include "../../drivers/adbms/adbms_runtime_detect.h"
 
 #define CANIF_TX_QUEUE_LENGTH          (128u)
@@ -258,7 +259,7 @@ static void CanIf_HandleThresholdSettings(const Dbc_ThresholdSettingsType *cmd)
     g_canIfTesterCommandState.last_threshold_settings = *cmd;
     g_canIfTesterCommandState.threshold_settings_count++;
 
-    /* Stub: validate and apply OV/UV and temperature limits later. */
+    Bmu_Thresholds_Set(cmd);
 }
 
 static void CanIf_HandleScu1HsSwitchReq(const Dbc_Scu1HsSwitchReqType *cmd)
