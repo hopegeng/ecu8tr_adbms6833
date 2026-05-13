@@ -37,6 +37,7 @@ static volatile bool g_adbmsRuntimeEepromRequestPending = false;
 static volatile AdbmsRuntime_EepromRequest_t g_adbmsRuntimeEepromRequest;
 static volatile bool g_adbmsRuntimeEepromReadResultReady = false;
 static volatile AdbmsRuntime_EepromReadResult_t g_adbmsRuntimeEepromReadResult;
+static volatile AdbmsRuntime_EepromCache_t g_adbmsRuntimeEepromCache;
 
 static bool AdbmsRuntime_QspiTransfer(const uint8_t *tx, uint8_t *rx, uint16_t len);
 static void AdbmsRuntime_WakeIsoSpi(void);
@@ -678,6 +679,73 @@ bool AdbmsRuntime_TakeEepromReadResult(AdbmsRuntime_EepromReadResult_t *result)
     __dsync();
     g_adbmsRuntimeEepromReadResultReady = false;
     g_adbmsRuntimeEepromReadResult.valid = false;
+    __dsync();
+
+    return true;
+}
+
+void AdbmsRuntime_PublishEepromCache(const AdbmsRuntime_EepromCache_t *cache)
+{
+    uint8_t i;
+
+    if (cache == 0)
+    {
+        return;
+    }
+
+    g_adbmsRuntimeEepromCache.valid            = false;
+    __dsync();
+    g_adbmsRuntimeEepromCache.cell_type_major   = cache->cell_type_major;
+    g_adbmsRuntimeEepromCache.cell_type_minor   = cache->cell_type_minor;
+    g_adbmsRuntimeEepromCache.module_type_major = cache->module_type_major;
+    g_adbmsRuntimeEepromCache.module_type_minor = cache->module_type_minor;
+    g_adbmsRuntimeEepromCache.pcb_type_major    = cache->pcb_type_major;
+    g_adbmsRuntimeEepromCache.pcb_type_minor    = cache->pcb_type_minor;
+    g_adbmsRuntimeEepromCache.ic_type_major     = cache->ic_type_major;
+    g_adbmsRuntimeEepromCache.ic_type_minor     = cache->ic_type_minor;
+    g_adbmsRuntimeEepromCache.serial_cells      = cache->serial_cells;
+    g_adbmsRuntimeEepromCache.parallel_cells    = cache->parallel_cells;
+    for (i = 0u; i < 8u; i++)
+    {
+        g_adbmsRuntimeEepromCache.module_serial[i] = cache->module_serial[i];
+        g_adbmsRuntimeEepromCache.pcb_serial[i]    = cache->pcb_serial[i];
+    }
+    __dsync();
+    g_adbmsRuntimeEepromCache.valid = true;
+    __dsync();
+}
+
+bool AdbmsRuntime_GetEepromCache(AdbmsRuntime_EepromCache_t *out)
+{
+    uint8_t i;
+
+    if (out == 0)
+    {
+        return false;
+    }
+
+    __dsync();
+    if (g_adbmsRuntimeEepromCache.valid == false)
+    {
+        return false;
+    }
+
+    out->valid            = true;
+    out->cell_type_major   = g_adbmsRuntimeEepromCache.cell_type_major;
+    out->cell_type_minor   = g_adbmsRuntimeEepromCache.cell_type_minor;
+    out->module_type_major = g_adbmsRuntimeEepromCache.module_type_major;
+    out->module_type_minor = g_adbmsRuntimeEepromCache.module_type_minor;
+    out->pcb_type_major    = g_adbmsRuntimeEepromCache.pcb_type_major;
+    out->pcb_type_minor    = g_adbmsRuntimeEepromCache.pcb_type_minor;
+    out->ic_type_major     = g_adbmsRuntimeEepromCache.ic_type_major;
+    out->ic_type_minor     = g_adbmsRuntimeEepromCache.ic_type_minor;
+    out->serial_cells      = g_adbmsRuntimeEepromCache.serial_cells;
+    out->parallel_cells    = g_adbmsRuntimeEepromCache.parallel_cells;
+    for (i = 0u; i < 8u; i++)
+    {
+        out->module_serial[i] = g_adbmsRuntimeEepromCache.module_serial[i];
+        out->pcb_serial[i]    = g_adbmsRuntimeEepromCache.pcb_serial[i];
+    }
     __dsync();
 
     return true;

@@ -71,6 +71,23 @@ typedef struct
     uint8_t data[4];
 } AdbmsRuntime_EepromReadResult_t;
 
+typedef struct
+{
+    bool     valid;
+    uint8_t  cell_type_major;
+    uint8_t  cell_type_minor;
+    uint8_t  module_type_major;
+    uint8_t  module_type_minor;
+    uint8_t  pcb_type_major;
+    uint8_t  pcb_type_minor;
+    uint8_t  ic_type_major;
+    uint8_t  ic_type_minor;
+    uint8_t  serial_cells;
+    uint8_t  parallel_cells;
+    uint8_t  module_serial[8];
+    uint8_t  pcb_serial[8];
+} AdbmsRuntime_EepromCache_t;
+
 typedef enum
 {
     ADBMS_RUNTIME_LTC_CONFIG_CELL_TYPE = 0,
@@ -102,6 +119,8 @@ bool AdbmsRuntime_RequestLtcConfigWrite(AdbmsRuntime_LtcConfigKind_t kind, uint8
 bool AdbmsRuntime_TakeEepromRequest(AdbmsRuntime_EepromRequest_t *request);
 void AdbmsRuntime_PublishEepromReadResult(uint16_t address, const uint8_t *data, uint8_t length);
 bool AdbmsRuntime_TakeEepromReadResult(AdbmsRuntime_EepromReadResult_t *result);
+void AdbmsRuntime_PublishEepromCache(const AdbmsRuntime_EepromCache_t *cache);
+bool AdbmsRuntime_GetEepromCache(AdbmsRuntime_EepromCache_t *out);
 bool AdbmsRuntime_SharedRead(AdbmsRuntime_SharedSnapshot_t *snapshot);
 ECU8TR_ADBMS6830_State_t AdbmsRuntime_GetState(void);
 uint16_t AdbmsRuntime_GetDetectedDevice(void);

@@ -34,6 +34,9 @@
 #define LTC6812_EEPROM_STATIC1_IC_TYPE_MINOR_ADDR  (0x001Fu)
 #define LTC6812_EEPROM_STATIC2_IC_TYPE_MAJOR_ADDR  (0x00BEu)
 #define LTC6812_EEPROM_STATIC2_IC_TYPE_MINOR_ADDR  (0x00BFu)
+#define LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR        (0x0006u)
+#define LTC6812_EEPROM_STATIC1_SERIAL_CELLS_ADDR    (0x0014u)
+#define LTC6812_EEPROM_STATIC1_PCB_SERIAL_ADDR      (0x0016u)
 
 #ifndef LTC6812_BALANCE_FORCE_CHARGING_ACTIVE
 /* DC3036A bench test hook. Set to 0 for application-controlled charging state. */
@@ -948,6 +951,85 @@ static void Ltc6812_PublishDemoSnapshot(void)
 
 
 
+static void Ltc6812_ReadAndPublishEepromCache(void)
+{
+    AdbmsRuntime_EepromCache_t cache;
+    Ltc6812_Status_t st;
+    uint8_t buf[8];
+
+    (void)memset(&cache, 0, sizeof(cache));
+
+    st = Ltc6812_WakeUp(&g_ltc6812Drv, &g_ltc6812Hal);
+    if (st != LTC6812_OK)
+    {
+        LTC6812_DEBUG_PRINTF("LTC6812 EEPROM cache: wake failed\r\n");
+        return;
+    }
+
+    /* cell_type_major, cell_type_minor (2 bytes at 0x0002) */
+    st = Ltc6812_EepromRead(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds,
+                             LTC6812_EEPROM_ID_CELL_TYPE_MAJOR_ADDR, buf, 2u);
+    if (st == LTC6812_OK)
+    {
+        cache.cell_type_major = buf[0];
+        cache.cell_type_minor = buf[1];
+    }
+
+    /* module_type_major, module_type_minor (2 bytes at 0x0004) */
+    st = Ltc6812_EepromRead(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds,
+                             LTC6812_EEPROM_ID_MODULE_TYPE_MAJOR_ADDR, buf, 2u);
+    if (st == LTC6812_OK)
+    {
+        cache.module_type_major = buf[0];
+        cache.module_type_minor = buf[1];
+    }
+
+    /* module_serial (8 bytes at 0x0006) */
+    (void)Ltc6812_EepromRead(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds,
+                              LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR, cache.module_serial, 8u);
+
+    /* pcb_type_major, pcb_type_minor (2 bytes at 0x000E) */
+    st = Ltc6812_EepromRead(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds,
+                             LTC6812_EEPROM_ID_PCB_TYPE_MAJOR_ADDR, buf, 2u);
+    if (st == LTC6812_OK)
+    {
+        cache.pcb_type_major = buf[0];
+        cache.pcb_type_minor = buf[1];
+    }
+
+    /* serial_cells, parallel_cells (2 bytes at 0x0014) */
+    st = Ltc6812_EepromRead(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds,
+                             LTC6812_EEPROM_STATIC1_SERIAL_CELLS_ADDR, buf, 2u);
+    if (st == LTC6812_OK)
+    {
+        cache.serial_cells   = buf[0];
+        cache.parallel_cells = buf[1];
+    }
+
+    /* pcb_serial (8 bytes at 0x0016) */
+    (void)Ltc6812_EepromRead(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds,
+                              LTC6812_EEPROM_STATIC1_PCB_SERIAL_ADDR, cache.pcb_serial, 8u);
+
+    /* ic_type_major, ic_type_minor (2 bytes at 0x001E) */
+    st = Ltc6812_EepromRead(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds,
+                             LTC6812_EEPROM_STATIC1_IC_TYPE_MAJOR_ADDR, buf, 2u);
+    if (st == LTC6812_OK)
+    {
+        cache.ic_type_major = buf[0];
+        cache.ic_type_minor = buf[1];
+    }
+
+    cache.valid = true;
+    AdbmsRuntime_PublishEepromCache(&cache);
+
+    LTC6812_DEBUG_PRINTF("LTC6812 EEPROM cache: cell=%u.%u module=%u.%u pcb=%u.%u ic=%u.%u cells=%u par=%u\r\n",
+                          (uint32_t)cache.cell_type_major, (uint32_t)cache.cell_type_minor,
+                          (uint32_t)cache.module_type_major, (uint32_t)cache.module_type_minor,
+                          (uint32_t)cache.pcb_type_major, (uint32_t)cache.pcb_type_minor,
+                          (uint32_t)cache.ic_type_major, (uint32_t)cache.ic_type_minor,
+                          (uint32_t)cache.serial_cells, (uint32_t)cache.parallel_cells);
+}
+
 void ltc6812_main_on_core2(void)
 {
     uint32_t lastDemoPublishMs = 0u;
@@ -980,6 +1062,8 @@ void ltc6812_main_on_core2(void)
     g_ltc6812Bal.cfg.chargingActive = (LTC6812_BALANCE_FORCE_CHARGING_ACTIVE != 0u);
     g_ltc6812Bal.cfg.faultActive = false;
     g_ltc6812Drv.svcState = LTC6812_SVC_BOOT;
+
+    Ltc6812_ReadAndPublishEepromCache();
 
 #if __DO_LTC6812_TEST__
     ltc6812_test();

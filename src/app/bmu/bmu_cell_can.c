@@ -9,6 +9,7 @@
 #include "../bmu/bmu_cell_can.h"
 
 #include "../../middleware/can/can_if.h"
+#include "../../drivers/adbms/adbms_runtime_detect.h"
 #include "../bmu/bmu_cell_db.h"
 #include "../bmu/bmu_cell_mapping.h"
 #include "../bmu/bmu_csc_acq.h"
@@ -22,10 +23,15 @@
 #define BMU_CAN_ID_M001_TERMINAL_TEMPERATURES   (0x10001801UL)
 #define BMU_CAN_ID_M001_MODULE_STATUS           (0x10002801UL)
 #define BMU_CAN_ID_M001_MAX_MIN_VOLTAGES        (0x10003801UL)
+#define BMU_CAN_ID_M001_MODULE_INFORMATION      (0x10004801UL)
+#define BMU_CAN_ID_M001_BMS_INFO                (0x10005801UL)
+#define BMU_CAN_ID_M001_SLAVE_SERIALS           (0x10006801UL)
 #define BMU_CAN_ID_M001_IC_INTERNAL_TEMP        (0x10008801UL)
 #define BMU_CAN_ID_M001_IC_CELL_SUM_VOLTAGES    (0x1000C801UL)
 #define BMU_CAN_ID_M001_OVER_VOLTAGE_FLAGS      (0x1000D801UL)
 #define BMU_CAN_ID_M001_UNDER_VOLTAGE_FLAGS     (0x1000E801UL)
+#define BMU_CAN_ID_M001_SEND_EEPROM_DATA_EOL    (0x1000F801UL)
+#define BMU_CAN_ID_M001_MODULE_SAFETY_MECH      (0x10010801UL)
 
 static uint16_t g_bmuCellCanNextCellToTx = 0u;
 static uint32_t g_bmuCellCanNextCellTxMs = 0u;
@@ -544,6 +550,171 @@ static Bmu_ReturnType Bmu_CellCan_SendUnderVoltageFlags(void)
     return CanIf_Transmit(&msg);
 }
 
+/* M001_ModuleInformation */
+/* 0x10004801 */
+/* byte4=SerialCells, byte5=ParallelCells, byte6=CellTypeMajor, byte7=CellTypeMinor (from EEPROM) */
+static Bmu_ReturnType Bmu_CellCan_SendModuleInformation(void)
+{
+    CanIf_MsgType msg;
+    AdbmsRuntime_EepromCache_t cache;
+
+    Bmu_CellCan_InitExt8(&msg, BMU_CAN_ID_M001_MODULE_INFORMATION);
+
+    if (AdbmsRuntime_GetEepromCache(&cache) == true)
+    {
+        msg.data[4] = cache.serial_cells;
+        msg.data[5] = cache.parallel_cells;
+        msg.data[6] = cache.cell_type_major;
+        msg.data[7] = cache.cell_type_minor;
+    }
+
+    return CanIf_Transmit(&msg);
+}
+
+/* M001_BMSInfo */
+/* 0x10005801 */
+/* bit0=CalibrationDone(1), bit32=BadCRC_IC1, bit33=BadCRC_IC2 */
+static Bmu_ReturnType Bmu_CellCan_SendBmsInfo(void)
+{
+    CanIf_MsgType msg;
+    AdbmsSharedSnapshot_t snapshot;
+
+    Bmu_CellCan_InitExt8(&msg, BMU_CAN_ID_M001_BMS_INFO);
+    msg.data[0] = 0x01u;  /* CalibrationDone = 1 */
+
+    if (Bmu_CscAcq_GetLastSnapshot(&snapshot) == true)
+    {
+        if (snapshot.ic_status_valid[0] == 0u)
+        {
+            msg.data[4] |= 0x01u;  /* BadCRC_IC1 at bit 32 */
+        }
+        if (snapshot.ic_status_valid[1] == 0u)
+        {
+            msg.data[4] |= 0x02u;  /* BadCRC_IC2 at bit 33 */
+        }
+    }
+
+    return CanIf_Transmit(&msg);
+}
+
+/* M001_SlaveSerials: mux=0 (Production) */
+/* 0x10006801 */
+/* bytes 0-5: module_serial from EEPROM; bits 62-63 (top 2 bits of byte7) = mux=0 */
+static Bmu_ReturnType Bmu_CellCan_SendSlaveSerials(void)
+{
+    CanIf_MsgType msg;
+    AdbmsRuntime_EepromCache_t cache;
+    uint8_t i;
+
+    Bmu_CellCan_InitExt8(&msg, BMU_CAN_ID_M001_SLAVE_SERIALS);
+
+    if (AdbmsRuntime_GetEepromCache(&cache) == true)
+    {
+        for (i = 0u; i < 6u; i++)
+        {
+            msg.data[i] = cache.module_serial[i];
+        }
+    }
+    /* bits 62-63 = mux=0: top 2 bits of byte 7 already cleared by InitExt8 */
+
+    return CanIf_Transmit(&msg);
+}
+
+/* M001_ModuleSafetyMechanisms */
+/* 0x10010801 */
+/* CLRCmdBroken_IC1 at bit8 (byte1 bit0), CLRCmdBroken_IC2 at bit24 (byte3 bit0) */
+static Bmu_ReturnType Bmu_CellCan_SendModuleSafetyMechanisms(void)
+{
+    static const uint8_t k_payload[8] =
+        { 0x00u, 0x01u, 0x00u, 0x01u, 0x00u, 0x00u, 0x00u, 0x00u };
+    CanIf_MsgType msg;
+    uint8_t i;
+
+    Bmu_CellCan_InitExt8(&msg, BMU_CAN_ID_M001_MODULE_SAFETY_MECH);
+    for (i = 0u; i < 8u; i++)
+    {
+        msg.data[i] = k_payload[i];
+    }
+
+    return CanIf_Transmit(&msg);
+}
+
+/* M001_SendEEPROMDataEOL */
+/* 0x1000F801 */
+/* bytes 0-3: mux (LE32), bytes 4-7: data */
+static void Bmu_CellCan_BuildEolMsg(CanIf_MsgType *msg, uint32_t mux,
+                                    uint8_t b4, uint8_t b5, uint8_t b6, uint8_t b7)
+{
+    Bmu_CellCan_InitExt8(msg, BMU_CAN_ID_M001_SEND_EEPROM_DATA_EOL);
+    msg->data[0] = (uint8_t)(mux & 0xFFu);
+    msg->data[1] = (uint8_t)((mux >> 8u) & 0xFFu);
+    msg->data[2] = (uint8_t)((mux >> 16u) & 0xFFu);
+    msg->data[3] = (uint8_t)((mux >> 24u) & 0xFFu);
+    msg->data[4] = b4;
+    msg->data[5] = b5;
+    msg->data[6] = b6;
+    msg->data[7] = b7;
+}
+
+static Bmu_ReturnType Bmu_CellCan_SendEepromDataEol(void)
+{
+    CanIf_MsgType msg;
+    AdbmsRuntime_EepromCache_t cache;
+    bool hasCache;
+    Bmu_ReturnType ret;
+
+    hasCache = AdbmsRuntime_GetEepromCache(&cache);
+
+    /* CellType: mux=0xCE11AA55, byte4=CellTypeMajor, byte5=CellTypeMinor */
+    Bmu_CellCan_BuildEolMsg(&msg, DBC_M001_EOL_MUX_CELL_TYPE,
+                             hasCache ? cache.cell_type_major   : 0u,
+                             hasCache ? cache.cell_type_minor   : 0u,
+                             0u, 0u);
+    ret = CanIf_Transmit(&msg);
+    if (ret != BMU_OK) { return ret; }
+
+    /* ICType: mux=0xCEA1AA55, byte4=ICTypeMajor, byte5=ICTypeMinor */
+    Bmu_CellCan_BuildEolMsg(&msg, DBC_M001_EOL_MUX_IC_TYPE,
+                             hasCache ? cache.ic_type_major     : 0u,
+                             hasCache ? cache.ic_type_minor     : 0u,
+                             0u, 0u);
+    ret = CanIf_Transmit(&msg);
+    if (ret != BMU_OK) { return ret; }
+
+    /* ModuleType: mux=0xADADAA55, byte4=ModuleTypeMajor, byte5=ModuleTypeMinor */
+    Bmu_CellCan_BuildEolMsg(&msg, DBC_M001_EOL_MUX_MODULE_TYPE,
+                             hasCache ? cache.module_type_major : 0u,
+                             hasCache ? cache.module_type_minor : 0u,
+                             0u, 0u);
+    ret = CanIf_Transmit(&msg);
+    if (ret != BMU_OK) { return ret; }
+
+    /* PCBType: mux=0x11CEAA55, byte4=PCBTypeMajor, byte5=PCBTypeMinor */
+    Bmu_CellCan_BuildEolMsg(&msg, DBC_M001_EOL_MUX_PCB_TYPE,
+                             hasCache ? cache.pcb_type_major    : 0u,
+                             hasCache ? cache.pcb_type_minor    : 0u,
+                             0u, 0u);
+    ret = CanIf_Transmit(&msg);
+    if (ret != BMU_OK) { return ret; }
+
+    /* PCB serial Lo (EEPROM 0x0016-0x0019): mux=0x0D0EAA55, bytes 4-7 */
+    Bmu_CellCan_BuildEolMsg(&msg, DBC_M001_EOL_MUX_PCB_SERIAL_LO,
+                             hasCache ? cache.pcb_serial[0]     : 0u,
+                             hasCache ? cache.pcb_serial[1]     : 0u,
+                             hasCache ? cache.pcb_serial[2]     : 0u,
+                             hasCache ? cache.pcb_serial[3]     : 0u);
+    ret = CanIf_Transmit(&msg);
+    if (ret != BMU_OK) { return ret; }
+
+    /* PCB serial Hi (EEPROM 0x001A-0x001D): mux=0x0D0DAA55, bytes 4-7 */
+    Bmu_CellCan_BuildEolMsg(&msg, DBC_M001_EOL_MUX_PCB_SERIAL_HI,
+                             hasCache ? cache.pcb_serial[4]     : 0u,
+                             hasCache ? cache.pcb_serial[5]     : 0u,
+                             hasCache ? cache.pcb_serial[6]     : 0u,
+                             hasCache ? cache.pcb_serial[7]     : 0u);
+    return CanIf_Transmit(&msg);
+}
+
 Bmu_ReturnType Bmu_CellCan_SendMeasurementSummary(void)
 {
     Bmu_ReturnType ret;
@@ -565,5 +736,16 @@ Bmu_ReturnType Bmu_CellCan_SendMeasurementSummary(void)
     if (ret != BMU_OK) { return ret; }
     ret = Bmu_CellCan_SendOverVoltageFlags();
     if (ret != BMU_OK) { return ret; }
-    return Bmu_CellCan_SendUnderVoltageFlags();
+    ret = Bmu_CellCan_SendUnderVoltageFlags();
+    if (ret != BMU_OK) { return ret; }
+
+    ret = Bmu_CellCan_SendModuleInformation();
+    if (ret != BMU_OK) { return ret; }
+    ret = Bmu_CellCan_SendBmsInfo();
+    if (ret != BMU_OK) { return ret; }
+    ret = Bmu_CellCan_SendSlaveSerials();
+    if (ret != BMU_OK) { return ret; }
+    ret = Bmu_CellCan_SendModuleSafetyMechanisms();
+    if (ret != BMU_OK) { return ret; }
+    return Bmu_CellCan_SendEepromDataEol();
 }

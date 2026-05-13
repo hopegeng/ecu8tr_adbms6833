@@ -34,6 +34,14 @@ extern "C" {
 /* Mux value in M001_WriteEEPROMData that triggers an EEPROM read-back response */
 #define DBC_M001_EEPROM_READ_MUX                     (0xEE5200UL)
 
+/* Mux values for M001_SendEEPROMDataEOL (0x1000F801) — also used in M001_ConfigurationMessage RX */
+#define DBC_M001_EOL_MUX_CELL_TYPE                   (0xCE11AA55UL)
+#define DBC_M001_EOL_MUX_IC_TYPE                     (0xCEA1AA55UL)
+#define DBC_M001_EOL_MUX_MODULE_TYPE                 (0xADADAA55UL)
+#define DBC_M001_EOL_MUX_PCB_TYPE                    (0x11CEAA55UL)
+#define DBC_M001_EOL_MUX_PCB_SERIAL_LO               (0x0D0EAA55UL)
+#define DBC_M001_EOL_MUX_PCB_SERIAL_HI               (0x0D0DAA55UL)
+
 typedef enum
 {
     DBC_TRACE_CATEGORY_UNKNOWN = 0,
