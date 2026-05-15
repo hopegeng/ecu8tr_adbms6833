@@ -215,6 +215,18 @@ Ltc6812_Status_t Ltc6812_EepromWrite(Ltc6812_Context_t *ctx,
                                      uint16_t address,
                                      const uint8_t *data,
                                      uint16_t len);
+Ltc6812_Status_t Ltc6812_EepromWriteOdp(Ltc6812_Context_t *ctx,
+                                         const Ltc6812_Hal_t *hal,
+                                         const Ltc6812_CommandSet_t *cmds,
+                                         uint8_t address,
+                                         const uint8_t *data,
+                                         uint8_t len);
+Ltc6812_Status_t Ltc6812_EepromLockOdp(Ltc6812_Context_t *ctx,
+                                        const Ltc6812_Hal_t *hal,
+                                        const Ltc6812_CommandSet_t *cmds);
+bool Ltc6812_EepromIsOdpLocked(Ltc6812_Context_t *ctx,
+                                const Ltc6812_Hal_t *hal,
+                                const Ltc6812_CommandSet_t *cmds);
 Ltc6812_Status_t Ltc6812_Task(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, const Ltc6812_CommandSet_t *cmds, uint32_t measurementPeriodMs);
 void Ltc6812_CfgaPackDcc(uint16_t dccMask, uint8_t cfga[LTC6812_BYTES_PER_CFGR]);
 void Ltc6812_CfgbPackDcc(uint16_t dccMask, uint8_t cfgb[LTC6812_BYTES_PER_CFGR]);

@@ -24,6 +24,7 @@
 #define LTC6812_AUX_SAMPLE_PERIOD_MS       (2000u)
 #define LTC6812_STCOMM_CLOCK_BYTES         (9u)
 #define LTC6812_EEPROM_I2C_ADDR_BASE       (0x50u)
+#define LTC6812_EEPROM_ODP_I2C_ADDR_BASE   (0x58u)  /* M24C08 ID page: 0x58<<1 = 0xB0 */
 #define LTC6812_EEPROM_WRITE_DELAY_MS      (5u)
 #define LTC6812_COMM_ICOM_START            (0x6u)
 #define LTC6812_COMM_ICOM_STOP             (0x1u)
@@ -1079,6 +1080,134 @@ Ltc6812_Status_t Ltc6812_EepromWrite(Ltc6812_Context_t *ctx,
     }
 
     return LTC6812_OK;
+}
+
+Ltc6812_Status_t Ltc6812_EepromWriteOdp(Ltc6812_Context_t *ctx,
+                                         const Ltc6812_Hal_t *hal,
+                                         const Ltc6812_CommandSet_t *cmds,
+                                         uint8_t address,
+                                         const uint8_t *data,
+                                         uint8_t len)
+{
+    uint8_t pos;
+    uint8_t txComm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC];
+    uint8_t rxComm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC];
+    /* ODP write device address: 0xB0 (0x58 << 1, R/W=0) */
+    const uint8_t odp_dev_write = (uint8_t)((LTC6812_EEPROM_ODP_I2C_ADDR_BASE << 1u) & 0xFEu);
+
+    if ((ctx == 0) || (hal == 0) || (cmds == 0) || (data == 0) || (len == 0u) || (ctx->icCount == 0u))
+    {
+        return LTC6812_ERR_PARAM;
+    }
+
+    for (pos = 0u; pos < len; pos++)
+    {
+        Ltc6812_Status_t st;
+        /* A7=0 selects the data area; mask to 4 bits (ODP is 16 bytes, 0x00-0x0F) */
+        uint8_t odp_addr = (uint8_t)((address + pos) & 0x0Fu);
+
+        Ltc6812_PrepareCommForIc(txComm, ctx->icCount, 0u);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_START, odp_dev_write, LTC6812_COMM_FCOM_ACK,       &txComm[0][0], &txComm[0][1]);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_BLANK, odp_addr,       LTC6812_COMM_FCOM_ACK,       &txComm[0][2], &txComm[0][3]);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_BLANK, data[pos],      LTC6812_COMM_FCOM_NACK_STOP, &txComm[0][4], &txComm[0][5]);
+
+        st = Ltc6812_RunComm(ctx, hal, cmds, txComm, rxComm);
+        if (st != LTC6812_OK)
+        {
+            return st;
+        }
+
+        if (hal->delayMs != 0)
+        {
+            hal->delayMs(LTC6812_EEPROM_WRITE_DELAY_MS);
+        }
+    }
+
+    return LTC6812_OK;
+}
+
+Ltc6812_Status_t Ltc6812_EepromLockOdp(Ltc6812_Context_t *ctx,
+                                        const Ltc6812_Hal_t *hal,
+                                        const Ltc6812_CommandSet_t *cmds)
+{
+    uint8_t txComm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC];
+    uint8_t rxComm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC];
+    Ltc6812_Status_t st;
+    /* ODP write device address: 0xB0 */
+    const uint8_t odp_dev_write = (uint8_t)((LTC6812_EEPROM_ODP_I2C_ADDR_BASE << 1u) & 0xFEu);
+
+    if ((ctx == 0) || (hal == 0) || (cmds == 0) || (ctx->icCount == 0u))
+    {
+        return LTC6812_ERR_PARAM;
+    }
+
+    /* M24C08 permanent ODP lock sequence (irreversible hardware OTP):
+     * START + 0xB0 + 0x80 (A7=1 = lock address) + 0x02 (lock bit) + STOP
+     * The STOP condition triggers the one-time programming. */
+    Ltc6812_PrepareCommForIc(txComm, ctx->icCount, 0u);
+    Ltc6812_PackCommByte(LTC6812_COMM_ICOM_START, odp_dev_write, LTC6812_COMM_FCOM_ACK,       &txComm[0][0], &txComm[0][1]);
+    Ltc6812_PackCommByte(LTC6812_COMM_ICOM_BLANK, 0x80u,          LTC6812_COMM_FCOM_ACK,       &txComm[0][2], &txComm[0][3]);
+    Ltc6812_PackCommByte(LTC6812_COMM_ICOM_BLANK, 0x02u,          LTC6812_COMM_FCOM_NACK_STOP, &txComm[0][4], &txComm[0][5]);
+
+    st = Ltc6812_RunComm(ctx, hal, cmds, txComm, rxComm);
+    if (st != LTC6812_OK)
+    {
+        return st;
+    }
+
+    /* Wait for OTP programming to complete (tW max = 4 ms) */
+    if (hal->delayMs != 0)
+    {
+        hal->delayMs(LTC6812_EEPROM_WRITE_DELAY_MS);
+    }
+
+    return LTC6812_OK;
+}
+
+bool Ltc6812_EepromIsOdpLocked(Ltc6812_Context_t *ctx,
+                                const Ltc6812_Hal_t *hal,
+                                const Ltc6812_CommandSet_t *cmds)
+{
+    uint8_t txComm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC];
+    uint8_t rxComm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC];
+    Ltc6812_Status_t st;
+    uint8_t fcom2;
+    /* ODP write device address: 0xB0 */
+    const uint8_t odp_dev_write = (uint8_t)((LTC6812_EEPROM_ODP_I2C_ADDR_BASE << 1u) & 0xFEu);
+
+    if ((ctx == 0) || (hal == 0) || (cmds == 0) || (ctx->icCount == 0u))
+    {
+        return false;
+    }
+
+    /* STCOMM1: probe the lock-address sequence WITHOUT STOP (FCOM_ACK on last slot).
+     * The M24C08 only commits the lock on STOP; omitting STOP keeps it safe.
+     * ACK from slave (FCOM=0x0) on slot 2 → ODP not yet locked.
+     * NACK from slave (FCOM=0x8) on slot 2 → ODP is locked. */
+    Ltc6812_PrepareCommForIc(txComm, ctx->icCount, 0u);
+    Ltc6812_PackCommByte(LTC6812_COMM_ICOM_START, odp_dev_write, LTC6812_COMM_FCOM_ACK, &txComm[0][0], &txComm[0][1]);
+    Ltc6812_PackCommByte(LTC6812_COMM_ICOM_BLANK, 0x80u,          LTC6812_COMM_FCOM_ACK, &txComm[0][2], &txComm[0][3]);
+    Ltc6812_PackCommByte(LTC6812_COMM_ICOM_BLANK, 0x02u,          LTC6812_COMM_FCOM_ACK, &txComm[0][4], &txComm[0][5]);
+
+    st = Ltc6812_RunComm(ctx, hal, cmds, txComm, rxComm);
+
+    /* STCOMM2: abort the hanging transaction with a repeated START + dummy address + STOP.
+     * This resets the I2C bus without triggering the ODP lock. */
+    Ltc6812_PrepareCommForIc(txComm, ctx->icCount, 0u);
+    Ltc6812_PackCommByte(LTC6812_COMM_ICOM_START, 0xFFu, LTC6812_COMM_FCOM_NACK_STOP, &txComm[0][0], &txComm[0][1]);
+    Ltc6812_PackCommByte(LTC6812_COMM_ICOM_NO_TX, 0xFFu, LTC6812_COMM_FCOM_NACK_STOP, &txComm[0][2], &txComm[0][3]);
+    Ltc6812_PackCommByte(LTC6812_COMM_ICOM_NO_TX, 0xFFu, LTC6812_COMM_FCOM_NACK_STOP, &txComm[0][4], &txComm[0][5]);
+    (void)Ltc6812_RunComm(ctx, hal, cmds, txComm, rxComm);
+
+    if (st != LTC6812_OK)
+    {
+        return false;  /* Communication error — report unlocked to avoid false lock indication */
+    }
+
+    /* FCOM of slot 2 is in rxComm[0][5] & 0x0F.
+     * 0x0 = slave ACK (unlocked), 0x8 = slave NACK (locked). */
+    fcom2 = rxComm[0][5] & 0x0Fu;
+    return (fcom2 != LTC6812_COMM_FCOM_ACK);
 }
 
 Ltc6812_Status_t Ltc6812_SetGpioPullDown(Ltc6812_Context_t *ctx,

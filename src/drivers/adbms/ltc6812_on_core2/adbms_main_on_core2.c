@@ -24,19 +24,59 @@
 #define LTC6812_EEPROM_TEST_ADDRESS     (0x03F0u)
 #define LTC6812_EEPROM_TEST_LEN         (8u)
 #define LTC6812_EEPROM_SIZE_BYTES       (1024u)
-#define LTC6812_EEPROM_ID_CELL_TYPE_MAJOR_ADDR     (0x0002u)
-#define LTC6812_EEPROM_ID_CELL_TYPE_MINOR_ADDR     (0x0003u)
-#define LTC6812_EEPROM_ID_MODULE_TYPE_MAJOR_ADDR   (0x0004u)
-#define LTC6812_EEPROM_ID_MODULE_TYPE_MINOR_ADDR   (0x0005u)
-#define LTC6812_EEPROM_ID_PCB_TYPE_MAJOR_ADDR      (0x000Eu)
-#define LTC6812_EEPROM_ID_PCB_TYPE_MINOR_ADDR      (0x000Fu)
+/* --- GEN 3.0 CSC EEPROM layout (M24C08) ---
+ *
+ * ID Identification Page (M24C08 hardware ODP, I2C 0xB0, 16 B):
+ *   Offset 0x00: CRC16 (2 B)
+ *   Offset 0x02: Cell Type major+minor (2 B)
+ *   Offset 0x04: Module Type major+minor (2 B)
+ *   Offset 0x06: Module Serial (8 B)
+ *   Offset 0x0E: PCB Type major+minor (2 B)
+ *   Permanently locked by hardware OTP command (I2C 0xB0, addr 0x80, data 0x02).
+ *
+ * Main array (I2C 0xA0, 1024 B):
+ *   0x0000-0x000F  ID Backup      (16 B) — same field layout as ID page
+ *   0x0010-0x00AF  Static Area 1 (160 B)
+ *   0x00B0-0x014F  Static Area 2 (160 B, mirror of Static1)
+ *   0x0150-0x0299  Dynamic Area 1 (336 B)
+ *   0x02A0-0x02D9  Dynamic Area 2 (336 B, mirror of Dynamic1)
+ *   0x02DA-0x02E9  Rest (16 B, padding)
+ */
+
+/* ID Identification Page field offsets (same offsets used for ID Backup in main array) */
+#define LTC6812_EEPROM_ID_CRC16_OFFSET             (0x00u)
+#define LTC6812_EEPROM_ID_CELL_TYPE_MAJOR_ADDR     (0x02u)
+#define LTC6812_EEPROM_ID_CELL_TYPE_MINOR_ADDR     (0x03u)
+#define LTC6812_EEPROM_ID_MODULE_TYPE_MAJOR_ADDR   (0x04u)
+#define LTC6812_EEPROM_ID_MODULE_TYPE_MINOR_ADDR   (0x05u)
+#define LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR       (0x06u)  /* 8 bytes: 0x06-0x0D */
+#define LTC6812_EEPROM_ID_PCB_TYPE_MAJOR_ADDR      (0x0Eu)
+#define LTC6812_EEPROM_ID_PCB_TYPE_MINOR_ADDR      (0x0Fu)
+
+/* Main array: ID Backup (0x0000-0x000F) — same offsets as ID page fields above */
+#define LTC6812_EEPROM_ID_BACKUP_BASE_ADDR         (0x0000u)
+
+/* Main array: Static Area 1 (starts at 0x0010) */
+#define LTC6812_EEPROM_STATIC1_CRC32_ADDR          (0x0010u)
+#define LTC6812_EEPROM_STATIC1_SERIAL_CELLS_ADDR   (0x0014u)
+#define LTC6812_EEPROM_STATIC1_PARALLEL_CELLS_ADDR (0x0015u)
+#define LTC6812_EEPROM_STATIC1_PCB_SERIAL_ADDR     (0x0016u)  /* 8 bytes: 0x0016-0x001D */
 #define LTC6812_EEPROM_STATIC1_IC_TYPE_MAJOR_ADDR  (0x001Eu)
 #define LTC6812_EEPROM_STATIC1_IC_TYPE_MINOR_ADDR  (0x001Fu)
+#define LTC6812_EEPROM_STATIC1_LOCKING_ADDR        (0x0028u)  /* locking recognition byte */
+
+/* Main array: Static Area 2 (starts at 0x00B0, mirror of Static1) */
+#define LTC6812_EEPROM_STATIC2_CRC32_ADDR          (0x00B0u)
+#define LTC6812_EEPROM_STATIC2_SERIAL_CELLS_ADDR   (0x00B4u)
+#define LTC6812_EEPROM_STATIC2_PARALLEL_CELLS_ADDR (0x00B5u)
+#define LTC6812_EEPROM_STATIC2_PCB_SERIAL_ADDR     (0x00B6u)  /* 8 bytes: 0x00B6-0x00BD */
 #define LTC6812_EEPROM_STATIC2_IC_TYPE_MAJOR_ADDR  (0x00BEu)
 #define LTC6812_EEPROM_STATIC2_IC_TYPE_MINOR_ADDR  (0x00BFu)
-#define LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR        (0x0006u)
-#define LTC6812_EEPROM_STATIC1_SERIAL_CELLS_ADDR    (0x0014u)
-#define LTC6812_EEPROM_STATIC1_PCB_SERIAL_ADDR      (0x0016u)
+#define LTC6812_EEPROM_STATIC2_LOCKING_ADDR        (0x00C8u)
+
+/* Main array: Dynamic areas */
+#define LTC6812_EEPROM_DYNAMIC1_BASE_ADDR          (0x0150u)
+#define LTC6812_EEPROM_DYNAMIC2_BASE_ADDR          (0x02A0u)
 
 #ifndef LTC6812_BALANCE_FORCE_CHARGING_ACTIVE
 /* DC3036A bench test hook. Set to 0 for application-controlled charging state. */
@@ -95,6 +135,8 @@ static uint16_t Ltc6812_GetDewSensor_mV(void);
 static Ltc6812_Status_t Ltc6812_SetSystemLed(bool on);
 static void Ltc6812_ApplyManualBalanceCommand(void);
 static bool Ltc6812_WriteEepromVerified(uint16_t address, const uint8_t *data, uint8_t length);
+static bool Ltc6812_WriteEepromOdpVerified(uint8_t address, const uint8_t *data, uint8_t length);
+static void Ltc6812_ReadAndPublishEepromCache(void);
 static void Ltc6812_ProcessEepromRequests(void);
 #if LTC6812_CORE2_DEMO_MODE
 static void Ltc6812_PublishDemoSnapshot(void);
@@ -339,6 +381,35 @@ static bool Ltc6812_WriteEepromVerified(uint16_t address, const uint8_t *data, u
     return true;
 }
 
+/* Write to M24C08 ODP Identification Page (I2C 0xB0).
+ * address is the byte offset within the 16-byte ODP page (0x00-0x0F).
+ * No read-back verification (ODP is one-time programmable). */
+static bool Ltc6812_WriteEepromOdpVerified(uint8_t address, const uint8_t *data, uint8_t length)
+{
+    Ltc6812_Status_t st;
+
+    if ((data == 0) || (length == 0u) || (((uint16_t)address + (uint16_t)length) > 0x10u))
+    {
+        return false;
+    }
+
+    st = Ltc6812_WakeUp(&g_ltc6812Drv, &g_ltc6812Hal);
+    if (st == LTC6812_OK)
+    {
+        st = Ltc6812_EepromWriteOdp(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds, address, data, length);
+    }
+
+    if (st != LTC6812_OK)
+    {
+        g_ltc6812State = ECU8TR_ADBMS6830_ERROR;
+        LTC6812_PRINT_DEBUG_STATUS(st);
+        return false;
+    }
+
+    g_ltc6812Drv.lastCommMs = g_ltc6812Drv.tickMs;
+    return true;
+}
+
 static void Ltc6812_ProcessEepromRequests(void)
 {
     AdbmsRuntime_EepromRequest_t request;
@@ -362,18 +433,39 @@ static void Ltc6812_ProcessEepromRequests(void)
         switch (request.config_kind)
         {
             case ADBMS_RUNTIME_LTC_CONFIG_CELL_TYPE:
-                ok = Ltc6812_WriteEepromVerified(LTC6812_EEPROM_ID_CELL_TYPE_MAJOR_ADDR, data, 2u);
+                /* Write to ODP Identification Page (I2C 0xB0) at field offset */
+                ok = Ltc6812_WriteEepromOdpVerified(LTC6812_EEPROM_ID_CELL_TYPE_MAJOR_ADDR, data, 2u);
+                if (ok == true)
+                {
+                    /* Mirror into main-array ID Backup at same offset (I2C 0xA0, 0x0000+offset) */
+                    ok = Ltc6812_WriteEepromVerified(
+                        LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_CELL_TYPE_MAJOR_ADDR,
+                        data, 2u);
+                }
                 break;
 
             case ADBMS_RUNTIME_LTC_CONFIG_MODULE_TYPE:
-                ok = Ltc6812_WriteEepromVerified(LTC6812_EEPROM_ID_MODULE_TYPE_MAJOR_ADDR, data, 2u);
+                ok = Ltc6812_WriteEepromOdpVerified(LTC6812_EEPROM_ID_MODULE_TYPE_MAJOR_ADDR, data, 2u);
+                if (ok == true)
+                {
+                    ok = Ltc6812_WriteEepromVerified(
+                        LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_MODULE_TYPE_MAJOR_ADDR,
+                        data, 2u);
+                }
                 break;
 
             case ADBMS_RUNTIME_LTC_CONFIG_PCB_TYPE:
-                ok = Ltc6812_WriteEepromVerified(LTC6812_EEPROM_ID_PCB_TYPE_MAJOR_ADDR, data, 2u);
+                ok = Ltc6812_WriteEepromOdpVerified(LTC6812_EEPROM_ID_PCB_TYPE_MAJOR_ADDR, data, 2u);
+                if (ok == true)
+                {
+                    ok = Ltc6812_WriteEepromVerified(
+                        LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_PCB_TYPE_MAJOR_ADDR,
+                        data, 2u);
+                }
                 break;
 
             case ADBMS_RUNTIME_LTC_CONFIG_IC_TYPE:
+                /* IC type lives in Static Area 1 and Static Area 2 only (no ID page entry) */
                 ok = Ltc6812_WriteEepromVerified(LTC6812_EEPROM_STATIC1_IC_TYPE_MAJOR_ADDR, data, 2u);
                 if (ok == true)
                 {
@@ -381,9 +473,49 @@ static void Ltc6812_ProcessEepromRequests(void)
                 }
                 break;
 
+            case ADBMS_RUNTIME_LTC_CONFIG_MODULE_SERIAL_LO:
+                /* Bytes 0-3 of 8-byte module serial: ODP offset 0x06, backup at 0x0000+0x06 */
+                ok = Ltc6812_WriteEepromOdpVerified(LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR,
+                                                    request.data, 4u);
+                if (ok == true)
+                {
+                    ok = Ltc6812_WriteEepromVerified(
+                        LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR,
+                        request.data, 4u);
+                }
+                break;
+
+            case ADBMS_RUNTIME_LTC_CONFIG_MODULE_SERIAL_HI:
+                /* Bytes 4-7 of 8-byte module serial: ODP offset 0x0A, backup at 0x0000+0x0A */
+                ok = Ltc6812_WriteEepromOdpVerified(LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR + 4u,
+                                                    request.data, 4u);
+                if (ok == true)
+                {
+                    ok = Ltc6812_WriteEepromVerified(
+                        LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR + 4u,
+                        request.data, 4u);
+                }
+                break;
+
             default:
                 ok = false;
                 break;
+        }
+    }
+    else if (request.kind == ADBMS_RUNTIME_EEPROM_REQ_LOCK)
+    {
+        /* Permanently lock the M24C08 ODP Identification Page via hardware OTP sequence.
+         * This is irreversible. Wake the LTC6812 chain first. */
+        Ltc6812_Status_t st = Ltc6812_WakeUp(&g_ltc6812Drv, &g_ltc6812Hal);
+        if (st == LTC6812_OK)
+        {
+            st = Ltc6812_EepromLockOdp(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds);
+        }
+        ok = (st == LTC6812_OK);
+        if (ok == true)
+        {
+            /* Refresh cache immediately so IDPageNotLocked bit reflects the new state */
+            Ltc6812_ReadAndPublishEepromCache();
         }
     }
     else if (request.kind == ADBMS_RUNTIME_EEPROM_REQ_READ)
@@ -966,38 +1098,42 @@ static void Ltc6812_ReadAndPublishEepromCache(void)
         return;
     }
 
-    /* cell_type_major, cell_type_minor (2 bytes at 0x0002) */
+    /* cell_type_major, cell_type_minor — read from main-array ID Backup (0x0000 + 0x02) */
     st = Ltc6812_EepromRead(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds,
-                             LTC6812_EEPROM_ID_CELL_TYPE_MAJOR_ADDR, buf, 2u);
+                             LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_CELL_TYPE_MAJOR_ADDR,
+                             buf, 2u);
     if (st == LTC6812_OK)
     {
         cache.cell_type_major = buf[0];
         cache.cell_type_minor = buf[1];
     }
 
-    /* module_type_major, module_type_minor (2 bytes at 0x0004) */
+    /* module_type_major, module_type_minor — ID Backup (0x0000 + 0x04) */
     st = Ltc6812_EepromRead(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds,
-                             LTC6812_EEPROM_ID_MODULE_TYPE_MAJOR_ADDR, buf, 2u);
+                             LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_MODULE_TYPE_MAJOR_ADDR,
+                             buf, 2u);
     if (st == LTC6812_OK)
     {
         cache.module_type_major = buf[0];
         cache.module_type_minor = buf[1];
     }
 
-    /* module_serial (8 bytes at 0x0006) */
+    /* module_serial (8 bytes) — ID Backup (0x0000 + 0x06) */
     (void)Ltc6812_EepromRead(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds,
-                              LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR, cache.module_serial, 8u);
+                              LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR,
+                              cache.module_serial, 8u);
 
-    /* pcb_type_major, pcb_type_minor (2 bytes at 0x000E) */
+    /* pcb_type_major, pcb_type_minor — ID Backup (0x0000 + 0x0E) */
     st = Ltc6812_EepromRead(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds,
-                             LTC6812_EEPROM_ID_PCB_TYPE_MAJOR_ADDR, buf, 2u);
+                             LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_PCB_TYPE_MAJOR_ADDR,
+                             buf, 2u);
     if (st == LTC6812_OK)
     {
         cache.pcb_type_major = buf[0];
         cache.pcb_type_minor = buf[1];
     }
 
-    /* serial_cells, parallel_cells (2 bytes at 0x0014) */
+    /* serial_cells, parallel_cells — Static Area 1 (0x0014) */
     st = Ltc6812_EepromRead(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds,
                              LTC6812_EEPROM_STATIC1_SERIAL_CELLS_ADDR, buf, 2u);
     if (st == LTC6812_OK)
@@ -1006,11 +1142,11 @@ static void Ltc6812_ReadAndPublishEepromCache(void)
         cache.parallel_cells = buf[1];
     }
 
-    /* pcb_serial (8 bytes at 0x0016) */
+    /* pcb_serial (8 bytes) — Static Area 1 (0x0016) */
     (void)Ltc6812_EepromRead(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds,
                               LTC6812_EEPROM_STATIC1_PCB_SERIAL_ADDR, cache.pcb_serial, 8u);
 
-    /* ic_type_major, ic_type_minor (2 bytes at 0x001E) */
+    /* ic_type_major, ic_type_minor — Static Area 1 (0x001E) */
     st = Ltc6812_EepromRead(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds,
                              LTC6812_EEPROM_STATIC1_IC_TYPE_MAJOR_ADDR, buf, 2u);
     if (st == LTC6812_OK)
@@ -1019,15 +1155,19 @@ static void Ltc6812_ReadAndPublishEepromCache(void)
         cache.ic_type_minor = buf[1];
     }
 
+    /* ODP lock status — probe the M24C08 ID page hardware lock state via I2C 0xB0 */
+    cache.locking_locked = Ltc6812_EepromIsOdpLocked(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds);
+
     cache.valid = true;
     AdbmsRuntime_PublishEepromCache(&cache);
 
-    LTC6812_DEBUG_PRINTF("LTC6812 EEPROM cache: cell=%u.%u module=%u.%u pcb=%u.%u ic=%u.%u cells=%u par=%u\r\n",
+    LTC6812_DEBUG_PRINTF("LTC6812 EEPROM cache: cell=%u.%u module=%u.%u pcb=%u.%u ic=%u.%u cells=%u par=%u locked=%u\r\n",
                           (uint32_t)cache.cell_type_major, (uint32_t)cache.cell_type_minor,
                           (uint32_t)cache.module_type_major, (uint32_t)cache.module_type_minor,
                           (uint32_t)cache.pcb_type_major, (uint32_t)cache.pcb_type_minor,
                           (uint32_t)cache.ic_type_major, (uint32_t)cache.ic_type_minor,
-                          (uint32_t)cache.serial_cells, (uint32_t)cache.parallel_cells);
+                          (uint32_t)cache.serial_cells, (uint32_t)cache.parallel_cells,
+                          (uint32_t)cache.locking_locked);
 }
 
 void ltc6812_main_on_core2(void)
