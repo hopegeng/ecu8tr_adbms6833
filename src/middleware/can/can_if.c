@@ -26,10 +26,12 @@
 #define CANIF_TX_TASK_STACK_WORDS      (configMINIMAL_STACK_SIZE)
 #define CANIF_TX_TASK_PRIORITY         (1u)
 #define CANIF_LTC_EEPROM_SIZE_BYTES    (1024u)
-#define CANIF_M001_CONFIG_CELL_TYPE_MUX    DBC_M001_EOL_MUX_CELL_TYPE
-#define CANIF_M001_CONFIG_IC_TYPE_MUX      DBC_M001_EOL_MUX_IC_TYPE
-#define CANIF_M001_CONFIG_MODULE_TYPE_MUX  DBC_M001_EOL_MUX_MODULE_TYPE
-#define CANIF_M001_CONFIG_PCB_TYPE_MUX     DBC_M001_EOL_MUX_PCB_TYPE
+#define CANIF_M001_CONFIG_CELL_TYPE_MUX         DBC_M001_EOL_MUX_CELL_TYPE
+#define CANIF_M001_CONFIG_IC_TYPE_MUX           DBC_M001_EOL_MUX_IC_TYPE
+#define CANIF_M001_CONFIG_MODULE_TYPE_MUX       DBC_M001_EOL_MUX_MODULE_TYPE
+#define CANIF_M001_CONFIG_PCB_TYPE_MUX          DBC_M001_EOL_MUX_PCB_TYPE
+#define CANIF_M001_CONFIG_MODULE_SERIAL_LO_MUX  DBC_M001_EOL_MUX_MODULE_SERIAL_LO
+#define CANIF_M001_CONFIG_MODULE_SERIAL_HI_MUX  DBC_M001_EOL_MUX_MODULE_SERIAL_HI
 
 SemaphoreHandle_t canTxSemaphore = NULL;
 static QueueHandle_t g_canIfTxQueue = NULL;
@@ -46,6 +48,8 @@ typedef struct
     uint32_t diag_req_count;
     uint32_t threshold_settings_count;
     uint32_t scu1_hs_switch_req_count;
+    uint32_t eeprom_change_dyn_area_count;
+    uint32_t write_start_ltc_count;
     uint32_t unknown_count;
     uint32_t tx_queued_count;
     uint32_t tx_queue_full_count;
@@ -67,7 +71,7 @@ static CanIf_TesterCommandStateType g_canIfTesterCommandState;
 static Bmu_ReturnType CanIf_TransmitBlocking(const CanIf_MsgType *msg);
 static void CanIf_TxTask(void *pvParameters);
 static bool CanIf_RequestLtcEepromWrite(uint16_t address, const uint8_t *data, uint8_t length);
-static void CanIf_QueueEepromDataResponse(uint16_t address, uint8_t index, const uint8_t *data, uint8_t length);
+static void CanIf_QueueEepromDataResponse(uint8_t index, const uint8_t *data, uint8_t length);
 
 static void CanIf_TxTask(void *pvParameters)
 {
@@ -104,12 +108,12 @@ static void CanIf_HandleBmmControlDigitalOutputs(const Dbc_BmmControlDigitalOutp
     /* Stub: connect this to contactor, relay, and fan output control later. */
 }
 
-static void CanIf_QueueEepromDataResponse(uint16_t address, uint8_t index,
+static void CanIf_QueueEepromDataResponse(uint8_t index,
                                           const uint8_t *data, uint8_t length)
 {
     CanIf_MsgType msg;
 
-    Dbc_M001EepromData_Pack(&msg, address, index, data, length);
+    Dbc_M001EepromData_Pack(&msg, index, AdbmsRuntime_GetDynAreaA(), data, length);
     (void)CanIf_Transmit(&msg);
 }
 
@@ -155,7 +159,7 @@ static void CanIf_HandleM001WriteEepromData(const Dbc_M001WriteEepromDataType *c
     }
 
     /* Echo the written data back immediately so the tester can confirm */
-    CanIf_QueueEepromDataResponse(address, cmd->eeprom_write_index, data, 4u);
+    CanIf_QueueEepromDataResponse(cmd->eeprom_write_index, data, 4u);
 }
 
 static void CanIf_HandleM001StartLtcTransmission(const Dbc_M001StartLtcTransmissionType *cmd)
@@ -220,6 +224,16 @@ static void CanIf_HandleM001ConfigurationMessage(const CanIf_MsgType *msg)
     {
         accepted = AdbmsRuntime_RequestLtcConfigWrite(ADBMS_RUNTIME_LTC_CONFIG_PCB_TYPE, major, minor);
     }
+    else if (mux == CANIF_M001_CONFIG_MODULE_SERIAL_LO_MUX)
+    {
+        /* bytes 4-7 carry the 4-byte lower half of the module serial */
+        accepted = AdbmsRuntime_RequestLtcModuleSerialWrite(false, &msg->data[4]);
+    }
+    else if (mux == CANIF_M001_CONFIG_MODULE_SERIAL_HI_MUX)
+    {
+        /* bytes 4-7 carry the 4-byte upper half of the module serial */
+        accepted = AdbmsRuntime_RequestLtcModuleSerialWrite(true, &msg->data[4]);
+    }
 
     if (accepted == false)
     {
@@ -266,6 +280,40 @@ static void CanIf_HandleScu1HsSwitchReq(const Dbc_Scu1HsSwitchReqType *cmd)
     /* Stub: connect this to high-side switch output request handling later. */
 }
 
+static void CanIf_HandleM001EepromChangeDynArea(const Dbc_M001EepromChangeDynAreaType *cmd)
+{
+    if (cmd == 0)
+    {
+        return;
+    }
+
+    g_canIfTesterCommandState.eeprom_change_dyn_area_count++;
+    AdbmsRuntime_SetDynAreaA(cmd->write_dynamic_area_a);
+}
+
+static void CanIf_HandleM001WriteStartLtcTransmission(const Dbc_M001WriteStartLtcTransmissionType *cmd)
+{
+    if (cmd == 0)
+    {
+        return;
+    }
+
+    if (cmd->magic != DBC_M001_START_LTC_MAGIC)
+    {
+        g_canIfTesterCommandState.eeprom_request_rejected_count++;
+        return;
+    }
+
+    g_canIfTesterCommandState.write_start_ltc_count++;
+
+    /* Trigger measurement start, then lock the ID page */
+    Bmu_CscAcq_StartMeasurement();
+    if (AdbmsRuntime_RequestIdPageLock() == false)
+    {
+        g_canIfTesterCommandState.eeprom_request_rejected_count++;
+    }
+}
+
 void CanIf_PollEepromReadResult(void)
 {
     AdbmsRuntime_EepromReadResult_t result;
@@ -280,8 +328,7 @@ void CanIf_PollEepromReadResult(void)
         return;
     }
 
-    CanIf_QueueEepromDataResponse(result.address,
-                                  (uint8_t)(result.address / 4u),
+    CanIf_QueueEepromDataResponse((uint8_t)(result.address / 4u),
                                   result.data,
                                   result.length);
 }
@@ -419,6 +466,8 @@ void CanIf_RxIndication(const CanIf_MsgType *msg)
     Dbc_BmuDiagReqType diagReq;
     Dbc_ThresholdSettingsType thresholdSettings;
     Dbc_Scu1HsSwitchReqType hsSwitchReq;
+    Dbc_M001EepromChangeDynAreaType changeDynArea;
+    Dbc_M001WriteStartLtcTransmissionType writeStartLtc;
 
     if (msg == 0)
     {
@@ -470,6 +519,18 @@ void CanIf_RxIndication(const CanIf_MsgType *msg)
     if (Dbc_Scu1HsSwitchReq_Unpack(msg, &hsSwitchReq))
     {
         CanIf_HandleScu1HsSwitchReq(&hsSwitchReq);
+        return;
+    }
+
+    if (Dbc_M001EepromChangeDynArea_Unpack(msg, &changeDynArea))
+    {
+        CanIf_HandleM001EepromChangeDynArea(&changeDynArea);
+        return;
+    }
+
+    if (Dbc_M001WriteStartLtcTransmission_Unpack(msg, &writeStartLtc))
+    {
+        CanIf_HandleM001WriteStartLtcTransmission(&writeStartLtc);
         return;
     }
 

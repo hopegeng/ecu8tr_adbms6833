@@ -34,6 +34,7 @@ static volatile bool g_adbmsRuntimeStartRequested = false;
 static volatile bool g_adbmsRuntimeManualBalanceEnabled = false;
 static volatile uint32_t g_adbmsRuntimeBalanceMask20 = 0u;
 static volatile bool g_adbmsRuntimeEepromRequestPending = false;
+static volatile bool g_adbmsRuntimeDynAreaA = true;
 static volatile AdbmsRuntime_EepromRequest_t g_adbmsRuntimeEepromRequest;
 static volatile bool g_adbmsRuntimeEepromReadResultReady = false;
 static volatile AdbmsRuntime_EepromReadResult_t g_adbmsRuntimeEepromReadResult;
@@ -522,7 +523,7 @@ bool AdbmsRuntime_RequestLtcConfigWrite(AdbmsRuntime_LtcConfigKind_t kind, uint8
         return false;
     }
 
-    if (kind > ADBMS_RUNTIME_LTC_CONFIG_PCB_TYPE)
+    if (kind > ADBMS_RUNTIME_LTC_CONFIG_MODULE_SERIAL_HI)
     {
         return false;
     }
@@ -695,6 +696,7 @@ void AdbmsRuntime_PublishEepromCache(const AdbmsRuntime_EepromCache_t *cache)
 
     g_adbmsRuntimeEepromCache.valid            = false;
     __dsync();
+    g_adbmsRuntimeEepromCache.locking_locked    = cache->locking_locked;
     g_adbmsRuntimeEepromCache.cell_type_major   = cache->cell_type_major;
     g_adbmsRuntimeEepromCache.cell_type_minor   = cache->cell_type_minor;
     g_adbmsRuntimeEepromCache.module_type_major = cache->module_type_major;
@@ -731,6 +733,7 @@ bool AdbmsRuntime_GetEepromCache(AdbmsRuntime_EepromCache_t *out)
     }
 
     out->valid            = true;
+    out->locking_locked    = g_adbmsRuntimeEepromCache.locking_locked;
     out->cell_type_major   = g_adbmsRuntimeEepromCache.cell_type_major;
     out->cell_type_minor   = g_adbmsRuntimeEepromCache.cell_type_minor;
     out->module_type_major = g_adbmsRuntimeEepromCache.module_type_major;
@@ -749,4 +752,73 @@ bool AdbmsRuntime_GetEepromCache(AdbmsRuntime_EepromCache_t *out)
     __dsync();
 
     return true;
+}
+
+bool AdbmsRuntime_RequestLtcModuleSerialWrite(bool isHi, const uint8_t *bytes4)
+{
+    uint8_t i;
+
+    if (bytes4 == 0)
+    {
+        return false;
+    }
+
+    if (g_adbmsRuntimeEepromRequestPending == true)
+    {
+        return false;
+    }
+
+    g_adbmsRuntimeEepromRequest.kind = ADBMS_RUNTIME_EEPROM_REQ_CONFIG;
+    g_adbmsRuntimeEepromRequest.address = 0u;
+    g_adbmsRuntimeEepromRequest.length = 4u;
+    g_adbmsRuntimeEepromRequest.config_kind = isHi ?
+        ADBMS_RUNTIME_LTC_CONFIG_MODULE_SERIAL_HI :
+        ADBMS_RUNTIME_LTC_CONFIG_MODULE_SERIAL_LO;
+    g_adbmsRuntimeEepromRequest.major = 0u;
+    g_adbmsRuntimeEepromRequest.minor = 0u;
+    for (i = 0u; i < 4u; i++)
+    {
+        g_adbmsRuntimeEepromRequest.data[i] = bytes4[i];
+    }
+
+    __dsync();
+    g_adbmsRuntimeEepromRequestPending = true;
+    __dsync();
+
+    return true;
+}
+
+bool AdbmsRuntime_RequestIdPageLock(void)
+{
+    if (g_adbmsRuntimeEepromRequestPending == true)
+    {
+        return false;
+    }
+
+    g_adbmsRuntimeEepromRequest.kind = ADBMS_RUNTIME_EEPROM_REQ_LOCK;
+    g_adbmsRuntimeEepromRequest.address = 0u;
+    g_adbmsRuntimeEepromRequest.length = 0u;
+    g_adbmsRuntimeEepromRequest.config_kind = ADBMS_RUNTIME_LTC_CONFIG_CELL_TYPE;
+    g_adbmsRuntimeEepromRequest.major = 0u;
+    g_adbmsRuntimeEepromRequest.minor = 0u;
+    g_adbmsRuntimeEepromRequest.data[0] = 0u;
+    g_adbmsRuntimeEepromRequest.data[1] = 0u;
+    g_adbmsRuntimeEepromRequest.data[2] = 0u;
+    g_adbmsRuntimeEepromRequest.data[3] = 0u;
+
+    __dsync();
+    g_adbmsRuntimeEepromRequestPending = true;
+    __dsync();
+
+    return true;
+}
+
+void AdbmsRuntime_SetDynAreaA(bool useAreaA)
+{
+    g_adbmsRuntimeDynAreaA = useAreaA;
+}
+
+bool AdbmsRuntime_GetDynAreaA(void)
+{
+    return g_adbmsRuntimeDynAreaA;
 }

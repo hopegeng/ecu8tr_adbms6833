@@ -623,17 +623,37 @@ static Bmu_ReturnType Bmu_CellCan_SendSlaveSerials(void)
 /* M001_ModuleSafetyMechanisms */
 /* 0x10010801 */
 /* CLRCmdBroken_IC1 at bit8 (byte1 bit0), CLRCmdBroken_IC2 at bit24 (byte3 bit0) */
+/* M001_flag_IDPageNotLocked at bit46 (byte5 bit6): 1=not locked, 0=locked          */
 static Bmu_ReturnType Bmu_CellCan_SendModuleSafetyMechanisms(void)
 {
-    static const uint8_t k_payload[8] =
-        { 0x00u, 0x01u, 0x00u, 0x01u, 0x00u, 0x00u, 0x00u, 0x00u };
     CanIf_MsgType msg;
-    uint8_t i;
+    AdbmsRuntime_EepromCache_t cache;
+    bool idPageNotLocked;
 
     Bmu_CellCan_InitExt8(&msg, BMU_CAN_ID_M001_MODULE_SAFETY_MECH);
-    for (i = 0u; i < 8u; i++)
+
+    msg.data[0] = 0x00u;
+    msg.data[1] = 0x01u;  /* CLRCmdBroken_IC1 (bit8) */
+    msg.data[2] = 0x00u;
+    msg.data[3] = 0x01u;  /* CLRCmdBroken_IC2 (bit24) */
+    msg.data[4] = 0x00u;
+    msg.data[5] = 0x00u;
+    msg.data[6] = 0x00u;
+    msg.data[7] = 0x00u;
+
+    /* Reflect locking status in bit46 (byte5 bit6) */
+    if (AdbmsRuntime_GetEepromCache(&cache) == true)
     {
-        msg.data[i] = k_payload[i];
+        idPageNotLocked = !cache.locking_locked;
+    }
+    else
+    {
+        idPageNotLocked = true;  /* conservative: report not locked if cache unavailable */
+    }
+
+    if (idPageNotLocked)
+    {
+        msg.data[5] |= 0x40u;  /* bit46 = byte5 bit6 */
     }
 
     return CanIf_Transmit(&msg);

@@ -24,6 +24,8 @@ extern "C" {
 #define DBC_M001_EEPROM_DATA_ID                      (0x10007801UL)
 #define DBC_M001_WRITE_EEPROM_DATA_ID                (0x10087801UL)
 #define DBC_M001_START_LTC_TRANSMISSION_ID           (0x10088801UL)
+#define DBC_M001_WRITE_START_LTC_TRANSMISSION_ID     (0x10088800UL)
+#define DBC_M001_EEPROM_CHANGE_DYN_AREA_ID           (0x10089801UL)
 #define DBC_M001_BALANCE_CELLS_ID                    (0x12181801UL)
 #define DBC_M001_CONFIGURATION_MESSAGE_ID            (0x1808D801UL)
 #define DBC_SCU1_HS_SWITCH_REQ_ID                    (0x12182401UL)
@@ -34,6 +36,9 @@ extern "C" {
 /* Mux value in M001_WriteEEPROMData that triggers an EEPROM read-back response */
 #define DBC_M001_EEPROM_READ_MUX                     (0xEE5200UL)
 
+/* Magic value in M001_StartLTCTransmission and M001_WriteStartLTCTransmission (bytes 0-2 LE) */
+#define DBC_M001_START_LTC_MAGIC                     (0x953CA8UL)
+
 /* Mux values for M001_SendEEPROMDataEOL (0x1000F801) — also used in M001_ConfigurationMessage RX */
 #define DBC_M001_EOL_MUX_CELL_TYPE                   (0xCE11AA55UL)
 #define DBC_M001_EOL_MUX_IC_TYPE                     (0xCEA1AA55UL)
@@ -41,6 +46,8 @@ extern "C" {
 #define DBC_M001_EOL_MUX_PCB_TYPE                    (0x11CEAA55UL)
 #define DBC_M001_EOL_MUX_PCB_SERIAL_LO               (0x0D0EAA55UL)
 #define DBC_M001_EOL_MUX_PCB_SERIAL_HI               (0x0D0DAA55UL)
+#define DBC_M001_EOL_MUX_MODULE_SERIAL_LO            (0xD0D0AA55UL)
+#define DBC_M001_EOL_MUX_MODULE_SERIAL_HI            (0xDADAAA55UL)
 
 typedef enum
 {
@@ -114,6 +121,16 @@ typedef struct
     uint8_t hs_output3_pct;
     uint8_t hs_output4_pct;
 } Dbc_Scu1HsSwitchReqType;
+
+typedef struct
+{
+    bool write_dynamic_area_a;  /* true = select Dynamic Area A, false = Area B */
+} Dbc_M001EepromChangeDynAreaType;
+
+typedef struct
+{
+    uint32_t magic;  /* Expected: DBC_M001_START_LTC_MAGIC (0x953CA8) */
+} Dbc_M001WriteStartLtcTransmissionType;
 
 static const Dbc_TraceMessageDefType g_dbcTraceMessages[DBC_TRACE_MESSAGE_COUNT] =
 {
@@ -237,6 +254,8 @@ static inline bool Dbc_TraceMessage_IsTesterInputId(uint32_t can_id)
     if ((can_id == DBC_BMM_CONTROL_DIGITAL_OUTPUTS_ID) ||
         (can_id == DBC_M001_WRITE_EEPROM_DATA_ID) ||
         (can_id == DBC_M001_START_LTC_TRANSMISSION_ID) ||
+        (can_id == DBC_M001_WRITE_START_LTC_TRANSMISSION_ID) ||
+        (can_id == DBC_M001_EEPROM_CHANGE_DYN_AREA_ID) ||
         (can_id == DBC_M001_BALANCE_CELLS_ID) ||
         (can_id == DBC_M001_CONFIGURATION_MESSAGE_ID) ||
         (can_id == DBC_SCU1_HS_SWITCH_REQ_ID) ||
@@ -393,8 +412,8 @@ static inline bool Dbc_M001WriteEepromData_Unpack(
 }
 
 static inline void Dbc_M001EepromData_Pack(CanIf_MsgType *msg,
-                                           uint16_t address,
                                            uint8_t index,
+                                           bool dynAreaA,
                                            const uint8_t *data,
                                            uint8_t length)
 {
@@ -408,10 +427,10 @@ static inline void Dbc_M001EepromData_Pack(CanIf_MsgType *msg,
     msg->id = DBC_M001_EEPROM_DATA_ID;
     msg->dlc = 8u;
     msg->is_extended = true;
-    msg->data[0] = (uint8_t)(address & 0xFFu);
-    msg->data[1] = (uint8_t)((address >> 8u) & 0xFFu);
-    msg->data[2] = index;
-    msg->data[3] = length;
+    msg->data[0] = index;
+    msg->data[1] = dynAreaA ? 0x01u : 0x00u;  /* bit0 = WriteDynamicAreaANext */
+    msg->data[2] = 0u;
+    msg->data[3] = 0u;
     for (i = 0u; i < 4u; i++)
     {
         msg->data[4u + i] = (i < length) ? data[i] : 0u;
@@ -490,6 +509,32 @@ static inline bool Dbc_Scu1HsSwitchReq_Unpack(const CanIf_MsgType *msg,
     sig->hs_output3_pct = msg->data[2];
     sig->hs_output4_pct = msg->data[3];
 
+    return true;
+}
+
+static inline bool Dbc_M001EepromChangeDynArea_Unpack(const CanIf_MsgType *msg,
+                                                      Dbc_M001EepromChangeDynAreaType *sig)
+{
+    if ((sig == 0) || (!Dbc_IsExpectedExtended8(msg, DBC_M001_EEPROM_CHANGE_DYN_AREA_ID)))
+    {
+        return false;
+    }
+
+    /* bit0 of byte0: WriteDynamicAreaANext — 1 = Area A, 0 = Area B */
+    sig->write_dynamic_area_a = ((msg->data[0] & 0x01u) != 0u);
+    return true;
+}
+
+static inline bool Dbc_M001WriteStartLtcTransmission_Unpack(
+    const CanIf_MsgType *msg,
+    Dbc_M001WriteStartLtcTransmissionType *sig)
+{
+    if ((sig == 0) || (!Dbc_IsExpectedExtended8(msg, DBC_M001_WRITE_START_LTC_TRANSMISSION_ID)))
+    {
+        return false;
+    }
+
+    sig->magic = Dbc_ReadLe24(&msg->data[0]);
     return true;
 }
 

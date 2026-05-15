@@ -60,7 +60,8 @@ typedef enum
     ADBMS_RUNTIME_EEPROM_REQ_NONE = 0,
     ADBMS_RUNTIME_EEPROM_REQ_WRITE,
     ADBMS_RUNTIME_EEPROM_REQ_CONFIG,
-    ADBMS_RUNTIME_EEPROM_REQ_READ
+    ADBMS_RUNTIME_EEPROM_REQ_READ,
+    ADBMS_RUNTIME_EEPROM_REQ_LOCK
 } AdbmsRuntime_EepromRequestKind_t;
 
 typedef struct
@@ -74,6 +75,7 @@ typedef struct
 typedef struct
 {
     bool     valid;
+    bool     locking_locked;
     uint8_t  cell_type_major;
     uint8_t  cell_type_minor;
     uint8_t  module_type_major;
@@ -93,7 +95,9 @@ typedef enum
     ADBMS_RUNTIME_LTC_CONFIG_CELL_TYPE = 0,
     ADBMS_RUNTIME_LTC_CONFIG_IC_TYPE,
     ADBMS_RUNTIME_LTC_CONFIG_MODULE_TYPE,
-    ADBMS_RUNTIME_LTC_CONFIG_PCB_TYPE
+    ADBMS_RUNTIME_LTC_CONFIG_PCB_TYPE,
+    ADBMS_RUNTIME_LTC_CONFIG_MODULE_SERIAL_LO,
+    ADBMS_RUNTIME_LTC_CONFIG_MODULE_SERIAL_HI
 } AdbmsRuntime_LtcConfigKind_t;
 
 typedef struct
@@ -124,6 +128,10 @@ bool AdbmsRuntime_GetEepromCache(AdbmsRuntime_EepromCache_t *out);
 bool AdbmsRuntime_SharedRead(AdbmsRuntime_SharedSnapshot_t *snapshot);
 ECU8TR_ADBMS6830_State_t AdbmsRuntime_GetState(void);
 uint16_t AdbmsRuntime_GetDetectedDevice(void);
+bool AdbmsRuntime_RequestLtcModuleSerialWrite(bool isHi, const uint8_t *bytes4);
+bool AdbmsRuntime_RequestIdPageLock(void);
+void AdbmsRuntime_SetDynAreaA(bool useAreaA);
+bool AdbmsRuntime_GetDynAreaA(void);
 
 #ifdef __cplusplus
 }
