@@ -1,0 +1,2356 @@
+FormatVersion=5.0 // Do not edit this line!
+Title="AkaCAN_BMU_UHE"
+
+{ENUMS}
+enum VtSig_M001_flag_CalibrationDone(0="no", 1="yes")
+enum VtSig_M001_WriteDynamicAreaANext(0="write dynamic area B next", 1="write dynamic area A next")
+enum VtSig_SCU1_stat_Init(0="inactive", 1="active")
+enum VtSig_SCU1_flag_PowerContPos(0="open", 1="closed")
+enum VtSig_SCU1_flag_eStopLoopNotClos(0="closed", 1="open")
+enum VtSig_SCU1_flag_InterventioneSto(0="not intervened", 1="intervened")
+enum VtSig_SCU1_flag_InterLockError(0="no error", 1="erro")
+enum VtSig_SCU1_flag_SupplyMonitorWar(0="supply OK", 1="warning")
+enum VtSig_SCU1_flag_Led1(0="on", 1="off")
+enum VtSig_SCU1_flag_eStopBrakeOut(0="no eStop brake out", 1="eStop brake out")
+enum VtSig_SCU1_flag_CAN1BusOff(0="no bus off", 1="bus off")
+enum VtSig_SCU1_flag_ContStuckChk(0="not checked", 1="checked")
+enum VtSig_SCU1_flag_PrechargeOK(0="precharge OK", 1="precharge not OK")
+enum VtSig_BMM_req_ContactorPos(0="off", 1="on")
+enum VtSig_SCU1_req_eStopBrakeOutDiag(0="eStop loop closed", 1="eStop brake out")
+enum VtSig_SCU1_req_WdgTrigOffDiag(0="normal watchdog trigger", 1="no wachdog trigger")
+enum VtSig_SCU1_req_SystemResetDiag(0="no reset", 1="reset")
+enum VtSig_SCU1_req_WdgTrigFastDiag(0="normal watchdog trigger", 1="fast watchdog trigger")
+enum VtSig_SCU1_req_WdgAlarmResetDiag(0="trigger internal watchdog", 1="no internal watchdog trigger")
+enum VtSig_SCU1_raw_DIO_P02_00_In(0="Hi", 1="Lo")
+enum VtSig_SCU1_raw_DIO_P02_01_In(0="Lo", 1="Hi")
+enum VtSig_SCU1_raw_ID_bit_0(0="not connected 1")
+enum VtSig_SCU1_raw_Watchdog_Alarm_bi(0="no watchdog", 1="watchdog recognized")
+enum VtSig_BMMp_flag_HVILState(0="not ok", 1="ok")
+enum VtSig_BMMp_flag_AuxCont(0="at least 1 aux cont open", 1="all aux cont closed")
+enum VtSig_BMMp_stat_IsoResMeasStatus(0="ISO_STATE_PASSIVE", 1="ISO_STATE_ACTIVE", 2="ISO_STATE_ERROR",
+  3="ISO_STATE_SNA")
+enum VtSig_SCS001_req_LowModeA(0="OK", 1="StuckLow", 2="StuckHigh", 3="Open")
+enum VtSig_SCS001_req_SensortypA(0="DHAB-S37", 1="DHAB-S18", 2="DHAB-S15", 3="DHAB-S137", 4="DHAB-S118", 5="DHAB-S101",
+  6="ShuntUHE", 128="\DHAB-S37", 129="\DHAB-S18", 130="\DHAB-S15", 131="\DHAB-S137", 132="\DHAB-S118", 133="\DHAB-S101")
+enum VtSig_SCS001_req_MasterMode(0="normal", 1="HVAisMaster", 2="HVBisMaster", 3="INVALID")
+enum VtSig_SCS001_flag_PreChargeMode(0="normalMode", 1="PreChargeOff", 2="PreChargeOn", 3="PreChargeDone",
+  4="PreChargeAux")
+enum VtSig_SCS001_req_Sensor0Enable(0="Off", 1="On")
+enum VtSig_SCS001_req_Cont1Typ(0="EV200_12V", 1="EV200_24V", 2="GX21_12V", 3="GX21_24V", 4="GX23_12V", 5="GX23_24V",
+  6="HX22_12V", 7="HX22_24V", 8="GV241_12V", 9="GV241_24V", 10="LEV100_12V", 11="LEV100_24V", 12="TDK",
+  63="UserDefined")
+enum VtSig_SCS001_req_Cont1Func(0="default", 1="Neg", 2="Pos", 3="PreNeg", 4="PrePos", 5="Aux", 6="INVALID",
+  7="INVALID")
+enum VtSig_SCS001_req_EStopCTRL(0="OpenLoop", 1="CloseLoop", 2="ReverseLoop", 3="INVALID")
+enum VtSig_SCS001_req_EStopShortToSup(0="No_Short", 1="GND_Short", 2="VCC_Short", 3="INVALID")
+enum VtSig_SCS001_req_CurSensorMaster(0="normal", 1="AisMaster", 2="AisSum", 3="BisSum")
+enum VtSig_SCS001_req_BMM_AddressMux(0="BMM1", 1="BMM2", 2="BMM3", 3="BMM4", 4="BMM5", 5="BMM6", 6="BMM7", 7="BMM8")
+enum VtSig_SCS001_req_BMM_HVIL_SRC(0="BMM", 1="SCS")
+enum VtSig_SCS001_req_BMM_SafePower(0="BMMSafePower1", 1="BMMSafePower2", 2="BMMSafePower3", 3="BMMSafePower4")
+enum VtSig_SCS001_req_MSM_AddressMux(0="MSM1", 1="MSM2", 2="MSM3", 3="MSM4", 4="MSM5", 5="MSM6", 6="MSM7", 7="MSM8")
+enum VtSig_SCS001_req_MSM_KL15Mux(0="MSM_KL15OutA", 1="MSM_KL15OutB", 2="MSM_KL15OutC", 3="KL15_Out")
+enum VtSig_SCS001_Functionarry(0="P", 1="E", 2="M", 3="S", 4="H")
+
+{SENDRECEIVE}
+
+[M001_WriteStartLTCTransmission]
+ID=10088800h // Starts action for all modules in daisy-chain (Starts action for all modules in daisy-chain)
+Type=Extended
+DLC=8
+Var=M001_FixValues_LockIDPageCommand unsigned 0,24 /d:9780392
+Var=M001_LockIDPageCommand unsigned 24,8 // Lock ID Page Command
+
+[C001_CellMessage]
+ID=10000C01h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V001_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T001_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V001_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B001_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C002_CellMessage]
+ID=10000C02h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V002_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T002_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V002_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B002_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C003_CellMessage]
+ID=10000C03h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V003_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T003_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V003_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B003_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C004_CellMessage]
+ID=10000C04h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V004_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T004_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V004_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B004_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C005_CellMessage]
+ID=10000C05h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V005_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T005_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V005_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B005_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C006_CellMessage]
+ID=10000C06h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V006_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T006_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V006_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B006_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C007_CellMessage]
+ID=10000C07h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V007_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T007_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V007_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B007_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C008_CellMessage]
+ID=10000C08h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V008_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T008_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V008_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B008_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C009_CellMessage]
+ID=10000C09h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V009_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T009_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V009_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B009_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C010_CellMessage]
+ID=10000C0Ah // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V010_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T010_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V010_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B010_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C011_CellMessage]
+ID=10000C0Bh // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V011_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T011_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V011_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B011_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C012_CellMessage]
+ID=10000C0Ch // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V012_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T012_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V012_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B012_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C013_CellMessage]
+ID=10000C0Dh // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V013_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T013_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V013_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B013_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C014_CellMessage]
+ID=10000C0Eh // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V014_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T014_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V014_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B014_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C015_CellMessage]
+ID=10000C0Fh // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V015_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T015_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V015_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B015_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C016_CellMessage]
+ID=10000C10h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V016_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T016_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V016_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B016_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C017_CellMessage]
+ID=10000C11h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V017_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T017_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V017_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B017_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C018_CellMessage]
+ID=10000C12h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V018_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T018_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V018_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B018_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C019_CellMessage]
+ID=10000C13h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V019_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T019_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V019_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B019_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[C020_CellMessage]
+ID=10000C14h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=V020_act_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // active cell voltage
+Var=T020_act_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // active cell temperature
+Var=V020_act_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: GPIO voltage to corresponding cell temperature
+Var=B020_flag_Balancing bit 48,1 // shows if Balancing for the Cell is active
+
+[M001_TerminalTemperatures]
+ID=10001801h // Information about temperatures on module terminals (Information about temperatures on module terminals)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=M001_raw_DewSens unsigned 16,16 /u:mV /f:0.1 /d:0 // raw value of Dew Sensor ADC (optional)
+Var=M001_act_T_TermTempNeg_C signed 32,16 /u:°C /f:0.01 /d:0 // temperature measured on negative terminal
+Var=M001_act_T_TermTempPos_C signed 48,16 /u:°C /f:0.01 /d:0 // temperature measured on positive terminal
+
+[M001_ModuleStatus]
+ID=10002801h // information about module voltages and split temperatures (information about module voltages and split temperatures)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=M001_act_T_TermTempSplitNeg signed 0,16 /u:°C /f:0.01 /d:0 // temperature measured on negative split terminal
+Var=M001_act_T_TermTempSplitPos signed 16,16 /u:°C /f:0.01 /d:0 // temperature measured on positive split terminal
+Var=M001_act_U_ModuleVoltage_V unsigned 48,16 /u:V /f:0.01 /d:0 // measured module voltage
+
+[M001_ModuleInformation]
+ID=10004801h // module configuration information (module configuration information)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=M001_inf_SerialCells unsigned 32,8 // Number of Cells in series
+Var=M001_inf_ParallelCells unsigned 40,8 // Number of parallel Cells
+Var=M001_inf_CellTypeMajor unsigned 48,8 // used Cell Type (Type)
+Var=M001_inf_CellTypeMinor unsigned 56,8 // used Cell Type (Index/revision)
+
+[M001_BMSInfo]
+ID=10005801h // module version and Error information (module version and Error information)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=M001_flag_CalibrationDone bit 0,1 /e:VtSig_M001_flag_CalibrationDone // shows if module is calibrated
+Var=M001_flag_CalibrationIncomp bit 1,1 /e:VtSig_M001_flag_CalibrationDone // shows if calibration data is missing
+Var=M001_flag_CalibrationError bit 2,1 /e:VtSig_M001_flag_CalibrationDone // shows if there was an error while calibrating or calibration data is out of limits
+Var=M001_flag_EEPROMError bit 4,1 /e:VtSig_M001_flag_CalibrationDone // shows if there was an error while reading/writig to EEPROM
+Var=M001_flag_WDGError bit 5,1 /e:VtSig_M001_flag_CalibrationDone // shows if Watchdog has been triggered
+Var=M001_flag_ConfigDone bit 6,1 /e:VtSig_M001_flag_CalibrationDone // shows if serial number has been set and topology has been set and locked
+Var=M001_flag_TempCalErr bit 7,1 /e:VtSig_M001_flag_CalibrationDone // shows if there has been an error with the temperature calibration
+Var=M001_flag_SerialMiss bit 10,1 /e:VtSig_M001_flag_CalibrationDone // shows if module serial number has not been set
+Var=M001_flag_ThermalShtDwn_IC1 bit 11,1 /e:VtSig_M001_flag_CalibrationDone // shows if IC 1 has a temperature over 125 °C
+Var=M001_flag_ThermalShtDwn_IC2 bit 12,1 /e:VtSig_M001_flag_CalibrationDone // shows if IC 2 has a temperature over 125 °C
+Var=M001_flag_ThermalShtDwn_IC3 bit 13,1 /e:VtSig_M001_flag_CalibrationDone // shows if IC 3 has a temperature over 125 °C
+Var=M001_flag_ThermalShtDwn_IC4 bit 14,1 /e:VtSig_M001_flag_CalibrationDone // shows if IC 4 has a temperature over 125 °C
+Var=M001_flag_SelfTestPassed bit 16,1 /e:VtSig_M001_flag_CalibrationDone // shows if all self-tests have been passed
+Var=M001_flag_SM_PollTimeout bit 22,1 /e:VtSig_M001_flag_CalibrationDone // isoSPI ADC polling timeout or too many ICs connected during execution of any safety mechanism
+Var=M001_flag_NoSafRel_PollTimeout bit 23,1 /e:VtSig_M001_flag_CalibrationDone // isoSPI ADC polling timeout or too many ICs connected during execution of any not safety relevant command
+Var=M001_flag_SM_BadCRC_IC1 bit 24,1 /e:VtSig_M001_flag_CalibrationDone // isoSPI communication error during execution of any safety mechanism
+Var=M001_flag_SM_BadCRC_IC2 bit 25,1 /e:VtSig_M001_flag_CalibrationDone // isoSPI communication error during execution of any safety mechanism
+Var=M001_flag_SM_BadCRC_IC3 bit 26,1 /e:VtSig_M001_flag_CalibrationDone // isoSPI communication error during execution of any safety mechanism
+Var=M001_flag_SM_BadCRC_IC4 bit 27,1 /e:VtSig_M001_flag_CalibrationDone // isoSPI communication error during execution of any safety mechanism
+Var=M001_flag_NoSafRel_BadCRC_IC1 bit 28,1 /e:VtSig_M001_flag_CalibrationDone // isoSPI communication error during execution any not safety relevant command
+Var=M001_flag_NoSafRel_BadCRC_IC2 bit 29,1 /e:VtSig_M001_flag_CalibrationDone // isoSPI communication error during execution any not safety relevant command
+Var=M001_flag_NoSafRel_BadCRC_IC3 bit 30,1 /e:VtSig_M001_flag_CalibrationDone // isoSPI communication error during execution any not safety relevant command
+Var=M001_flag_NoSafRel_BadCRC_IC4 bit 31,1 /e:VtSig_M001_flag_CalibrationDone // isoSPI communication error during execution any not safety relevant command
+Var=M001_flag_BadCRC_IC1 bit 32,1 /e:VtSig_M001_flag_CalibrationDone // isoSPI communication error
+Var=M001_flag_BadCRC_IC2 bit 33,1 /e:VtSig_M001_flag_CalibrationDone // isoSPI communication error
+Var=M001_flag_BadCRC_IC3 bit 34,1 /e:VtSig_M001_flag_CalibrationDone // isoSPI communication error
+Var=M001_flag_BadCRC_IC4 bit 35,1 /e:VtSig_M001_flag_CalibrationDone // isoSPI communication error
+Var=M001_flag_PollTimeout bit 36,1 /e:VtSig_M001_flag_CalibrationDone // isoSPI ADC polling timeout or too many ICs connected
+Var=M001_flag_ComplSafAreaCRCErr bit 37,1 /e:VtSig_M001_flag_CalibrationDone // both EEPROM safety areas contain a bad CRC
+Var=M001_flag_ComplStatAreaCRCErr bit 38,1 /e:VtSig_M001_flag_CalibrationDone // both EEPROM static areas contain a bad CRC
+Var=M001_flag_ComplDynAreaCRCErr bit 39,1 /e:VtSig_M001_flag_CalibrationDone // both EEPROM dynamic areas contain a bad CRC
+Var=M001_flag_InitialisationFail bit 40,1 /e:VtSig_M001_flag_CalibrationDone // isoSPI module in BMU was not initalised successfully
+Var=M001_flag_SingleSafAreaCRCErr bit 41,1 /e:VtSig_M001_flag_CalibrationDone // one of EEPROM safety areas is corrupted
+Var=M001_flag_SingleStatAreaCRCErr bit 42,1 /e:VtSig_M001_flag_CalibrationDone // one of EEPROM static areas is corrupted
+Var=M001_flag_SingleDynAreaCRCErr bit 43,1 /e:VtSig_M001_flag_CalibrationDone // one of EEPROM dynamic areas is corrupted
+Var=M001_flag_SafAreaMismatch bit 44,1 /e:VtSig_M001_flag_CalibrationDone // CRC of both EEPROM safety areas is correct, but content doesn't match
+Var=M001_flag_StatAreaMismatch bit 45,1 /e:VtSig_M001_flag_CalibrationDone // CRC of both EEPROM static areas is correct, but content doesn't match
+Var=M001_flag_IDPageNotLocked bit 46,1 /e:VtSig_M001_flag_CalibrationDone // EEPROM ID page is not locked
+Var=M001_flag_I2CCommunicationFail bit 47,1 /e:VtSig_M001_flag_CalibrationDone // I2C communication error
+Var=M001_flag_EEPROMReadFail bit 48,1 /e:VtSig_M001_flag_CalibrationDone // reading all EEPROM content failed
+Var=M001_flag_IDPageStatusReadFail bit 49,1 /e:VtSig_M001_flag_CalibrationDone // reading EEPROM ID page status failed
+Var=M001_flag_SafAreaWriteFail bit 50,1 /e:VtSig_M001_flag_CalibrationDone // writing EEPROM safety area failed
+Var=M001_flag_StatreaWriteFail bit 51,1 /e:VtSig_M001_flag_CalibrationDone // writing EEPROM static area failed
+Var=M001_flag_DynAreaWriteFail bit 52,1 /e:VtSig_M001_flag_CalibrationDone // writing EEPROM dynamic area failed
+Var=M001_flag_SafAreaReadFail bit 53,1 /e:VtSig_M001_flag_CalibrationDone // reading EEPROM safety area failed
+Var=M001_flag_StatAreaReadFail bit 54,1 /e:VtSig_M001_flag_CalibrationDone // reading EEPROM static area failed
+Var=M001_flag_DynAreaReadFail bit 55,1 /e:VtSig_M001_flag_CalibrationDone // reading EEPROM dynamic area failed
+Var=M001_flag_VerifySafWriteFail bit 56,1 /e:VtSig_M001_flag_CalibrationDone // writing EEPROM safety area was not successful
+Var=M001_flag_VerifyStatWriteFail bit 57,1 /e:VtSig_M001_flag_CalibrationDone // writing EEPROM static area was not successful
+Var=M001_flag_VerifyDynWriteFail bit 58,1 /e:VtSig_M001_flag_CalibrationDone // writing EEPROM dynamic area was not successful
+
+[M001_ModuleSafetyMechanisms]
+ID=10010801h // Safety Mechanism Flags (Safety Mechanism Flags)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=M001_OpenWireDetectedCV_IC1 bit 0,1 /e:VtSig_M001_flag_CalibrationDone // open cell wire(s) detected at IC1
+Var=M001_ADCOverlapTestFailed_IC1 bit 1,1 /e:VtSig_M001_flag_CalibrationDone // ADC overlap test failed for IC1
+Var=M001_ADCSefttestCVFailed_IC1 bit 2,1 /e:VtSig_M001_flag_CalibrationDone // ADC & memory test of cell voltages failed for IC1
+Var=M001_ADCSefttestAUXFailed_IC1 bit 3,1 /e:VtSig_M001_flag_CalibrationDone // ADC & memory test of GPIO voltages failed for IC1
+Var=M001_OpenWireDetectedAUX_IC1 bit 4,1 /e:VtSig_M001_flag_CalibrationDone // open GPIO wire(s) detected at IC1
+Var=M001_MUXFail_IC1 bit 5,1 /e:VtSig_M001_flag_CalibrationDone // MUX test failed for IC1
+Var=M001_BadCRCAccepted_IC1 bit 6,1 /e:VtSig_M001_flag_CalibrationDone // LTC (IC1) accepted a bad CRC
+Var=M001_GPIOAdjShortDetected_IC1 bit 7,1 /e:VtSig_M001_flag_CalibrationDone // GPIO adjacent short detected at IC1
+Var=M001_CLRCmdBroken_IC1 bit 8,1 /e:VtSig_M001_flag_CalibrationDone // LTC (IC1) clear command is broken
+Var=M001_WrongPathSelection_IC1 bit 9,1 /e:VtSig_M001_flag_CalibrationDone // wrong path selection for IC1
+Var=M001_OWCircuitStuckCV_IC1 bit 10,1 /e:VtSig_M001_flag_CalibrationDone // open cell wire circuit stuck for IC1
+Var=M001_DischargeCircuitFault_IC1 bit 11,1 /e:VtSig_M001_flag_CalibrationDone // fault in discharge circuit at IC1
+Var=M001_SM_digRedFail_IC1 bit 12,1 /e:VtSig_M001_flag_CalibrationDone // digital redundancy fail detected during execution of any safety mechanism at IC1
+Var=M001_SM_ClrRegsFail_IC1 bit 13,1 /e:VtSig_M001_flag_CalibrationDone // registers were not cleared during execution of any safety mechanisms at IC1
+Var=M001_OpenWireDetectedCV_IC2 bit 16,1 /e:VtSig_M001_flag_CalibrationDone // open cell wire(s) detected at IC2
+Var=M001_ADCOverlapTestFailed_IC2 bit 17,1 /e:VtSig_M001_flag_CalibrationDone // ADC overlap test failed for IC2
+Var=M001_ADCSefttestCVFailed_IC2 bit 18,1 /e:VtSig_M001_flag_CalibrationDone // ADC & memory test of cell voltages failed for IC2
+Var=M001_ADCSefttestAUXFailed_IC2 bit 19,1 /e:VtSig_M001_flag_CalibrationDone // ADC & memory test of GPIO voltages failed for IC2
+Var=M001_OpenWireDetectedAUX_IC2 bit 20,1 /e:VtSig_M001_flag_CalibrationDone // open GPIO wire(s) detected at IC2
+Var=M001_MUXFail_IC2 bit 21,1 /e:VtSig_M001_flag_CalibrationDone // MUX test failed for IC2
+Var=M001_BadCRCAccepted_IC2 bit 22,1 /e:VtSig_M001_flag_CalibrationDone // LTC (IC2) accepted a bad CRC
+Var=M001_GPIOAdjShortDetected_IC2 bit 23,1 /e:VtSig_M001_flag_CalibrationDone // GPIO adjacent short detected at IC2
+Var=M001_CLRCmdBroken_IC2 bit 24,1 /e:VtSig_M001_flag_CalibrationDone // LTC (IC2) clear command is broken
+Var=M001_WrongPathSelection_IC2 bit 25,1 /e:VtSig_M001_flag_CalibrationDone // wrong path selection for IC2
+Var=M001_OWCircuitStuckCV_IC2 bit 26,1 /e:VtSig_M001_flag_CalibrationDone // open cell wire circuit stuck for IC2
+Var=M001_DischargeCircuitFault_IC2 bit 27,1 /e:VtSig_M001_flag_CalibrationDone // fault in discharge circuit at IC2
+Var=M001_SM_digRedFail_IC2 bit 28,1 /e:VtSig_M001_flag_CalibrationDone // digital redundancy fail detected during execution of any safety mechanism at IC2
+Var=M001_SM_ClrRegsFail_IC2 bit 29,1 /e:VtSig_M001_flag_CalibrationDone // registers were not cleared during execution of any safety mechanisms at IC2
+Var=M001_OpenWireDetectedCV_IC3 bit 32,1 /e:VtSig_M001_flag_CalibrationDone // open cell wire(s) detected at IC3
+Var=M001_ADCOverlapTestFailed_IC3 bit 33,1 /e:VtSig_M001_flag_CalibrationDone // ADC overlap test failed for IC3
+Var=M001_ADCSefttestCVFailed_IC3 bit 34,1 /e:VtSig_M001_flag_CalibrationDone // ADC & memory test of cell voltages failed for IC3
+Var=M001_ADCSefttestAUXFailed_IC3 bit 35,1 /e:VtSig_M001_flag_CalibrationDone // ADC & memory test of GPIO voltages failed for IC3
+Var=M001_OpenWireDetectedAUX_IC3 bit 36,1 /e:VtSig_M001_flag_CalibrationDone // open GPIO wire(s) detected at IC3
+Var=M001_MUXFail_IC3 bit 37,1 /e:VtSig_M001_flag_CalibrationDone // MUX test failed for IC3
+Var=M001_BadCRCAccepted_IC3 bit 38,1 /e:VtSig_M001_flag_CalibrationDone // LTC (IC3) accepted a bad CRC
+Var=M001_GPIOAdjShortDetected_IC3 bit 39,1 /e:VtSig_M001_flag_CalibrationDone // GPIO adjacent short detected at IC3
+Var=M001_CLRCmdBroken_IC3 bit 40,1 /e:VtSig_M001_flag_CalibrationDone // LTC (IC3) clear command is broken
+Var=M001_WrongPathSelection_IC3 bit 41,1 /e:VtSig_M001_flag_CalibrationDone // wrong path selection for IC3
+Var=M001_OWCircuitStuckCV_IC3 bit 42,1 /e:VtSig_M001_flag_CalibrationDone // open cell wire circuit stuck for IC3
+Var=M001_DischargeCircuitFault_IC3 bit 43,1 /e:VtSig_M001_flag_CalibrationDone // fault in discharge circuit at IC3
+Var=M001_SM_digRedFail_IC3 bit 44,1 /e:VtSig_M001_flag_CalibrationDone // digital redundancy fail detected during execution of any safety mechanism at IC3
+Var=M001_SM_ClrRegsFail_IC3 bit 45,1 /e:VtSig_M001_flag_CalibrationDone // registers were not cleared during execution of any safety mechanisms at IC3
+Var=M001_OpenWireDetectedCV_IC4 bit 48,1 /e:VtSig_M001_flag_CalibrationDone // open cell wire(s) detected at IC4
+Var=M001_ADCOverlapTestFailed_IC4 bit 49,1 /e:VtSig_M001_flag_CalibrationDone // ADC overlap test failed for IC4
+Var=M001_ADCSefttestCVFailed_IC4 bit 50,1 /e:VtSig_M001_flag_CalibrationDone // ADC & memory test of cell voltages failed for IC4
+Var=M001_ADCSefttestAUXFailed_IC4 bit 51,1 /e:VtSig_M001_flag_CalibrationDone // ADC & memory test of GPIO voltages failed for IC4
+Var=M001_OpenWireDetectedAUX_IC4 bit 52,1 /e:VtSig_M001_flag_CalibrationDone // open GPIO wire(s) detected at IC4
+Var=M001_MUXFail_IC4 bit 53,1 /e:VtSig_M001_flag_CalibrationDone // MUX test failed for IC4
+Var=M001_BadCRCAccepted_IC4 bit 54,1 /e:VtSig_M001_flag_CalibrationDone // LTC (IC4) accepted a bad CRC
+Var=M001_GPIOAdjShortDetected_IC4 bit 55,1 /e:VtSig_M001_flag_CalibrationDone // GPIO adjacent short detected at IC4
+Var=M001_CLRCmdBroken_IC4 bit 56,1 /e:VtSig_M001_flag_CalibrationDone // LTC (IC4) clear command is broken
+Var=M001_WrongPathSelection_IC4 bit 57,1 /e:VtSig_M001_flag_CalibrationDone // wrong path selection for IC4
+Var=M001_OWCircuitStuckCV_IC4 bit 58,1 /e:VtSig_M001_flag_CalibrationDone // open cell wire circuit stuck for IC4
+Var=M001_DischargeCircuitFault_IC4 bit 59,1 /e:VtSig_M001_flag_CalibrationDone // fault in discharge circuit at IC4
+Var=M001_SM_digRedFail_IC4 bit 60,1 /e:VtSig_M001_flag_CalibrationDone // digital redundancy fail detected during execution of any safety mechanism at IC4
+Var=M001_SM_ClrRegsFail_IC4 bit 61,1 /e:VtSig_M001_flag_CalibrationDone // registers were not cleared during execution of any safety mechanisms at IC4
+
+[M001_MaxMinVoltages]
+ID=10003801h // information about module voltages (information about module voltages)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=M001_min_U_CellVoltage_mV_fast unsigned 0,16 /u:mV /f:0.1 /d:0 // lowest cell voltage in module
+Var=M001_max_U_CellVoltage_mV_fast unsigned 16,16 /u:mV /f:0.1 /d:0 // highest cell voltage in module
+Var=M001_avg_U_CellVoltage_mV_fast unsigned 32,16 /u:mV /f:0.1 /d:0 // average cell voltage in module
+
+[M001_CalibrationMessage]
+ID=1808C801h // information for module calibration (information for module calibration)
+Type=Extended
+DLC=8
+Mux=Temp 0,32 005A55AAh
+Var=M001_conf_IdxOfTempSensor unsigned 32,16 // Index of temperature sensor
+Var=M001_conf_RefTemperature_C signed 52,12 /u:°C /f:0.1 /max:204.7 /d:0 // calibration reference temperature
+
+[M001_CalibrationMessage]
+DLC=8
+Mux=CurrentOffsetA 0,32 5A0055AAh
+Var=M001_conf_A_CurrentOffsetA_mA signed 32,32 /u:mA // calibration current offset A
+
+[M001_CalibrationMessage]
+DLC=8
+Mux=CurrentOffsetB 0,32 5A5A55AAh
+Var=M001_conf_A_CurrentOffsetB_mA signed 32,32 /u:mA // calibration current offset B
+
+[M001_CalibrationMessage]
+DLC=8
+Mux=CurrentFactorA 0,32 5ABB55AAh
+Var=M001_conf_A_CurrentFactorA_mA signed 32,32 /u:mA // calibration current factor A
+
+[M001_CalibrationMessage]
+DLC=8
+Mux=CurrentFactorB 0,32 BB0055AAh
+Var=M001_conf_A_CurrentFactorB_mA signed 32,32 /u:mA // calibration current factor B
+
+[M001_CalibrationMessage]
+DLC=8
+Mux=VoltIC1 0,32 BB5A55AAh
+Var=M001_conf_U_VoltageIC1_mV unsigned 32,32 /u:mV // calibration voltage IC1
+
+[M001_CalibrationMessage]
+DLC=8
+Mux=VoltIC2 0,32 5B0B55AAh
+Var=M001_conf_U_VoltageIC2_mV unsigned 32,32 /u:mV // calibration voltage IC2
+
+[M001_CalibrationMessage]
+DLC=8
+Mux=VoltIC3 0,32 BA0055AAh
+Var=M001_conf_U_VoltageIC3_mV unsigned 32,32 /u:mV // calibration voltage IC3
+
+[M001_CalibrationMessage]
+DLC=8
+Mux=VoltIC4 0,32 5ABA55AAh
+Var=M001_conf_U_VoltageIC4_mV unsigned 32,32 /u:mV // calibration voltage IC4
+
+[M001_ConfigurationMessage]
+ID=1808D801h // information for module configuration (information for module configuration)
+Type=Extended
+DLC=8
+Mux=SerialnumberLow 0,32 D0D0AA55h
+Var=M001_conf_NewSerialNrLo unsigned 32,32 // new serial number lower part
+
+[M001_ConfigurationMessage]
+DLC=8
+Mux=SerialnumberHigh 0,32 DADAAA55h
+Var=M001_conf_NewSerialNrHi unsigned 32,32 // new serial number higher part
+
+[M001_ConfigurationMessage]
+DLC=8
+Mux=PCBSerialnumberLow 0,32 DAD0AA55h
+Var=M001_conf_PCBNewSerialNrLo unsigned 32,32 // PCB new serial number lower part
+
+[M001_ConfigurationMessage]
+DLC=8
+Mux=PCBSerialnumberHigh 0,32 0D0DAA55h
+Var=M001_conf_PCBNewSerialNrHi unsigned 32,32 // PCB new serial number higher part
+
+[M001_ConfigurationMessage]
+DLC=8
+Mux=ModuleType 0,32 ADADAA55h
+Var=M001_conf_NewModuleTypeMajor unsigned 32,8 // new module type (Type)
+Var=M001_conf_NewModuleTypeMinor unsigned 40,8 // new module type (Index/revision)
+
+[M001_ConfigurationMessage]
+DLC=8
+Mux=PCBType 0,32 11CEAA55h
+Var=M001_conf_NewPCBTypeMajor unsigned 32,8 // new PCB type (Type)
+Var=M001_conf_NewPCBTypeMinor unsigned 40,8 // new PCB type (Index/revision)
+
+[M001_ConfigurationMessage]
+DLC=8
+Mux=ICType 0,32 CEA1AA55h
+Var=M001_conf_NewICTypeMajor unsigned 32,8 // new IC type (Type)
+Var=M001_conf_NewICTypeMinor unsigned 40,8 // new IC type (Index/revision)
+
+[M001_ConfigurationMessage]
+DLC=8
+Mux=CellType 0,32 CE11AA55h
+Var=M001_conf_NewCellTypeMajor unsigned 32,8 // new Cell type (Type)
+Var=M001_conf_NewCellTypeMinor unsigned 40,8 // new Cell type (Index/revision)
+
+[M001_ConfigurationMessage]
+DLC=8
+Mux=Topology 0,32 A55AAA55h
+Var=M001_conf_TopologyMajor unsigned 32,8 // Number of cells in serial
+Var=M001_conf_TopologyMinor unsigned 40,8 // Number of parallel cells
+
+[M001_BalanceCells]
+ID=12181801h // commands module to balance cells (commands module to balance cells)
+Type=Extended
+DLC=8
+Var=M001_flag_BalanceCell1 bit 0,1 // commands module to balance cell 1
+Var=M001_flag_BalanceCell2 bit 1,1 // commands module to balance cell 2
+Var=M001_flag_BalanceCell3 bit 2,1 // commands module to balance cell 3
+Var=M001_flag_BalanceCell4 bit 3,1 // commands module to balance cell 4
+Var=M001_flag_BalanceCell5 bit 4,1 // commands module to balance cell 5
+Var=M001_flag_BalanceCell6 bit 5,1 // commands module to balance cell 6
+Var=M001_flag_BalanceCell7 bit 6,1 // commands module to balance cell 7
+Var=M001_flag_BalanceCell8 bit 7,1 // commands module to balance cell 8
+Var=M001_flag_BalanceCell9 bit 8,1 // commands module to balance cell 9
+Var=M001_flag_BalanceCell10 bit 9,1 // commands module to balance cell 10
+Var=M001_flag_BalanceCell11 bit 10,1 // commands module to balance cell 11
+Var=M001_flag_BalanceCell12 bit 11,1 // commands module to balance cell 12
+Var=M001_flag_BalanceCell13 bit 12,1 // commands module to balance cell 13
+Var=M001_flag_BalanceCell14 bit 13,1 // commands module to balance cell 14
+Var=M001_flag_BalanceCell15 bit 14,1 // commands module to balance cell 15
+Var=M001_flag_BalanceCell16 bit 15,1 // commands module to balance cell 16
+Var=M001_flag_BalanceCell17 bit 16,1 // commands module to balance cell 17
+Var=M001_flag_BalanceCell18 bit 17,1 // commands module to balance cell 18
+Var=M001_flag_BalanceCell19 bit 18,1 // commands module to balance cell 19
+Var=M001_flag_BalanceCell20 bit 19,1 // commands module to balance cell 20
+Var=M001_flag_BalanceCell21 bit 20,1 // commands module to balance cell 21
+Var=M001_flag_BalanceCell22 bit 21,1 // commands module to balance cell 22
+Var=M001_flag_BalanceCell23 bit 22,1 // commands module to balance cell 23
+Var=M001_flag_BalanceCell24 bit 23,1 // commands module to balance cell 24
+Var=M001_flag_BalanceCell25 bit 24,1 // commands module to balance cell 25
+Var=M001_flag_BalanceCell26 bit 25,1 // commands module to balance cell 26
+Var=M001_flag_BalanceCell27 bit 26,1 // commands module to balance cell 27
+Var=M001_flag_BalanceCell28 bit 27,1 // commands module to balance cell 28
+Var=M001_flag_BalanceCell29 bit 28,1 // commands module to balance cell 29
+Var=M001_flag_BalanceCell30 bit 29,1 // commands module to balance cell 30
+Var=M001_flag_BalanceCell31 bit 30,1 // commands module to balance cell 31
+Var=M001_flag_BalanceCell32 bit 31,1 // commands module to balance cell 32
+
+[M001_SlaveSerials]
+ID=10006801h // BMS-Slave serial numbers (BMS-Slave serial numbers)
+Type=Extended
+DLC=8
+CycleTime=1000
+Mux=Production 62,2 0
+Var=M001_Aka_FunctionArea_P unsigned 58,4
+Var=M001_Aka_Year_P unsigned 51,7
+Var=M001_Aka_Week_P unsigned 45,6
+Var=M001_Aka_Plant unsigned 38,7
+Var=M001_Aka_Line unsigned 31,7
+Var=M001_Aka_Los_No_P unsigned 0,31
+
+[M001_SlaveSerials]
+DLC=8
+CycleTime=1000
+Mux=Electronics 62,2 1
+Var=M001_Aka_FunctionArea_E unsigned 58,4
+Var=M001_Aka_Year_E unsigned 51,7
+Var=M001_Aka_Week_E unsigned 45,6
+Var=M001_Aka_Module unsigned 31,14
+Var=M001_Aka_Version unsigned 24,7
+Var=M001_Aka_Supplier unsigned 14,10
+Var=M001_Aka_Los_No_E unsigned 0,13
+
+[M001_EEPROMData]
+ID=10007801h // Data stored in the EEPROM (Data stored in the EEPROM)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=M001_val_EEPROMIndex unsigned 0,8 // Index of EEPROM Data
+Var=M001_WriteDynamicAreaANext bit 8,1 /e:VtSig_M001_WriteDynamicAreaANext // shows which dynamic area will be written next
+Var=M001_val_EEPROMData unsigned 32,32 // EEPROM data
+
+[M001_WriteEEPROMData]
+ID=10087801h // Write Data to the EEPROM (Write Data to the EEPROM)
+Type=Extended
+DLC=8
+CycleTime=1000
+Mux=WriteData 0,24 DA7A15h
+Var=M001_val_EEPROMWriteIndex unsigned 24,8 // Index of written EEPROM Data
+Var=M001_val_EEPROMWriteData unsigned 32,32 // EEPROM write data
+
+[M001_EEPROMChangeDynArea]
+ID=10089801h // Change EEPROM dynamic area (Change EEPROM dynamic area)
+Type=Extended
+DLC=8
+Var=M001_val_Magic unsigned 0,24 // Magic to ensure safety
+Var=M001_WriteDynamicAreaANext bit 24,1 /e:VtSig_M001_WriteDynamicAreaANext // shows which dynamic area will be written next
+
+[M001_StartLTCTransmission]
+ID=10088801h // Starts action for all modules in daisy-chain (Starts action for all modules in daisy-chain)
+Type=Extended
+DLC=8
+Var=M001_val_Magic unsigned 0,24 // Magic to ensure safety
+
+[M001_IC_InternalTemperature]
+ID=10008801h // Informations about internal temperatures of the ICs on the module board (Informations about internal temperatures of the ICs on the module board)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=M001_act_T_IC1_Temp_C signed 0,16 /u:°C /f:0.01 /d:0 // internal temperature of IC 1 on module board
+Var=M001_act_T_IC2_Temp_C signed 16,16 /u:°C /f:0.01 /d:0 // internal temperature of IC 2 on module board
+Var=M001_act_T_IC3_Temp_C signed 32,16 /u:°C /f:0.01 /d:0 // internal temperature of IC 3 on module board
+Var=M001_act_T_IC4_Temp_C signed 48,16 /u:°C /f:0.01 /d:0 // internal temperature of IC 4 on module board
+
+[M001_IC_DigitalPower]
+ID=10009801h // Digital power supply values of the ICs on the module board (Digital power supply values of the ICs on the module board)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=M001_act_U_DigiPower_IC1_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // Digital Power Supply Voltage of IC 1 on the module board
+Var=M001_act_U_DigiPower_IC2_mV unsigned 16,16 /u:mV /f:0.1 /d:0 // Digital Power Supply Voltage of IC 2 on the module board
+Var=M001_act_U_DigiPower_IC3_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // Digital Power Supply Voltage of IC 3 on the module board
+Var=M001_act_U_DigiPower_IC4_mV unsigned 48,16 /u:mV /f:0.1 /d:0 // Digital Power Supply Voltage of IC 4 on the module board
+
+[M001_IC_AnalogPower]
+ID=1000A801h // Analog power supply values of the ICs on the module board (Analog power supply values of the ICs on the module board)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=M001_act_U_AnalogPower_IC1_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // Analog Power Supply Voltage of IC 1 on the module board
+Var=M001_act_U_AnalogPower_IC2_mV unsigned 16,16 /u:mV /f:0.1 /d:0 // Analog Power Supply Voltage of IC 2 on the module board
+Var=M001_act_U_AnalogPower_IC3_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // Analog Power Supply Voltage of IC 3 on the module board
+Var=M001_act_U_AnalogPower_IC4_mV unsigned 48,16 /u:mV /f:0.1 /d:0 // Analog Power Supply Voltage of IC 4 on the module board
+
+[M001_IC_RefVoltages]
+ID=1000B801h // Values of the external reference voltages of the ICs on the module board (Values of the external reference voltages of the ICs on the module board)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=M001_act_U_RefVoltage_IC1_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // Reference Voltage of IC 1 on the module board
+Var=M001_act_U_RefVoltage_IC2_mV unsigned 16,16 /u:mV /f:0.1 /d:0 // Reference Voltage of IC 2 on the module board
+Var=M001_act_U_RefVoltage_IC3_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // Reference Voltage of IC 3 on the module board
+Var=M001_act_U_RefVoltage_IC4_mV unsigned 48,16 /u:mV /f:0.1 /d:0 // Reference Voltage of IC 4 on the module board
+
+[M001_IC_CellSumVoltages]
+ID=1000C801h // Sum of the cell voltages of ICs on the module board (Sum of the cell voltages of ICs on the module board)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=M001_act_U_SumOfCell_IC1_V unsigned 0,16 /u:V /f:0.01 /d:0 // Sum of Cells of IC 1 on the module board
+Var=M001_act_U_SumOfCell_IC2_V unsigned 16,16 /u:V /f:0.01 /d:0 // Sum of Cells of IC 2 on the module board
+Var=M001_act_U_SumOfCell_IC3_V unsigned 32,16 /u:V /f:0.01 /d:0 // Sum of Cells of IC 3 on the module board
+Var=M001_act_U_SumOfCell_IC4_V unsigned 48,16 /u:V /f:0.01 /d:0 // Sum of Cells of IC 4 on the module board
+
+[M001_OverVoltageFlags]
+ID=1000D801h // over voltage Flags for all cells (over voltage Flags for all cells)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=M001_flag_OvervoltageCell1 bit 0,1 // Flag for overvoltage of cell 1
+Var=M001_flag_OvervoltageCell2 bit 1,1 // Flag for overvoltage of cell 2
+Var=M001_flag_OvervoltageCell3 bit 2,1 // Flag for overvoltage of cell 3
+Var=M001_flag_OvervoltageCell4 bit 3,1 // Flag for overvoltage of cell 4
+Var=M001_flag_OvervoltageCell5 bit 4,1 // Flag for overvoltage of cell 5
+Var=M001_flag_OvervoltageCell6 bit 5,1 // Flag for overvoltage of cell 6
+Var=M001_flag_OvervoltageCell7 bit 6,1 // Flag for overvoltage of cell 7
+Var=M001_flag_OvervoltageCell8 bit 7,1 // Flag for overvoltage of cell 8
+Var=M001_flag_OvervoltageCell9 bit 8,1 // Flag for overvoltage of cell 9
+Var=M001_flag_OvervoltageCell10 bit 9,1 // Flag for overvoltage of cell 10
+Var=M001_flag_OvervoltageCell11 bit 10,1 // Flag for overvoltage of cell 11
+Var=M001_flag_OvervoltageCell12 bit 11,1 // Flag for overvoltage of cell 12
+Var=M001_flag_OvervoltageCell13 bit 12,1 // Flag for overvoltage of cell 13
+Var=M001_flag_OvervoltageCell14 bit 13,1 // Flag for overvoltage of cell 14
+Var=M001_flag_OvervoltageCell15 bit 14,1 // Flag for overvoltage of cell 15
+Var=M001_flag_OvervoltageCell16 bit 15,1 // Flag for overvoltage of cell 16
+Var=M001_flag_OvervoltageCell17 bit 16,1 // Flag for overvoltage of cell 17
+Var=M001_flag_OvervoltageCell18 bit 17,1 // Flag for overvoltage of cell 18
+Var=M001_flag_OvervoltageCell19 bit 18,1 // Flag for overvoltage of cell 19
+Var=M001_flag_OvervoltageCell20 bit 19,1 // Flag for overvoltage of cell 20
+Var=M001_flag_OvervoltageCell21 bit 20,1 // Flag for overvoltage of cell 21
+Var=M001_flag_OvervoltageCell22 bit 21,1 // Flag for overvoltage of cell 22
+Var=M001_flag_OvervoltageCell23 bit 22,1 // Flag for overvoltage of cell 23
+Var=M001_flag_OvervoltageCell24 bit 23,1 // Flag for overvoltage of cell 24
+Var=M001_flag_OvervoltageCell25 bit 24,1 // Flag for overvoltage of cell 25
+Var=M001_flag_OvervoltageCell26 bit 25,1 // Flag for overvoltage of cell 26
+Var=M001_flag_OvervoltageCell27 bit 26,1 // Flag for overvoltage of cell 27
+Var=M001_flag_OvervoltageCell28 bit 27,1 // Flag for overvoltage of cell 28
+Var=M001_flag_OvervoltageCell29 bit 28,1 // Flag for overvoltage of cell 29
+Var=M001_flag_OvervoltageCell30 bit 29,1 // Flag for overvoltage of cell 30
+Var=M001_flag_OvervoltageCell31 bit 30,1 // Flag for overvoltage of cell 31
+Var=M001_flag_OvervoltageCell32 bit 31,1 // Flag for overvoltage of cell 32
+Var=M001_flag_OvervoltageCell33 bit 32,1 // Flag for overvoltage of cell 33
+Var=M001_flag_OvervoltageCell34 bit 33,1 // Flag for overvoltage of cell 34
+Var=M001_flag_OvervoltageCell35 bit 34,1 // Flag for overvoltage of cell 35
+Var=M001_flag_OvervoltageCell36 bit 35,1 // Flag for overvoltage of cell 36
+Var=M001_flag_OvervoltageCell37 bit 36,1 // Flag for overvoltage of cell 37
+Var=M001_flag_OvervoltageCell38 bit 37,1 // Flag for overvoltage of cell 38
+Var=M001_flag_OvervoltageCell39 bit 38,1 // Flag for overvoltage of cell 39
+Var=M001_flag_OvervoltageCell40 bit 39,1 // Flag for overvoltage of cell 40
+
+[M001_UnderVoltageFlags]
+ID=1000E801h // under voltage Flags for all cells (under voltage Flags for all cells)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=M001_flag_UndervoltageCell1 bit 0,1 // Flag for undervoltage of cell 1
+Var=M001_flag_UndervoltageCell2 bit 1,1 // Flag for undervoltage of cell 2
+Var=M001_flag_UndervoltageCell3 bit 2,1 // Flag for undervoltage of cell 3
+Var=M001_flag_UndervoltageCell4 bit 3,1 // Flag for undervoltage of cell 4
+Var=M001_flag_UndervoltageCell5 bit 4,1 // Flag for undervoltage of cell 5
+Var=M001_flag_UndervoltageCell6 bit 5,1 // Flag for undervoltage of cell 6
+Var=M001_flag_UndervoltageCell7 bit 6,1 // Flag for undervoltage of cell 7
+Var=M001_flag_UndervoltageCell8 bit 7,1 // Flag for undervoltage of cell 8
+Var=M001_flag_UndervoltageCell9 bit 8,1 // Flag for undervoltage of cell 9
+Var=M001_flag_UndervoltageCell10 bit 9,1 // Flag for undervoltage of cell 10
+Var=M001_flag_UndervoltageCell11 bit 10,1 // Flag for undervoltage of cell 11
+Var=M001_flag_UndervoltageCell12 bit 11,1 // Flag for undervoltage of cell 12
+Var=M001_flag_UndervoltageCell13 bit 12,1 // Flag for undervoltage of cell 13
+Var=M001_flag_UndervoltageCell14 bit 13,1 // Flag for undervoltage of cell 14
+Var=M001_flag_UndervoltageCell15 bit 14,1 // Flag for undervoltage of cell 15
+Var=M001_flag_UndervoltageCell16 bit 15,1 // Flag for undervoltage of cell 16
+Var=M001_flag_UndervoltageCell17 bit 16,1 // Flag for undervoltage of cell 17
+Var=M001_flag_UndervoltageCell18 bit 17,1 // Flag for undervoltage of cell 18
+Var=M001_flag_UndervoltageCell19 bit 18,1 // Flag for undervoltage of cell 19
+Var=M001_flag_UndervoltageCell20 bit 19,1 // Flag for undervoltage of cell 20
+Var=M001_flag_UndervoltageCell21 bit 20,1 // Flag for undervoltage of cell 21
+Var=M001_flag_UndervoltageCell22 bit 21,1 // Flag for undervoltage of cell 22
+Var=M001_flag_UndervoltageCell23 bit 22,1 // Flag for undervoltage of cell 23
+Var=M001_flag_UndervoltageCell24 bit 23,1 // Flag for undervoltage of cell 24
+Var=M001_flag_UndervoltageCell25 bit 24,1 // Flag for undervoltage of cell 25
+Var=M001_flag_UndervoltageCell26 bit 25,1 // Flag for undervoltage of cell 26
+Var=M001_flag_UndervoltageCell27 bit 26,1 // Flag for undervoltage of cell 27
+Var=M001_flag_UndervoltageCell28 bit 27,1 // Flag for undervoltage of cell 28
+Var=M001_flag_UndervoltageCell29 bit 28,1 // Flag for undervoltage of cell 29
+Var=M001_flag_UndervoltageCell30 bit 29,1 // Flag for undervoltage of cell 30
+Var=M001_flag_UndervoltageCell31 bit 30,1 // Flag for undervoltage of cell 31
+Var=M001_flag_UndervoltageCell32 bit 31,1 // Flag for undervoltage of cell 32
+Var=M001_flag_UndervoltageCell33 bit 32,1 // Flag for undervoltage of cell 33
+Var=M001_flag_UndervoltageCell34 bit 33,1 // Flag for undervoltage of cell 34
+Var=M001_flag_UndervoltageCell35 bit 34,1 // Flag for undervoltage of cell 35
+Var=M001_flag_UndervoltageCell36 bit 35,1 // Flag for undervoltage of cell 36
+Var=M001_flag_UndervoltageCell37 bit 36,1 // Flag for undervoltage of cell 37
+Var=M001_flag_UndervoltageCell38 bit 37,1 // Flag for undervoltage of cell 38
+Var=M001_flag_UndervoltageCell39 bit 38,1 // Flag for undervoltage of cell 39
+Var=M001_flag_UndervoltageCell40 bit 39,1 // Flag for undervoltage of cell 40
+
+[M001_SendEEPROMDataEOL]
+ID=1000F801h // Write Data to the EEPROM (Write Data to the EEPROM)
+Type=Extended
+DLC=8
+CycleTime=1000
+Mux=Temp 0,32 005A55AAh
+Var=M001_conf_IdxOfTempSensor unsigned 32,16 // Index of temperature sensor
+Var=M001_conf_RefTemperature_C signed 52,12 /u:°C /f:0.1 /max:204.7 /d:0 // calibration reference temperature
+
+[M001_SendEEPROMDataEOL]
+DLC=8
+CycleTime=1000
+Mux=CurrentOffsetA 0,32 5A0055AAh
+Var=M001_conf_A_CurrentOffsetA_mA signed 32,32 /u:mA // calibration current offset A
+
+[M001_SendEEPROMDataEOL]
+DLC=8
+CycleTime=1000
+Mux=CurrentOffsetB 0,32 5A5A55AAh
+Var=M001_conf_A_CurrentOffsetB_mA signed 32,32 /u:mA // calibration current offset B
+
+[M001_SendEEPROMDataEOL]
+DLC=8
+CycleTime=1000
+Mux=CurrentFactorA 0,32 5ABB55AAh
+Var=M001_conf_A_CurrentFactorA_mA signed 32,32 /u:mA // calibration current factor A
+
+[M001_SendEEPROMDataEOL]
+DLC=8
+CycleTime=1000
+Mux=CurrentFactorB 0,32 BB0055AAh
+Var=M001_conf_A_CurrentFactorB_mA signed 32,32 /u:mA // calibration current factor B
+
+[M001_SendEEPROMDataEOL]
+DLC=8
+CycleTime=1000
+Mux=VoltIC1 0,32 BB5A55AAh
+Var=M001_conf_U_VoltageIC1_mV unsigned 32,32 /u:mV // calibration voltage IC1
+
+[M001_SendEEPROMDataEOL]
+DLC=8
+CycleTime=1000
+Mux=VoltIC2 0,32 5B0B55AAh
+Var=M001_conf_U_VoltageIC2_mV unsigned 32,32 /u:mV // calibration voltage IC2
+
+[M001_SendEEPROMDataEOL]
+DLC=8
+CycleTime=1000
+Mux=VoltIC3 0,32 BA0055AAh
+Var=M001_conf_U_VoltageIC3_mV unsigned 32,32 /u:mV // calibration voltage IC3
+
+[M001_SendEEPROMDataEOL]
+DLC=8
+CycleTime=1000
+Mux=VoltIC4 0,32 5ABA55AAh
+Var=M001_conf_U_VoltageIC4_mV unsigned 32,32 /u:mV // calibration voltage IC4
+
+[M001_SendEEPROMDataEOL]
+DLC=8
+CycleTime=1000
+Mux=SerialnumberLow 0,32 D0D0AA55h
+Var=M001_conf_NewSerialNrLo unsigned 32,32 // new serial number lower part
+
+[M001_SendEEPROMDataEOL]
+DLC=8
+CycleTime=1000
+Mux=SerialnumberHigh 0,32 DADAAA55h
+Var=M001_conf_NewSerialNrHi unsigned 32,32 // new serial number higher part
+
+[M001_SendEEPROMDataEOL]
+DLC=8
+CycleTime=1000
+Mux=PCBSerialnumberLow 0,32 DAD0AA55h
+Var=M001_conf_PCBNewSerialNrLo unsigned 32,32 // PCB new serial number lower part
+
+[M001_SendEEPROMDataEOL]
+DLC=8
+CycleTime=1000
+Mux=PCBSerialnumberHigh 0,32 0D0DAA55h
+Var=M001_conf_PCBNewSerialNrHi unsigned 32,32 // PCB new serial number higher part
+
+[M001_SendEEPROMDataEOL]
+DLC=8
+CycleTime=1000
+Mux=ModuleType 0,32 ADADAA55h
+Var=M001_conf_NewModuleTypeMajor unsigned 32,8 // new module type (Type)
+Var=M001_conf_NewModuleTypeMinor unsigned 40,8 // new module type (Index/revision)
+
+[M001_SendEEPROMDataEOL]
+DLC=8
+CycleTime=1000
+Mux=PCBType 0,32 11CEAA55h
+Var=M001_conf_NewPCBTypeMajor unsigned 32,8 // new PCB type (Type)
+Var=M001_conf_NewPCBTypeMinor unsigned 40,8 // new PCB type (Index/revision)
+
+[M001_SendEEPROMDataEOL]
+DLC=8
+CycleTime=1000
+Mux=ICType 0,32 CEA1AA55h
+Var=M001_conf_NewICTypeMajor unsigned 32,8 // new IC type (Type)
+Var=M001_conf_NewICTypeMinor unsigned 40,8 // new IC type (Index/revision)
+
+[M001_SendEEPROMDataEOL]
+DLC=8
+CycleTime=1000
+Mux=CellType 0,32 CE11AA55h
+Var=M001_conf_NewCellTypeMajor unsigned 32,8 // new Cell type (Type)
+Var=M001_conf_NewCellTypeMinor unsigned 40,8 // new Cell type (Index/revision)
+
+[M001_SendEEPROMDataEOL]
+DLC=8
+CycleTime=1000
+Mux=Topology 0,32 A55AAA55h
+Var=M001_conf_TopologyMajor unsigned 32,8 // Number of cells in serial
+Var=M001_conf_TopologyMinor unsigned 40,8 // Number of parallel cells
+
+[SCU1_Status]
+ID=08001401h // SCU status message (SCU status message)
+Type=Extended
+DLC=8
+CycleTime=40
+Var=SCU1_stat_Init bit 0,1 /e:VtSig_SCU1_stat_Init // initialisation of SCU components
+Var=SCU1_stat_Run bit 1,1 /e:VtSig_SCU1_stat_Init // selftests are finished
+Var=SCU1_stat_Error bit 2,1 /e:VtSig_SCU1_stat_Init // SCU has encountered an error
+Var=SCU1_stat_Config bit 3,1 /e:VtSig_SCU1_stat_Init // SCU is beeing configured
+Var=SCU1_stat_LimpHome bit 4,1 /e:VtSig_SCU1_stat_Init // limp home modus with limited functionallity
+Var=SCU1_stat_Diag bit 5,1 /e:VtSig_SCU1_stat_Init // SCU is in diagnostic mode
+Var=SCU1_stat_Shutdown bit 8,1 /e:VtSig_SCU1_stat_Init // KL15 is off, SCU shutdown started
+Var=SCU1_stat_ART_Started bit 9,1 /e:VtSig_SCU1_stat_Init // Afterrun test started
+Var=SCU1_stat_ART_IsActive bit 10,1 /e:VtSig_SCU1_stat_Init // Afterrun test is running
+Var=SCU1_stat_ART_NoError bit 11,1 /e:VtSig_SCU1_stat_Init // No Error While After Run Test
+Var=SCU1_stat_ART_BMSS_Restart bit 12,1 /e:VtSig_SCU1_stat_Init // Restart of BMS-Slaves is performed
+Var=SCU1_flag_PowerContPos bit 16,1 /e:VtSig_SCU1_flag_PowerContPos // state of power contactor +
+Var=SCU1_flag_PowerContNeg bit 17,1 /e:VtSig_SCU1_flag_PowerContPos // state of power contactor -
+Var=SCU1_flag_PowerContPre bit 18,1 /e:VtSig_SCU1_flag_PowerContPos // state of power contactor precharge
+Var=SCU1_flag_PowerContExtAux bit 19,1 /e:VtSig_SCU1_flag_PowerContPos // state of extended aux power contactor
+Var=SCU1_stat_ConOnProtect bit 20,1 /e:VtSig_SCU1_stat_Init // contactor protection flag after contactor drop-out
+Var=SCU1_flag_ShuntResCalibration bit 22,1 /e:VtSig_SCU1_stat_Init // state of the shunt resistance calibration
+Var=SCU1_flag_EoL_Mode bit 23,1 /e:VtSig_SCU1_stat_Init // state of the EoL mode
+Var=SCU1_flag_VSenserelayPosInt bit 24,1 /e:VtSig_SCU1_flag_PowerContPos // state of sense relay Tray+ intern
+Var=SCU1_flag_VSenserelayNegInt bit 25,1 /e:VtSig_SCU1_flag_PowerContPos // state of sense relay Tray- intern
+Var=SCU1_flag_VSenserelayPosExt bit 26,1 /e:VtSig_SCU1_flag_PowerContPos // state of sense relay Tray+ extern
+Var=SCU1_flag_VSenserelayNegExt bit 27,1 /e:VtSig_SCU1_flag_PowerContPos // state of sense relay Tray- extern
+Var=SCU1_flag_eStopLoopNotClosed bit 32,1 /e:VtSig_SCU1_flag_eStopLoopNotClos // status of eStop loop
+Var=SCU1_flag_InterventioneStop bit 33,1 /e:VtSig_SCU1_flag_InterventioneSto // status of intervention of SCU on eStop loop
+Var=SCU1_flag_InterLockError bit 34,1 /e:VtSig_SCU1_flag_InterLockError // status of interlock (current is out of range)
+Var=SCU1_flag_SourceInterlockLoop bit 35,1 /e:VtSig_SCU1_stat_Init // status of SCU source of interlock loop
+Var=SCU1_flag_KL15 bit 36,1 /e:VtSig_SCU1_stat_Init // status of KL 15
+Var=SCU1_flag_BMMSafe bit 37,1 /e:VtSig_SCU1_stat_Init // status of BMM safe
+Var=SCU1_flag_SupplyMonitorWarning bit 38,1 /e:VtSig_SCU1_flag_SupplyMonitorWar // status of supply monitor warning
+Var=SCU1_flag_CANGatewayStatus bit 39,1 /e:VtSig_SCU1_stat_Init // status of CAN gateway
+Var=SCU1_flag_Led1 bit 40,1 /e:VtSig_SCU1_flag_Led1 // status od LED 1
+Var=SCU1_flag_Led2 bit 41,1 /e:VtSig_SCU1_flag_Led1 // status of LED 2
+Var=SCU1_flag_Led3 bit 42,1 /e:VtSig_SCU1_flag_Led1 // status of LED 3
+Var=SCU1_flag_Warning bit 43,1 /e:VtSig_SCU1_flag_Led1 // warning flag
+Var=SCU1_flag_Alarm bit 44,1 /e:VtSig_SCU1_flag_Led1 // alarm flag
+Var=SCU1_flag_SilentCan1 bit 45,1 // management message CAN_1 has been silenced
+Var=SCU1_flag_SilentCan2 bit 46,1 // management message CAN_2 has been silenced
+Var=SCU1_flag_HSS1Locked bit 48,1 /e:VtSig_SCU1_stat_Init // switch on protection after thermal shut off of power MOS-FET
+Var=SCU1_flag_HSS2Locked bit 49,1 /e:VtSig_SCU1_stat_Init // switch on protection after thermal shut off of power MOS-FET
+Var=SCU1_flag_HSS3Locked bit 50,1 /e:VtSig_SCU1_stat_Init // switch on protection after thermal shut off of power MOS-FET
+Var=SCU1_flag_HSS4Locked bit 51,1 /e:VtSig_SCU1_stat_Init // switch on protection after thermal shut off of power MOS-FET
+Var=SCU1_flag_CompChipWarning bit 52,1 /e:VtSig_SCU1_stat_Init // state of companion chip warning
+Var=SCU1_flag_PowerProtWarning bit 53,1 /e:VtSig_SCU1_stat_Init // state of power protection warning
+Var=SCU1_flag_SafetyEnable1 bit 54,1 /e:VtSig_SCU1_stat_Init // state of safety enable 1
+Var=SCU1_flag_SafetyEnable2 bit 55,1 /e:VtSig_SCU1_stat_Init // state of safety enable 2
+Var=SCU1_flag_eStopBrakeOut bit 56,1 /e:VtSig_SCU1_flag_eStopBrakeOut // state of eStop brake out
+Var=SCU1_flag_ForceSave bit 57,1 /e:VtSig_SCU1_stat_Init // state of force save state
+Var=SCU1_flag_CAN1BusOff bit 58,1 /e:VtSig_SCU1_flag_CAN1BusOff // bus off state of CAN bus 1
+Var=SCU1_flag_CAN2BusOff bit 59,1 /e:VtSig_SCU1_flag_CAN1BusOff // bus off state of CAN bus 2
+Var=SCU1_flag_ContStuckChk bit 60,1 /e:VtSig_SCU1_flag_ContStuckChk // state of contactor stuck at check
+Var=SCU1_flag_ExtAuxStuckChk bit 61,1 /e:VtSig_SCU1_flag_ContStuckChk // state of extended aux contactor stuck at check
+Var=SCU1_flag_PrechargeOK bit 63,1 /e:VtSig_SCU1_flag_PrechargeOK // Completed precharge successfully
+
+[SCU1_HighsideSwitchStatus]
+ID=12002401h // percentual status of highside-switch-outputs (percentual status of highside-switch-outputs)
+Type=Extended
+DLC=8
+CycleTime=100
+Var=SCU1_act_HighsideSwitch1_pct unsigned 0,8 /u:% // % value of highside switch 1
+Var=SCU1_act_HighsideSwitch2_pct unsigned 8,8 /u:% // % value of highside switch 2
+Var=SCU1_act_HighsideSwitch3_pct unsigned 16,8 /u:% // % value of highside switch 3
+Var=SCU1_act_HighsideSwitch4_pct unsigned 24,8 /u:% // % value of highside switch 4
+
+[SCU1_HighsideSwitchCurrents]
+ID=12003401h // highside switch currents (highside switch currents)
+Type=Extended
+DLC=8
+CycleTime=100
+Var=SCU1_act_I_HSSwitch1Curr_mA unsigned 0,16 /u:mA // current of highside switch 1
+Var=SCU1_act_I_HSSwitch2Curr_mA unsigned 16,16 /u:mA // current of highside switch 2
+Var=SCU1_act_I_HSSwitch3Curr_mA unsigned 32,16 /u:mA // current of highside switch 3
+Var=SCU1_act_I_HSSwitch4Curr_mA unsigned 48,16 /u:mA // current of highside switch 4
+
+[SCU1_ContactorCoilCurrents]
+ID=12004401h // Coil currents of contactors (Coil currents of contactors)
+Type=Extended
+DLC=8
+CycleTime=100
+Var=SCU1_act_I_CoilCurrContPos_mA unsigned 0,16 /u:mA // coil current of + contactor
+Var=SCU1_act_I_CoilCurrContNeg_mA unsigned 16,16 /u:mA // coil current of - contactor
+Var=SCU1_act_I_CoilCurrContPre_mA unsigned 32,16 /u:mA // coil current of precharge contactor
+Var=SCU1_act_I_CoilCurrContAux_mA unsigned 48,16 /u:mA // coil current of aux contactor
+
+[SCU1_Currents]
+ID=0A005401h // SCU currents (SCU currents)
+Type=Extended
+DLC=8
+CycleTime=100
+Var=SCU1_act_I_CurrentSensHigh_A signed 0,16 /u:A /f:0.1 /max:3276.7 /d:0 // current sensor (high)
+Var=SCU1_act_I_CurrentSensLow_A signed 16,16 /u:A /f:0.1 /max:3276.7 /d:0 // current sensor (low)
+Var=SCU1_act_I_CurrentSens2High_A signed 32,16 /u:A /f:0.1 /max:3276.7 /d:0 // second current sensor (high)
+Var=SCU1_act_I_CurrentSens2Low_A signed 48,16 /u:A /f:0.1 /max:3276.7 /d:0 // second current sensor (low)
+
+[SCU1_Sensors]
+ID=12006401h // SCU Temperatures (SCU Temperatures)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_act_V_SenseExt1_mV unsigned 0,16 /u:mV // External Voltage Sensor 1
+Var=SCU1_act_V_SenseExt2_mV unsigned 16,16 /u:mV // External Voltage Sensor 2
+Var=SCU1_act_T_BoardTemperature_C signed 32,16 /u:°C /f:0.1 /max:3276.7 /d:0 // Board Temperature (measured by ADC)
+
+[SCU1_OperatingVoltages]
+ID=12007401h // SCU operating voltages (SCU operating voltages)
+Type=Extended
+DLC=8
+CycleTime=100
+Var=SCU1_act_U_Contact30_V unsigned 0,16 /u:V /f:0.001 /d:0 // KL30
+Var=SCU1_act_U_BMMSafe_V unsigned 16,16 /u:V /f:0.001 /d:0 // BMM safe power
+Var=SCU1_act_U_HSSupply12_V unsigned 32,16 /u:V /f:0.001 /d:0 // Highside- Switch-Powersupply voltage 1-2
+Var=SCU1_act_U_HSSupply34_V unsigned 48,16 /u:V /f:0.001 /d:0 // Highside- Switch-Powersupply voltage 3-4
+
+[SCU1_BatteryVoltagesPos]
+ID=0A00E401h // SCU battery voltages + (SCU battery voltages +)
+Type=Extended
+DLC=8
+CycleTime=100
+Var=SCU1_act_U_BatPos_V signed 0,16 /u:V /f:0.1 /max:3276.7 /d:0 // Bat+
+Var=SCU1_act_U_SysPos_V signed 16,16 /u:V /f:0.1 /max:3276.7 /d:0 // Sys+
+
+[SCU1_BatteryVoltagesNeg]
+ID=0A00F401h // SCU battery voltages - (SCU battery voltages -)
+Type=Extended
+DLC=8
+CycleTime=100
+Var=SCU1_act_U_BatNeg_V signed 0,16 /u:V /f:0.1 /max:3276.7 /d:0 // Bat-
+Var=SCU1_act_U_SysNeg_V signed 16,16 /u:V /f:0.1 /max:3276.7 /d:0 // Sys-
+
+[SCU1_battery_Voltages_diag]
+ID=1A008401h // SCU battery voltages diagnostic (SCU battery voltages diagnostic)
+Type=Extended
+DLC=8
+CycleTime=100
+Var=SCU1_act_U_TrayPosExt_V signed 0,16 /u:V /f:0.1 /max:3276.7 /d:0 // Tray+ to ground extern
+Var=SCU1_act_U_TrayNegExt_V signed 16,16 /u:V /f:0.1 /max:3276.7 /d:0 // Tray- extern
+Var=SCU1_act_U_TrayPosInt_V signed 32,16 /u:V /f:0.1 /max:3276.7 /d:0 // Tray+ intern
+Var=SCU1_act_U_TrayNegInt_V signed 48,16 /u:V /f:0.1 /max:3276.7 /d:0 // Tray- intern
+
+[SCU1_tray_Voltages]
+ID=12009401h // SCU tray voltages (SCU tray voltages)
+Type=Extended
+DLC=8
+CycleTime=100
+Var=SCU1_act_U_TrayVoltageLocal_V signed 0,16 /u:V /f:0.1 /max:3276.7 /d:0 // Tray local HV voltage
+Var=SCU1_act_U_ChassisGndVoltage_V unsigned 16,16 /u:V /f:0.001 /d:0 // chassis to ground voltage
+Var=SCU1_act_U_ReferenceVoltage_V unsigned 32,16 /u:V /f:0.001 /d:0 // independent SCU reference voltage
+
+[SCU1_IsoContStuckVoltages]
+ID=1200A401h // Isolation- and contactor stuck voltages (frozen at init) (Isolation- and contactor stuck voltages (frozen at init))
+Type=Extended
+DLC=8
+CycleTime=100
+Var=SCU1_diag_U_TrayPosExt_U_frz signed 0,16 /u:V /f:0.1 /max:3276.7 /d:0 // Tray+ extern
+Var=SCU1_diag_U_TrayNegExt_U_frz signed 16,16 /u:V /f:0.1 /max:3276.7 /d:0 // Tray- extern
+Var=SCU1_diag_U_TrayPosInt_U_frz signed 32,16 /u:V /f:0.1 /max:3276.7 /d:0 // Tray+ intern
+Var=SCU1_diag_U_TrayNegInt_U_frz signed 48,16 /u:V /f:0.1 /max:3276.7 /d:0 // Tray- intern
+
+[SCU1_ErrorInfo]
+ID=1200B401h // SCU error message (SCU error message)
+Type=Extended
+DLC=8
+CycleTime=100
+Var=SCU1_err_Number unsigned 0,16 // error number
+Var=SCU1_err_Level unsigned 16,16 // error level
+Var=SCU1_err_Value signed 32,16 // error value
+Var=SCU1_err_Source unsigned 48,16 // error source
+
+[SCU1_Warning]
+ID=1200C401h // SCU warning message (SCU warning message)
+Type=Extended
+DLC=8
+CycleTime=100
+Var=SCU1_wf_CellVoltageMax bit 0,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_CellVoltageMin bit 1,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_SysVoltageMax bit 2,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_SysVoltageMin bit 3,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_SysVoltageSum bit 4,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_ModVoltageSum bit 5,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_ModVoltageRefMax bit 6,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_Mod_Voltage_Ref_Min bit 7,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_IsoFaultBattNeg bit 8,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_IsoFaultBattPos bit 9,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_ContactorNegStuck bit 10,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_ContactorPosStuck bit 11,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_LVSupplyMax bit 12,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_LVSupplyMin bit 13,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_TerminalTempMax bit 14,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_TerminalTempMin bit 15,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_CellTempChargMax bit 16,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_CellTempChargMin bit 17,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_CellTempDischMax bit 18,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_CellTempDischMin bit 19,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_SysCurCha bit 20,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_SysCurDis bit 21,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_HVCurrLoopMax bit 22,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_HVCurrLoopMin bit 23,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_eStopCurrLoopMax bit 24,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_eStopCurrLoopMin bit 25,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_SysCurLimitCha bit 26,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_SysCurLimitDis bit 27,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_SysPrechargeFailed bit 28,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_BMMBattCom bit 29,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_SysInitTimeout bit 30,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_SCUConfig bit 31,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_DeepDischProt bit 32,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_WDReset bit 33,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_ExtCommunicationTout bit 34,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_NoAfterrunTest bit 35,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_CellVoltUnbalance bit 36,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_CellTempUnbalance bit 37,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_TerminalTempUnbalance bit 38,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_LTCError bit 39,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_AfterrunTest bit 40,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_CrossCheck bit 41,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_StuckAtTemp bit 42,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_StuckAtVolt bit 43,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_ProgProcess bit 44,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_RAM bit 45,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_ROM bit 46,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_FlashEEPROM bit 47,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_InvalidData bit 48,1 /e:VtSig_M001_flag_CalibrationDone // short circuit or open temperature sensor
+Var=SCU1_wf_ContactorWrongState bit 49,1 /e:VtSig_M001_flag_CalibrationDone // tbd
+Var=SCU1_wf_CurrSens bit 50,1 /e:VtSig_M001_flag_CalibrationDone // i sensor error occurred
+Var=SCU1_wf_ContDam bit 51,1 /e:VtSig_M001_flag_CalibrationDone // contactors damaged
+Var=SCU1_wf_RefVoltErrorMax bit 52,1 /e:VtSig_M001_flag_CalibrationDone // refernce voltage to high
+Var=SCU1_wf_RefVoltErrorMin bit 53,1 /e:VtSig_M001_flag_CalibrationDone // refernce voltage to low
+Var=SCU1_wf_KL30SafeMax bit 54,1 /e:VtSig_M001_flag_CalibrationDone // KL30-Safe max
+Var=SCU1_wf_KL30SafeMin bit 55,1 /e:VtSig_M001_flag_CalibrationDone // KL30-Safe min
+Var=SCU1_wf_CPUSupplyWarning bit 56,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_PowerProtectionWarning bit 57,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_KL30SafeOff bit 58,1 /e:VtSig_M001_flag_CalibrationDone // BMS-M-SafePwr was switched off (HW detection)
+Var=SCU1_wf_Dew_Sensor bit 59,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_wf_ContactorDropOut bit 60,1 /e:VtSig_M001_flag_CalibrationDone // a contactor drop out occured
+Var=SCU1_wf_BoardTemp bit 61,1 /e:VtSig_M001_flag_CalibrationDone // ECU/IC board temperature too high/low
+Var=SCU1_wf_SCUError bit 63,1 /e:VtSig_M001_flag_CalibrationDone
+
+[SCU1_Alarm]
+ID=1200D401h // SCU alarm message (SCU alarm message)
+Type=Extended
+DLC=8
+CycleTime=100
+Var=SCU1_af_CellVoltageMax bit 0,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_CellVoltageMin bit 1,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_SysVoltageMax bit 2,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_SysVoltageMin bit 3,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_SysVoltageSum bit 4,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_ModVoltageSum bit 5,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_ModVoltageRefMax bit 6,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_Mod_Voltage_Ref_Min bit 7,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_IsoFaultBattNeg bit 8,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_IsoFaultBattPos bit 9,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_ContactorNegStuck bit 10,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_ContactorPosStuck bit 11,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_LVSupplyMax bit 12,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_LVSupplyMin bit 13,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_TerminalTempMax bit 14,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_TerminalTempMin bit 15,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_CellTempChargMax bit 16,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_CellTempChargMin bit 17,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_CellTempDischMax bit 18,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_CellTempDischMin bit 19,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_SysCurCha bit 20,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_SysCurDis bit 21,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_HVCurrLoopMax bit 22,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_HVCurrLoopMin bit 23,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_eStopCurrLoopMax bit 24,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_eStopCurrLoopMin bit 25,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_SysCurLimitCha bit 26,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_SysCurLimitDis bit 27,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_SysPrechargeFailed bit 28,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_BMMBattCom bit 29,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_SysInitTimeout bit 30,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_SCUConfig bit 31,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_DeepDischProt bit 32,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_WDReset bit 33,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_ExtCommunicationTout bit 34,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_NoAfterrunTest bit 35,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_CellVoltUnbalance bit 36,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_CellTempUnbalance bit 37,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_TerminalTempUnbalance bit 38,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_LTCError bit 39,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_AfterrunTest bit 40,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_CrossCheck bit 41,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_StuckAtTemp bit 42,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_StuckAtVolt bit 43,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_ProgProcess bit 44,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_RAM bit 45,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_ROM bit 46,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_FlashEEPROM bit 47,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_InvalidData bit 48,1 /e:VtSig_M001_flag_CalibrationDone // short circuit or open temperature sensor
+Var=SCU1_af_ContactorWrongState bit 49,1 /e:VtSig_M001_flag_CalibrationDone // tbd
+Var=SCU1_af_CurrSens bit 50,1 /e:VtSig_M001_flag_CalibrationDone // i sensor error occurred
+Var=SCU1_af_ContDam bit 51,1 /e:VtSig_M001_flag_CalibrationDone // contactors damaged
+Var=SCU1_af_RefVoltErrorMax bit 52,1 /e:VtSig_M001_flag_CalibrationDone // refernce voltage to high
+Var=SCU1_af_RefVoltErrorMin bit 53,1 /e:VtSig_M001_flag_CalibrationDone // refernce voltage to low
+Var=SCU1_af_KL30SafeMax bit 54,1 /e:VtSig_M001_flag_CalibrationDone // KL30-Safe max
+Var=SCU1_af_KL30SafeMin bit 55,1 /e:VtSig_M001_flag_CalibrationDone // KL30-Safe min
+Var=SCU1_af_CPUSupplyWarning bit 56,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_PowerProtectionWarning bit 57,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_KL30SafeOff bit 58,1 /e:VtSig_M001_flag_CalibrationDone // BMS-M-SafePwr was switched off (HW detection)
+Var=SCU1_af_Dew_Sensor bit 59,1 /e:VtSig_M001_flag_CalibrationDone
+Var=SCU1_af_ContactorDropOut bit 60,1 /e:VtSig_M001_flag_CalibrationDone // a contactor drop out occured
+Var=SCU1_af_BoardTemp bit 61,1 /e:VtSig_M001_flag_CalibrationDone // ECU/IC board temperature too high/low
+Var=SCU1_af_SCUError bit 63,1 /e:VtSig_M001_flag_CalibrationDone
+
+[BMM_ControlDigitalOutputs]
+ID=0A181400h // Control digital outputs (Control digital outputs)
+Type=Extended
+DLC=8
+CycleTime=40
+Var=BMM_req_ContactorPos bit 0,1 /e:VtSig_BMM_req_ContactorPos // contactor +
+Var=BMM_req_ContactorNeg bit 1,1 /e:VtSig_BMM_req_ContactorPos // contactor -
+Var=BMM_req_ContactorPre bit 2,1 /e:VtSig_BMM_req_ContactorPos // precharge contactor
+Var=BMM_req_ContactorAux bit 3,1 /e:VtSig_BMM_req_ContactorPos // aux contactors
+Var=BMM_req_VSenseRelayBatPos bit 8,1 /e:VtSig_BMM_req_ContactorPos // V sense Relay Bat+
+Var=BMM_req_VSenseRelayBatNeg bit 9,1 /e:VtSig_BMM_req_ContactorPos // V sense Relay Bat-
+Var=BMM_req_VSenseRelaySysPos bit 10,1 /e:VtSig_BMM_req_ContactorPos // V sense Relay Sys+
+Var=BMM_req_VSenseRelaySysNeg bit 11,1 /e:VtSig_BMM_req_ContactorPos // V sense Relay Sys-
+Var=BMM_Fan_State bit 17,1 /e:VtSig_BMM_req_ContactorPos // Stafe of the fan
+
+[SCU1_CtrlDigitalOutputs_diag]
+ID=1E0C2401h // Control digital outputs diagnostic (Control digital outputs diagnostic)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_req_ContactorPosDiag bit 0,1 /e:VtSig_BMM_req_ContactorPos // request for contactor + diagnostic
+Var=SCU1_req_ContactorNegDiag bit 1,1 /e:VtSig_BMM_req_ContactorPos // request for contactor - diagnostic
+Var=SCU1_req_ContactorPreDiag bit 2,1 /e:VtSig_BMM_req_ContactorPos // request for precharge contactor diagnostic
+Var=SCU1_req_ContactorAuxDiag bit 3,1 /e:VtSig_BMM_req_ContactorPos // request for extended aux contactor diagnostic
+Var=SCU1_req_VSenseRelayBatPosDiag bit 8,1 /e:VtSig_BMM_req_ContactorPos // request for Sense relay Tray+ extern diagnostic
+Var=SCU1_req_VSenseRelayBatNegDiag bit 9,1 /e:VtSig_BMM_req_ContactorPos // request for Sense relay Tray- extern diagnostic
+Var=SCU1_req_VSenseRelaySysPosDiag bit 10,1 /e:VtSig_BMM_req_ContactorPos // request for Sense relay Tray+ intern diagnostic
+Var=SCU1_req_VSenseRelaySysNegDiag bit 11,1 /e:VtSig_BMM_req_ContactorPos // request for Sense relay Tray- intern diagnostic
+Var=SCU1_req_ShutdownDiag bit 16,1 /e:VtSig_BMM_req_ContactorPos // request to swirch off SCU hardware
+Var=SCU1_req_CANGatewayDiag bit 17,1 /e:VtSig_BMM_req_ContactorPos // request to swirch on / off the CAN gateway
+Var=SCU1_req_eStopBrakeOutDiag bit 18,1 /e:VtSig_SCU1_req_eStopBrakeOutDiag // request to swirch on / off the eStop brake out
+Var=SCU1_req_InterlockSourceDiag bit 19,1 /e:VtSig_BMM_req_ContactorPos // request to swirch on / off the interlock source
+Var=SCU1_req_WdgTrigOffDiag bit 20,1 /e:VtSig_SCU1_req_WdgTrigOffDiag // request to stop the external watchdog trigger
+Var=SCU1_req_SafetyEnable1Diag bit 21,1 /e:VtSig_BMM_req_ContactorPos // request to swirch on / off the safety enable 1
+Var=SCU1_req_SafetyEnable2Diag bit 22,1 /e:VtSig_BMM_req_ContactorPos // request to swirch on / off the safety enable 2
+Var=SCU1_req_BMSPowerDiag bit 23,1 /e:VtSig_BMM_req_ContactorPos // request to swirch on / off the BMS power
+Var=SCU1_req_SystemResetDiag bit 24,1 /e:VtSig_SCU1_req_SystemResetDiag // request to generate a software reset
+Var=SCU1_req_LEDDiag bit 25,1 // not used
+Var=SCU1_req_WdgTrigFastDiag bit 26,1 /e:VtSig_SCU1_req_WdgTrigFastDiag // request to generate a fast watchdog trigger to generate an external watchdog
+Var=SCU1_req_WdgAlarmResetDiag bit 27,1 /e:VtSig_SCU1_req_WdgAlarmResetDiag // request to disable the internal watchdog trigger
+
+[SCU1_HSSwitchReq]
+ID=12182401h // Operate highside switch outputs in
+Type=Extended
+DLC=8
+Var=SCU1_req_HSOutput1_pct unsigned 0,8 /u:% // Highside-Switch-Output 1  Request
+Var=SCU1_req_HSOutput2_pct unsigned 8,8 /u:% // Highside-Switch-Output 2  Request
+Var=SCU1_req_HSOutput3_pct unsigned 16,8 /u:% // Highside-Switch-Output 3  Request
+Var=SCU1_req_HSOutput4_pct unsigned 24,8 /u:% // Highside-Switch-Output 4  Request
+
+[SCU1_SWConfigInfo]
+ID=12010401h // SCU SW configuration information (SCU SW configuration information)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_inf_NumOfModule unsigned 0,8 // number of modules
+Var=SCU1_inf_NumOfCell unsigned 8,8 // number of serial cells per module
+Var=SCU1_inf_Checksum unsigned 32,32 // checksum of the software configuration
+
+[SCU1_LimitConfigInfo]
+ID=12013401h // SCU limit configuration information (SCU limit configuration information)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_lim_U_MinVolt_V unsigned 0,16 /u:V /f:0.001 /d:0 // minimun voltage limit
+Var=SCU1_lim_U_MaxVolt_V unsigned 16,16 /u:V /f:0.001 /d:0 // maximum voltage limit
+Var=SCU1_lim_T_MinTemp_C signed 32,16 /u:T /f:0.1 /max:3276.7 /d:0 // minimum temperature limit
+Var=SCU1_lim_T_MaxTemp_C signed 48,16 /u:T /f:0.1 /max:3276.7 /d:0 // maximum temperature limit
+
+[SCU1_TrayConfigInfo]
+ID=12014401h // SCU tray configuration information (SCU tray configuration information)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_inf_LowCellNr unsigned 0,16 // lowest monitored cell number
+Var=SCU1_inf_HighCellNr unsigned 16,16 // highest monitored cell number
+Var=SCU1_inf_LowModNr unsigned 32,16 // lowest monitored module number
+Var=SCU1_inf_HighModNr unsigned 48,16 // highest monitored module number
+
+[SCU1_GatewayTest]
+ID=0C000401h // SCU gateway test message (SCU gateway test message)
+Type=Extended
+DLC=8
+CycleTime=100
+
+[SCU1_RAWValues1]
+ID=1E041401h // SCU Raw Value message 1 (SCU Raw Value message 1)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_raw_KL30Voltage unsigned 0,16 /u:digit // ADC raw value of KL30 voltage
+Var=SCU1_raw_BMMSafeVoltage unsigned 16,16 /u:digit // ADC raw value of BMM Safe voltage
+Var=SCU1_raw_HSS12Voltage unsigned 32,16 /u:digit // ADC raw value of HSS12 voltage
+Var=SCU1_raw_ReferenceVoltage unsigned 48,16 /u:digit // ADC raw value of SCU reference voltage
+
+[SCU1_RAWValues2]
+ID=1E042401h // SCU Raw Value message 2 (SCU Raw Value message 2)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_raw_HSS34Voltage unsigned 0,16 /u:digit // ADC raw value of HSS34 voltage
+Var=SCU1_raw_TrayBatVoltPos unsigned 16,16 /u:digit // ADC raw value of bat pos voltage
+Var=SCU1_raw_TrayBatVoltNeg unsigned 32,16 /u:digit // ADC raw value of bat neg voltage
+Var=SCU1_raw_TraySysVoltPos unsigned 48,16 /u:digit // ADC raw value of Sys pos voltage
+
+[SCU1_RAWValues3]
+ID=1E043401h // SCU Raw Value message 3 (SCU Raw Value message 3)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_raw_TraySysVoltNeg unsigned 0,16 /u:digit // ADC raw value of Sys neg voltage
+Var=SCU1_raw_TrayGndVolt unsigned 16,16 /u:digit // ADC raw value of gnd voltage
+Var=SCU1_raw_ExtSense1 unsigned 32,16 /u:digit // ADC raw value of external sense 1
+Var=SCU1_raw_ExtSense2 unsigned 48,16 /u:digit // ADC raw value of external sense 2
+
+[SCU1_RAWValues4]
+ID=1E044401h // SCU Raw Value message 4 (SCU Raw Value message 4)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_raw_ContPosCoilCurr unsigned 0,16 /u:digit // ADC raw value of pos contactor coil current
+Var=SCU1_raw_ContNegCoilCurr unsigned 16,16 /u:digit // ADC raw value of neg contactor coil current
+Var=SCU1_raw_ContPreCoilCurr unsigned 32,16 /u:digit // ADC raw value of pre contactor coil current
+Var=SCU1_raw_ContExtAuxCoilCurr unsigned 48,16 /u:digit // ADC raw value of extaux contactor coil current
+
+[SCU1_RAWValues5]
+ID=1E045401h // SCU Raw Value message 5 (SCU Raw Value message 5)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_raw_ISenseLowCurr unsigned 0,16 /u:digit // ADC raw value of current sensor low channel
+Var=SCU1_raw_ISenseHighCurr unsigned 16,16 /u:digit // ADC raw value of current sensor high channel
+Var=SCU1_raw_eStopLoopCurr unsigned 32,16 /u:digit // ADC raw value of eStopLoop Current
+Var=SCU1_raw_ILockLoopCurr unsigned 48,16 /u:digit // ADC raw value of interlock Current
+
+[SCU1_RAWValues6]
+ID=1E046401h // SCU Raw Value message 6 (SCU Raw Value message 6)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_raw_HSSwitch1Curr unsigned 0,16 /u:digit // ADC raw value of high side switch 1
+Var=SCU1_raw_HSSwitch2Curr unsigned 16,16 /u:digit // ADC raw value of high side switch 2
+Var=SCU1_raw_HSSwitch3Curr unsigned 32,16 /u:digit // ADC raw value of high side switch 3
+Var=SCU1_raw_HSSwitch4Curr unsigned 48,16 /u:digit // ADC raw value of high side switch 4
+
+[SCU1_RAWValues7]
+ID=1E047401h // SCU Raw Value message 7 (SCU Raw Value message 7)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_raw_CPULoadAvg unsigned 0,16 /u:% /f:0.1 /d:0 // Scu cycle load
+Var=SCU1_raw_TrayVoltage unsigned 16,16 /u:digit // ADC raw value of scu tray voltage
+Var=SCU1_raw_TrayTemp unsigned 32,16 /u:digit // ADC raw value of scu board temperature
+Var=SCU1_raw_CPULoadMax unsigned 48,16 /u:% /f:0.1 /d:0 // Scu max cycle load
+
+[SCU1_RAWValues8]
+ID=1E048401h // SCU Raw Value message 8 (SCU Raw Value message 8)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_raw_MagneticMarker unsigned 0,16 // calculated value of the magnetic marker
+Var=SCU1_raw_HysteresisOffset unsigned 16,16 // calculated value of the hysteresis offset
+Var=SCU1_raw_NonOffsetIHighChannel unsigned 32,16 // current sensor high channel without offset
+Var=SCU1_raw_ActOffsetIHighChannel unsigned 48,16 // actual offset of current sensor high channel
+
+[SCU1_RAWValues9]
+ID=1E049401h // SCU Raw Value message 9 for SCU hardware test (SCU Raw Value message 9 for SCU hardware test)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_raw_DIO_P02_00_In bit 0,1 /e:VtSig_SCU1_raw_DIO_P02_00_In // DIin_Forced_Save_State
+Var=SCU1_raw_DIO_P02_01_In bit 1,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIin_BMS_S_Safe_State
+Var=SCU1_raw_DIO_P02_02_In bit 2,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIin_KL15_WAKE
+Var=SCU1_raw_DIO_P02_05_Out bit 3,1 /e:VtSig_SCU1_raw_DIO_P02_00_In // DIin_HW_Version_Bit_0
+Var=SCU1_raw_DIO_P02_06_In bit 4,1 /e:VtSig_SCU1_raw_DIO_P02_00_In // DIin_HW_Version_Bit_1
+Var=SCU1_raw_DIO_P02_07_In bit 5,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIin_KL30_Safe_OK
+Var=SCU1_raw_DIO_P02_12_Out bit 6,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_CAN_Gateway
+Var=SCU1_raw_DIO_P03_03_Out bit 7,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_SPI_1_CS_0      Chip select 0 am SPI Bus 1
+Var=SCU1_raw_DIO_P03_04_Out bit 8,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_SPI_1_CS_1      Chip select 1 am SPI Bus 1
+Var=SCU1_raw_DIO_P04_04_Out bit 9,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_HV_MR_BatPlus   HV-Messrelais Bat+
+Var=SCU1_raw_DIO_P04_05_Out bit 10,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_HV_MR_BatMinus  HV-Messrelais Bat-
+Var=SCU1_raw_DIO_P04_06_Out bit 11,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_HV_MR_SysPlus   HV-Messrelais Sys+
+Var=SCU1_raw_DIO_P04_07_Out bit 12,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_HV_MR_SysMinus  HV-Messrelais Sys-
+Var=SCU1_raw_DIO_P06_02_Out bit 13,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_eStop_Brake_Out
+Var=SCU1_raw_DIO_P06_03_Out bit 14,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_Safety_Enable2
+Var=SCU1_raw_DIO_P07_01_Out bit 15,1 /e:VtSig_SCU1_raw_DIO_P02_00_In // DIout_Safety_Enable1
+Var=SCU1_raw_DIO_P07_02_Out bit 16,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_External_Watchdog
+Var=SCU1_raw_DIO_P08_03_Out bit 17,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_HS_Switch_1
+Var=SCU1_raw_DIO_P08_04_Out bit 18,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_HS_Switch_2
+Var=SCU1_raw_DIO_P08_05_Out bit 19,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_HS_Switch_3
+Var=SCU1_raw_DIO_P08_06_Out bit 20,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_HS_Switch_4
+Var=SCU1_raw_DIO_P09_00_BiIO bit 21,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_Alive_LED
+Var=SCU1_raw_DIO_P09_01_Out bit 22,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_Debug_LED
+Var=SCU1_raw_DIO_P09_02_Out bit 23,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_Error_LED
+Var=SCU1_raw_DIO_P09_03_Out bit 24,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIio_OW_Port_1     on wire bus no 1
+Var=SCU1_raw_DIO_P09_04_Out bit 25,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_Con_HV_plus
+Var=SCU1_raw_DIO_P09_05_BiIO bit 26,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_Con_HV_minus
+Var=SCU1_raw_DIO_P09_06_BiIO bit 27,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_Con_Precharge
+Var=SCU1_raw_DIO_P09_07_BiIO bit 28,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_Con_Ext_Aux
+Var=SCU1_raw_DIO_P10_08_BiIO bit 29,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIio_ExtID_Bit0
+Var=SCU1_raw_DIO_P10_09_BiIO bit 30,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIio_ExtID_Bit1
+Var=SCU1_raw_DIO_P10_10_Out bit 31,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIio_ExtID_Bit2
+Var=SCU1_raw_DIO_P10_11_Out bit 32,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIio_ExtID_Bit3
+Var=SCU1_raw_DIO_P10_12_Out bit 33,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIio_ExtID_Bit4
+Var=SCU1_raw_DIO_P11_02_Out bit 34,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_Interlock_SrcOn
+Var=SCU1_raw_DIO_P11_03_Out bit 35,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_Interlock_HC
+Var=SCU1_raw_DIO_P11_04_Out bit 36,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIout_SCU_Power
+Var=SCU1_raw_DIO_P11_05_Out bit 37,1 /e:VtSig_SCU1_raw_DIO_P02_00_In // DIout_BMS_Power
+Var=SCU1_raw_DIO_ESR0_In bit 38,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIin_Comp_Chip_Warning
+Var=SCU1_raw_DIO_ESR1_In bit 39,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIin_CPU_Supply_Warning
+Var=SCU1_raw_DIO_ESR2_In bit 40,1 /e:VtSig_SCU1_raw_DIO_P02_01_In // DIin_Power_Protection_Warning
+
+[SCU1_RAWValues10]
+ID=1E04A401h // SCU Raw Value message 10  for SCU hardware test (SCU Raw Value message 10  for SCU hardware test)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_raw_ID_bit_0 bit 0,1 /e:VtSig_SCU1_raw_ID_bit_0 // Input of SCU ID 0
+Var=SCU1_raw_ID_bit_1 bit 1,1 /e:VtSig_SCU1_raw_ID_bit_0 // Input of SCU ID 1
+Var=SCU1_raw_ID_bit_2 bit 2,1 /e:VtSig_SCU1_raw_ID_bit_0 // Input of SCU ID 2
+Var=SCU1_raw_ID_bit_3 bit 3,1 /e:VtSig_SCU1_raw_ID_bit_0 // Input of SCU ID 3
+Var=SCU1_raw_ID_bit_4 bit 4,1 /e:VtSig_SCU1_raw_ID_bit_0 // Input of SCU ID 4
+Var=SCU1_raw_ID_Combi unsigned 8,16 // SCU ID combination no.
+Var=SCU1_raw_U1_BMSCAN signed 24,16 // cell test voltage of cell 1
+Var=SCU1_raw_T1_BMSCAN signed 40,16 // cell test temperature of cell 1
+Var=SCU1_raw_Watchdog_Alarm_bit_0 bit 56,1 /e:VtSig_SCU1_raw_Watchdog_Alarm_bi // watchdog alarm bit of external watchdog
+Var=SCU1_raw_Watchdog_Alarm_bit_1 bit 57,1 /e:VtSig_SCU1_raw_Watchdog_Alarm_bi // watchdog alarm bit of internal watchdog
+
+[SCU1_RAWErrorValues]
+ID=1E040401h // SCU Raw Error Value message (SCU Raw Error Value message)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_raw_ErrorNumber unsigned 0,16 // error number
+Var=SCU1_raw_ErrorParameter1 unsigned 16,16 // error parameter 1
+Var=SCU1_raw_ErrorParameter2 unsigned 32,16 // error parameter 2
+Var=SCU1_raw_ErrorCodePosition unsigned 48,16 // error code position
+
+[SCU1_DiagActivation]
+ID=1E0C0401h // SCU diagnostic function activation message (SCU diagnostic function activation message)
+Type=Extended
+DLC=8
+Var=SCU1_val_DiagActivationID unsigned 0,64 // Activation ID
+
+[BMM_SCUSyncMsg]
+ID=02080400h // SCU synchinization message (SCU synchinization message)
+Type=Extended
+DLC=0
+CycleTime=2000
+
+[SCU1_ContactorDmg]
+ID=0A015401h // Damage of contactors (Damage of contactors)
+Type=Extended
+DLC=8
+CycleTime=100
+Var=SCU1_ctr_DamageTotal unsigned 0,32 // contactor damage
+Var=SCU1_ctr_ContOperational_s unsigned 32,32
+
+[SCU1_SetSystemValues]
+ID=1E0C1401h // Settings for  SCU system values (Settings for  SCU system values)
+Type=Extended
+DLC=8
+Var=SCU1_val_DamageResetMagic unsigned 0,24 // Magic to set and reset system values. Has to be AA55AAh
+Var=SCU1_val_ResetType unsigned 24,8 // Counter which has to be reset:
+Var=SCU1_conf_ResetValue unsigned 32,32 // value to be specified as the set value
+Var=SCU1_vrr_Day unsigned 48,8 // value to be specified the day value of the RTC
+Var=SCU1_vrr_Month unsigned 40,8 // value to be specified the month value of the RTC
+Var=SCU1_vrr_2kYear unsigned 32,8 // value to be specified the 2kyear value of the RTC
+Var=SCU1_vrr_Hour unsigned 48,8 // value to be specified the hour value of the RTC
+Var=SCU1_vrr_Minute unsigned 40,8 // value to be specified the minute value of the RTC
+Var=SCU1_vrr_Second unsigned 32,8 // value to be specified the second value of the RTC
+
+[SCU1_OperationTimeCounter]
+ID=12016401h // SCU operation time counter (SCU operation time counter)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_ctr_t_AliveTime_s unsigned 0,32 /u:s // Time the SCU has been powered up
+Var=SCU1_ctr_t_OperationTime_s unsigned 32,32 /u:s // Time in which the pos and neg contactors are closed
+
+[SCU1_AmpereHourCounter]
+ID=12017401h // SCU usage counter (SCU usage counter)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_ctr_Q_AmpereHourChg_Ah unsigned 0,32 /u:Ah /f:0.01 /d:0 // alltime ampere hour counter charge
+Var=SCU1_ctr_Q_AmpereHourDisch_Ah unsigned 32,32 /u:Ah /f:0.01 /d:0 // alltime ampere hour counter discharge
+
+[SCU1_Histogramm]
+ID=12019401h // SCU Histogramm (SCU Histogramm)
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=SCU1_diag_HistMultiplex unsigned 0,8 // Histogram multiplexer (see Comments)
+Var=SCU1_diag_HistIndex unsigned 8,8 // Index number
+Var=SCU1_diag_HistIndexWert signed 16,16 // Index value
+Var=SCU1_diag_HistWerte unsigned 32,32 // Histogram value
+
+[SCU1_RTC]
+ID=1201E401h // Real Time Clock values (Real Time Clock values)
+Type=Extended
+DLC=8
+CycleTime=100
+Var=SCU1_ctr_Seconds_s unsigned 0,8
+Var=SCU1_ctr_Minutes_min unsigned 8,8
+Var=SCU1_ctr_Hours_h unsigned 16,8
+Var=SCU1_ctr_Days unsigned 24,8
+Var=SCU1_ctr_Months unsigned 32,8
+Var=SCU1_ctr_Year unsigned 40,8
+
+[SCU1_LoopCurrents]
+ID=1200F401h // SCU currents (SCU currents)
+Type=Extended
+DLC=8
+CycleTime=100
+Var=SCU1_act_I_HVIL_mA signed 0,16 /u:mA /f:0.1 /max:3276.7 /d:0 // current of interlock loop
+Var=SCU1_act_I_eStop_mA signed 16,16 /u:mA /f:0.1 /max:3276.7 /d:0 // current of eStop loop
+Var=SCU1_act_I_CurrentSensTot_A signed 32,16 /u:A /f:0.1 /max:3276.7 /d:0 // current sensor total (for multi current sensor systems)
+
+[SCU1_SysInfo]
+ID=12012401h // SCU System Information (SCU System Information)
+Type=Extended
+DLC=8
+CycleTime=1000
+Mux=SCU1_inf_SysInfoCPUBoardId 0,8 0
+Var=SCU1_inf_CPUBoardId unsigned 8,56 /max:7.20575940379279E016
+
+[SCU1_SysInfo]
+DLC=8
+CycleTime=1000
+Mux=SCU1_inf_SysInfoMuxHVBoardId 0,8 1
+Var=SCU1_inf_HVBoardId unsigned 8,56 /max:7.20575940379279E016
+
+[SCU1_SysInfo]
+DLC=8
+CycleTime=1000
+Mux=SCU1_inf_SysInfoBBoardId 0,8 2
+Var=SCU1_inf_BBoardId unsigned 8,56 /max:7.20575940379279E016
+
+[SCU1_SysInfo]
+DLC=8
+CycleTime=1000
+Mux=SCU1_inf_SysInfoMRCCBBoardId 0,8 3
+Var=SCU1_inf_MRCCBBoardId unsigned 8,56 /max:7.20575940379279E016
+
+[SCU1_SysInfo]
+DLC=8
+CycleTime=1000
+Mux=SCU1_inf_SysInfoHwRev 0,8 4
+Var=SCU1_inf_HwRevMinor unsigned 8,8
+Var=SCU1_inf_HwRevMajor unsigned 16,8
+
+[SCU1_SysInfo]
+DLC=8
+CycleTime=1000
+Mux=SCU1_inf_SysInfoMCU 0,8 5
+Var=SCU1_inf_ChipRevSubstep unsigned 8,4
+Var=SCU1_inf_ChipRevStep unsigned 12,2
+Var=SCU1_inf_ChipFam unsigned 14,2
+Var=SCU1_inf_ChipId unsigned 16,8
+Var=SCU1_inf_ChipEmuExt bit 24,1
+Var=SCU1_inf_ChipMicroCodeVer unsigned 25,7
+Var=SCU1_inf_ChipFlashSize unsigned 32,4
+Var=SCU1_inf_ChipSpeedGrade unsigned 36,2
+Var=SCU1_inf_ChipSecModule bit 38,1
+
+[SCU1_AkaSerialNo]
+ID=12011401h // BMU serial numbers (BMU serial numbers)
+Type=Extended
+DLC=8
+CycleTime=1000
+Mux=Production 58,4 0
+Var=SCU1_Aka_Year_P unsigned 51,7
+Var=SCU1_Aka_Week_P unsigned 45,6
+Var=SCU1_Aka_Plant unsigned 38,7
+Var=SCU1_Aka_Line unsigned 31,7
+Var=SCU1_Aka_Los_No_P unsigned 0,31
+
+[SCU1_AkaSerialNo]
+DLC=8
+CycleTime=1000
+Mux=Electronics 58,4 1
+Var=SCU1_Aka_Year_E unsigned 51,7
+Var=SCU1_Aka_Week_E unsigned 45,6
+Var=SCU1_Aka_Module unsigned 31,14
+Var=SCU1_Aka_Version unsigned 24,7
+Var=SCU1_Aka_Supplier unsigned 14,10
+Var=SCU1_Aka_Los_No_E unsigned 0,13
+
+[SCU1_AkaSerialNo]
+DLC=8
+CycleTime=1000
+Mux=Software 58,4 3
+Var=SCU1_Aka_Year_S unsigned 51,7
+Var=SCU1_Aka_Week_S unsigned 45,6
+Var=SCU1_Aka_Major unsigned 38,7
+Var=SCU1_Aka_Minor unsigned 31,7
+Var=SCU1_Aka_Build_No unsigned 21,10
+Var=SCU1_Aka_BuildUserNr unsigned 14,7
+Var=SCU1_Aka_SWVariant unsigned 0,14
+
+[SCU1_DldrAcknowledge_boot]
+ID=1E000401h // acknowledge if SCU receives a downloader_magic (acknowledge if SCU receives a downloader_magic)
+Type=Extended
+DLC=8
+Var=SCU1_val_SerialNr unsigned 0,48 // serial number
+Var=SCU1_val_HWRev unsigned 48,16 // HW revision
+
+[SCU1_SWVersionInfo_boot]
+ID=1E001401h // SCU software version number information (SCU software version number information)
+Type=Extended
+DLC=8
+Var=SCU1_val_SWVersionNr unsigned 0,64 // software version number
+
+[SCU1_ErrorMsg_boot]
+ID=1E003401h // Error_messages of SCU CAN bootloader (Error_messages of SCU CAN bootloader)
+Type=Extended
+DLC=8
+Var=SCU1_Error_Number unsigned 0,16 // error number
+Var=SCU1_Error_parameter_1 unsigned 16,16 // error parameter 1
+Var=SCU1_Error_parameter_2 unsigned 32,16 // error parameter 2
+Var=SCU1_subError_Number unsigned 48,8 // suberror number
+
+[SCU1_ConfigVersionInfo_boot]
+ID=1E004401h // SCU configuration version number information (SCU configuration version number information)
+Type=Extended
+DLC=8
+Var=sw_version_nr unsigned 0,64 // software version number
+
+[SCU1_SWChecksumInfo_boot]
+ID=1E006401h // checksum of SCU software (checksum of SCU software)
+Type=Extended
+DLC=8
+Var=SCU1_sw_checksum unsigned 0,32 // SCU software checksum
+Var=SCU1_config_checksum unsigned 32,32 // SCU config checksum
+
+[SCU1_CPUInfo1_boot]
+ID=1E007401h // version datas of SCU CPU block 1 (version datas of SCU CPU block 1)
+Type=Extended
+DLC=8
+Var=SCU1_CPU_Version unsigned 0,8 // version number of cpu
+Var=SCU1_CPU_ModulNumber unsigned 8,8 // modul number of cpu
+Var=SCU1_CPU_DepartureNumber unsigned 16,8 // departure number of cpu
+Var=SCU1_CPU_ManufactureNumber unsigned 24,16 // manufacture number of cpu
+Var=SCU1_CPU_RevisionNumber unsigned 40,8 // revision number of cpu
+Var=SCU1_CPU_CHIPID unsigned 48,8 // chip id of cpu
+
+[SCU1_CPUInfo2_boot]
+ID=1E008401h // version datas of SCU CPU block 2 (version datas of SCU CPU block 2)
+Type=Extended
+DLC=8
+Var=SCU1_CPU_PROGVDD unsigned 0,8 // version number of cpu
+Var=SCU1_CPU_PROGVPP unsigned 8,8 // modul number of cpu
+Var=SCU1_CPU_MemSize unsigned 16,16 // departure number of cpu
+Var=SCU1_CPU_MemType unsigned 32,8 // manufacture number of cpu
+
+[SCU1_Software_Components_boot]
+ID=1E009401h // software component names (software component names)
+Type=Extended
+DLC=8
+Var=SCU1_ComponentNameActive unsigned 0,24 /u:char // component name of the active boot loader component
+Var=SCU1_DownloadComponentName unsigned 24,24 /u:char // name of the component which will be downloaded
+
+[BMMp_CellVoltages]
+ID=1E000001h // Information about actual  cell voltages (Information about actual  cell voltages)
+Type=Extended
+DLC=8
+Var=BMMp_max_U_CellVoltage_mV unsigned 0,16 /u:mV // highest actual measured cell voltage in system
+Var=BMMp_min_U_CellVoltage_mV unsigned 16,16 /u:mV // lowest actual measured cell voltage in system
+Var=BMMp_acg_U_CellVoltage_mV unsigned 32,16 /u:mV // average actual measured cell voltage in system
+Var=BMMp_num_MaxCellVoltage unsigned 48,8 /u:- // cell number of cell with actual highest voltage
+Var=BMMp_num_MinCellVoltage unsigned 56,8 /u:- // cell number of cell with actual lowest voltage
+
+[BMMp_CellTemperatures]
+ID=1E001001h // information about actual cell temperatures (information about actual cell temperatures)
+Type=Extended
+DLC=8
+CycleTime=500
+Var=BMMp_max_T_CellTemp_C signed 0,16 /u:°C /f:0.1 /max:3276.7 /d:0 // highest actual measured cell temperature in system
+Var=BMMp_min_T_CellTemp_C signed 16,16 /u:°C /f:0.1 /max:3276.7 /d:0 // lowest actual measured cell  temperature in system
+Var=BMMp_avg_T_CellTemp_C signed 32,16 /u:°C /f:0.1 /max:3276.7 /d:0 // average actual measured cell  temperature in system
+Var=BMMp_num_MaxCellTemp unsigned 48,8 /u:- // cell number of cell with actual highest  temperature
+Var=BMMp_num_MinCellTemp unsigned 56,8 /u:- // cell number of cell with actual lowest  temperature
+
+[BMMp_TerminalTemperatures]
+ID=1E002001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+CycleTime=500
+Var=BMMp_max_T_TerminalTemp_C signed 0,16 /u:°C /f:0.1 /max:3276.7 /d:0 // highest actual measured cell temperature in system
+Var=BMMp_min_T_TerminalTemp_C signed 16,16 /u:°C /f:0.1 /max:3276.7 /d:0 // lowest actual measured cell  temperature in system
+Var=BMMp_avg_T_TerminalTemp_C signed 32,16 /u:°C /f:0.1 /max:3276.7 /d:0 // average actual measured cell  temperature in system
+Var=BMMp_num_MaxTerminalTemp unsigned 48,8 /u:- // cell number of cell with actual highest  temperature
+Var=BMMp_num_MinTerminalTemp unsigned 56,8 /u:- // cell number of cell with actual lowest  temperature
+
+[BMMp_Electrics]
+ID=1E003001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+CycleTime=100
+Var=BMMp_act_I_BatteryCurrent_A signed 0,16 /u:A /f:0.1 /max:3276.7 /d:0 // actual battery charge current
+Var=BMMp_act_U_BatteryVoltage_V signed 16,16 /u:V /f:0.1 /max:3276.7 /d:0 // actual battery voltage
+Var=BMMp_act_P_BatteryPower_kW signed 32,16 /u:kW /f:0.1 /max:3276.7 /d:0 // actual battery power (current x voltage)
+Var=BMMp_act_U_SystemVoltage_V signed 48,16 /u:V /f:0.1 /max:3276.7 /d:0 // actual terminal voltage
+
+[BMMp_State]
+ID=1E004001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=BMMp_stat_Init bit 0,1
+Var=BMMp_stat_Standby bit 1,1
+Var=BMMp_stat_Precharge bit 2,1
+Var=BMMp_stat_Operational bit 3,1
+Var=BMMp_stat_Error bit 6,1
+Var=BMMp_flag_Drive bit 8,1
+Var=BMMp_flag_Charge bit 9,1
+Var=BMMp_flag_Wake bit 16,1 /e:VtSig_BMM_req_ContactorPos // Ignition Pin set to high from VCU (drive request or charge request)
+Var=BMMp_flag_IsoDisable bit 17,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_flag_ContactorHVPos bit 19,1 /e:VtSig_BMM_req_ContactorPos // 0 = contactor open; 1=contactor closed
+Var=BMMp_flag_ContactorHVNeg bit 20,1 /e:VtSig_BMM_req_ContactorPos // 0 = contactor open; 1=contactor closed
+Var=BMMp_flag_ContactorPrecha bit 21,1 /e:VtSig_BMM_req_ContactorPos // 0 = contactor open; 1=contactor closed
+Var=BMMp_flag_ChargeComplete bit 22,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_flag_ExternalSdwnRq bit 23,1 /e:VtSig_M001_flag_CalibrationDone // External request (CAN Rx Msg) to switch off battery
+Var=BMMp_flag_InternalKL30Safe bit 24,1 /e:VtSig_M001_flag_CalibrationDone // internal KL30 set
+Var=BMMp_flag_HVILState bit 30,1 /e:VtSig_BMMp_flag_HVILState // High voltage interlock
+Var=BMMp_flag_eStopLoopClosed bit 31,1 /e:VtSig_BMMp_flag_HVILState
+Var=BMMp_flag_Warning bit 32,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_flag_Alarm bit 33,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_flag_AuxCont bit 34,1 /e:VtSig_BMMp_flag_AuxCont
+Var=BMMp_flag_FireRisk bit 39,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_cnt_AliveCounter unsigned 48,8
+Var=BMMp_cnt_MirroredAliveCounter unsigned 56,8 // mirror of the received VCU alive counter
+
+[BMMp_IsolationResistance]
+ID=1E005001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=BMMp_act_R_IsoRes_kOhm unsigned 0,16 /u:kOhm
+Var=BMMp_act_R_ActvIsoRPos_kOhm unsigned 16,16 /u:kOhm
+Var=BMMp_act_R_ActvIsoRNeg_kOhm unsigned 32,16 /u:kOhm
+Var=BMMp_stat_IsoResMeasStatus unsigned 48,2 /e:VtSig_BMMp_stat_IsoResMeasStatus
+
+[BMMp_ErrorFlag]
+ID=1E006001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=BMMp_ef_CellVoltageMax bit 0,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_CellVoltageMin bit 1,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_SysVoltageMax bit 2,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_SysVoltageMin bit 3,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_SysVoltageSum bit 4,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_ModVoltageSum bit 5,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_ModVoltageRefMax bit 6,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_Mod_Voltage_Ref_Min bit 7,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_IsoFaultBattNeg bit 8,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_IsoFaultBattPos bit 9,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_ContactorNegStuck bit 10,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_ContactorPosStuck bit 11,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_LVSupplyMax bit 12,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_LVSupplyMin bit 13,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_TerminalTempMax bit 14,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_TerminalTempMin bit 15,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_CellTempChargMax bit 16,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_CellTempChargMin bit 17,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_CellTempDischMax bit 18,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_CellTempDischMin bit 19,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_SysCurCha bit 20,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_SysCurDis bit 21,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_HVCurrLoopMax bit 22,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_HVCurrLoopMin bit 23,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_eStopCurrLoopMax bit 24,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_eStopCurrLoopMin bit 25,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_SysCurLimitCha bit 26,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_SysCurLimitDis bit 27,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_SysPrechargeFailed bit 28,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_BMMBattCom bit 29,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_SysInitTimeout bit 30,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_SCUConfig bit 31,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_DeepDischProt bit 32,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_WDReset bit 33,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_ExtCommunicationTout bit 34,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_NoAfterrunTest bit 35,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_CellVoltUnbalance bit 36,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_CellTempUnbalance bit 37,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_TerminalTempUnbalance bit 38,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_LTCError bit 39,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_AfterrunTest bit 40,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_CrossCheck bit 41,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_StuckAtTemp bit 42,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_StuckAtVolt bit 43,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_ProgProcess bit 44,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_RAM bit 45,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_ROM bit 46,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_FlashEEPROM bit 47,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_InvalidData bit 48,1 /e:VtSig_M001_flag_CalibrationDone // short circuit or open temperature sensor
+Var=BMMp_ef_ContactorWrongState bit 49,1 /e:VtSig_M001_flag_CalibrationDone // tbd
+Var=BMMp_ef_CurrSens bit 50,1 /e:VtSig_M001_flag_CalibrationDone // i sensor error occurred
+Var=BMMp_ef_ContDam bit 51,1 /e:VtSig_M001_flag_CalibrationDone // contactors damaged
+Var=BMMp_ef_RefVoltErrorMax bit 52,1 /e:VtSig_M001_flag_CalibrationDone // refernce voltage to high
+Var=BMMp_ef_RefVoltErrorMin bit 53,1 /e:VtSig_M001_flag_CalibrationDone // refernce voltage to low
+Var=BMMp_ef_KL30SafeMax bit 54,1 /e:VtSig_M001_flag_CalibrationDone // KL30-Safe max
+Var=BMMp_ef_KL30SafeMin bit 55,1 /e:VtSig_M001_flag_CalibrationDone // KL30-Safe min
+Var=BMMp_ef_CPUSupplyWarning bit 56,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_PowerProtectionWarning bit 57,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_KL30SafeOff bit 58,1 /e:VtSig_M001_flag_CalibrationDone // BMS-M-SafePwr was switched off (HW detection)
+Var=BMMp_ef_Dew_Sensor bit 59,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_ef_ContactorDropOut bit 60,1 /e:VtSig_M001_flag_CalibrationDone // a contactor drop out occured
+Var=BMMp_ef_BoardTemp bit 61,1 /e:VtSig_M001_flag_CalibrationDone // ECU/IC board temperature too high/low
+Var=BMMp_ef_SCUError bit 63,1 /e:VtSig_M001_flag_CalibrationDone
+
+[BMMp_AlarmFlag]
+ID=1E007001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=BMMp_af_CellVoltageMax bit 0,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_CellVoltageMin bit 1,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_SysVoltageMax bit 2,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_SysVoltageMin bit 3,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_SysVoltageSum bit 4,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_ModVoltageSum bit 5,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_ModVoltageRefMax bit 6,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_Mod_Voltage_Ref_Min bit 7,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_IsoFaultBattNeg bit 8,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_IsoFaultBattPos bit 9,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_ContactorNegStuck bit 10,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_ContactorPosStuck bit 11,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_LVSupplyMax bit 12,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_LVSupplyMin bit 13,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_TerminalTempMax bit 14,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_TerminalTempMin bit 15,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_CellTempChargMax bit 16,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_CellTempChargMin bit 17,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_CellTempDischMax bit 18,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_CellTempDischMin bit 19,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_SysCurCha bit 20,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_SysCurDis bit 21,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_HVCurrLoopMax bit 22,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_HVCurrLoopMin bit 23,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_eStopCurrLoopMax bit 24,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_eStopCurrLoopMin bit 25,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_SysCurLimitCha bit 26,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_SysCurLimitDis bit 27,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_SysPrechargeFailed bit 28,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_BMMBattCom bit 29,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_SysInitTimeout bit 30,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_SCUConfig bit 31,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_DeepDischProt bit 32,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_WDReset bit 33,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_ExtCommunicationTout bit 34,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_NoAfterrunTest bit 35,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_CellVoltUnbalance bit 36,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_CellTempUnbalance bit 37,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_TerminalTempUnbalance bit 38,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_LTCError bit 39,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_AfterrunTest bit 40,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_CrossCheck bit 41,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_StuckAtTemp bit 42,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_StuckAtVolt bit 43,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_ProgProcess bit 44,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_RAM bit 45,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_ROM bit 46,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_FlashEEPROM bit 47,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_InvalidData bit 48,1 /e:VtSig_M001_flag_CalibrationDone // short circuit or open temperature sensor
+Var=BMMp_af_ContactorWrongState bit 49,1 /e:VtSig_M001_flag_CalibrationDone // tbd
+Var=BMMp_af_CurrSens bit 50,1 /e:VtSig_M001_flag_CalibrationDone // i sensor error occurred
+Var=BMMp_af_ContDam bit 51,1 /e:VtSig_M001_flag_CalibrationDone // contactors damaged
+Var=BMMp_af_RefVoltErrorMax bit 52,1 /e:VtSig_M001_flag_CalibrationDone // refernce voltage to high
+Var=BMMp_af_RefVoltErrorMin bit 53,1 /e:VtSig_M001_flag_CalibrationDone // refernce voltage to low
+Var=BMMp_af_KL30SafeMax bit 54,1 /e:VtSig_M001_flag_CalibrationDone // KL30-Safe max
+Var=BMMp_af_KL30SafeMin bit 55,1 /e:VtSig_M001_flag_CalibrationDone // KL30-Safe min
+Var=BMMp_af_CPUSupplyWarning bit 56,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_PowerProtectionWarning bit 57,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_KL30SafeOff bit 58,1 /e:VtSig_M001_flag_CalibrationDone // BMS-M-SafePwr was switched off (HW detection)
+Var=BMMp_af_Dew_Sensor bit 59,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_af_ContactorDropOut bit 60,1 /e:VtSig_M001_flag_CalibrationDone // a contactor drop out occured
+Var=BMMp_af_BoardTemp bit 61,1 /e:VtSig_M001_flag_CalibrationDone // ECU/IC board temperature too high/low
+Var=BMMp_af_SCUError bit 63,1 /e:VtSig_M001_flag_CalibrationDone
+
+[BMMp_WarningFlag]
+ID=1E008001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=BMMp_wf_CellVoltageMax bit 0,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_CellVoltageMin bit 1,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_SysVoltageMax bit 2,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_SysVoltageMin bit 3,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_SysVoltageSum bit 4,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_ModVoltageSum bit 5,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_ModVoltageRefMax bit 6,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_Mod_Voltage_Ref_Min bit 7,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_IsoFaultBattNeg bit 8,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_IsoFaultBattPos bit 9,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_ContactorNegStuck bit 10,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_ContactorPosStuck bit 11,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_LVSupplyMax bit 12,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_LVSupplyMin bit 13,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_TerminalTempMax bit 14,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_TerminalTempMin bit 15,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_CellTempChargMax bit 16,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_CellTempChargMin bit 17,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_CellTempDischMax bit 18,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_CellTempDischMin bit 19,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_SysCurCha bit 20,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_SysCurDis bit 21,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_HVCurrLoopMax bit 22,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_HVCurrLoopMin bit 23,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_eStopCurrLoopMax bit 24,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_eStopCurrLoopMin bit 25,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_SysCurLimitCha bit 26,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_SysCurLimitDis bit 27,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_SysPrechargeFailed bit 28,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_BMMBattCom bit 29,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_SysInitTimeout bit 30,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_SCUConfig bit 31,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_DeepDischProt bit 32,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_WDReset bit 33,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_ExtCommunicationTout bit 34,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_NoAfterrunTest bit 35,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_CellVoltUnbalance bit 36,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_CellTempUnbalance bit 37,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_TerminalTempUnbalance bit 38,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_LTCError bit 39,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_AfterrunTest bit 40,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_CrossCheck bit 41,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_StuckAtTemp bit 42,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_StuckAtVolt bit 43,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_ProgProcess bit 44,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_RAM bit 45,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_ROM bit 46,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_FlashEEPROM bit 47,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_InvalidData bit 48,1 /e:VtSig_M001_flag_CalibrationDone // short circuit or open temperature sensor
+Var=BMMp_wf_ContactorWrongState bit 49,1 /e:VtSig_M001_flag_CalibrationDone // tbd
+Var=BMMp_wf_CurrSens bit 50,1 /e:VtSig_M001_flag_CalibrationDone // i sensor error occurred
+Var=BMMp_wf_ContDam bit 51,1 /e:VtSig_M001_flag_CalibrationDone // contactors damaged
+Var=BMMp_wf_RefVoltErrorMax bit 52,1 /e:VtSig_M001_flag_CalibrationDone // refernce voltage to high
+Var=BMMp_wf_RefVoltErrorMin bit 53,1 /e:VtSig_M001_flag_CalibrationDone // refernce voltage to low
+Var=BMMp_wf_KL30SafeMax bit 54,1 /e:VtSig_M001_flag_CalibrationDone // KL30-Safe max
+Var=BMMp_wf_KL30SafeMin bit 55,1 /e:VtSig_M001_flag_CalibrationDone // KL30-Safe min
+Var=BMMp_wf_CPUSupplyWarning bit 56,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_PowerProtectionWarning bit 57,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_KL30SafeOff bit 58,1 /e:VtSig_M001_flag_CalibrationDone // BMS-M-SafePwr was switched off (HW detection)
+Var=BMMp_wf_Dew_Sensor bit 59,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMMp_wf_ContactorDropOut bit 60,1 /e:VtSig_M001_flag_CalibrationDone // a contactor drop out occured
+Var=BMMp_wf_BoardTemp bit 61,1 /e:VtSig_M001_flag_CalibrationDone // ECU/IC board temperature too high/low
+Var=BMMp_wf_SCUError bit 63,1 /e:VtSig_M001_flag_CalibrationDone
+
+[BMMp_Error_info]
+ID=1E009001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=BMMp_num_Errorvalue signed 0,16 // additional information in case of an active warning/alarm/error (value that caused the warning/alarm/error)
+Var=BMMp_num_ErrSrcCompNr unsigned 16,11 // Error source component number
+Var=BMMp_num_ErrSrcSubcompClass unsigned 27,2 // Error source subcomponent class
+Var=BMMp_num_ErrSrcCompClass unsigned 29,3 // Error source component class
+Var=BMMp_num_Errornumber unsigned 32,16 // number of the active warning/alarm/error
+Var=BMMp_num_ErrDetectDevice unsigned 48,8 // error dectecting device number
+
+[BMMp_iso_Voltages]
+ID=1E00A001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=BMMp_act_U_BatNegVoltage_V signed 0,16 /u:V /f:0.1 /max:3276.7 /d:0
+Var=BMMp_act_U_BatPosVoltage_V signed 16,16 /u:V /f:0.1 /max:3276.7 /d:0
+Var=BMMp_act_U_SysNegVoltage_V signed 32,16 /u:V /f:0.1 /max:3276.7 /d:0
+Var=BMMp_act_U_SysPosVoltage_V signed 48,16 /u:V /f:0.1 /max:3276.7 /d:0
+
+[BMMp_limits1]
+ID=1E00B001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+CycleTime=100
+Var=BMMp_lim_regenPower_W unsigned 0,16 /u:W /f:10 /d:0 // maximum permitted regen power
+Var=BMMp_lim_I_regenCurr_A unsigned 16,16 /u:A /f:0.1 /d:0 // maximum permitted regen current
+Var=BMMp_lim_I_ChargeCurr_A unsigned 32,16 /u:A /f:0.1 /d:0 // maximum permitted charge current
+Var=BMMp_lim_I_DischargeCurr_A unsigned 48,16 /u:A /f:0.1 /d:0 // maximum permitted discharge current
+
+[BMMp_limits2]
+ID=1E00C001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+CycleTime=100
+Var=BMMp_lim_U_MaxVolt_V unsigned 0,16 /u:V /f:0.1 /d:0 // maximum permitted voltage limit for battery
+Var=BMMp_lim_U_MinVolt_V unsigned 16,16 /u:V /f:0.1 /d:0 // minimum permitted voltage limit for battery
+Var=BMMp_lim_P_ChargePow_W unsigned 32,16 /u:W /f:10 /d:0 // maximum permitted charge power
+Var=BMMp_lim_P_DischargePow_W unsigned 48,16 /u:W /f:10 /d:0 // maximum permitted discharge power
+
+[BMMp_capacity]
+ID=1E00D001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+CycleTime=100
+Var=BMMp_calc_SOCAhbased_pct unsigned 0,16 /u:% /f:0.0025 /d:0
+Var=BMMp_max_Q_avaicapac_Ah unsigned 16,16 /u:Ah /f:0.1 /d:0
+Var=BMMp_act_Q_remaincapac_Ah signed 32,16 /u:Ah /f:0.1 /max:3276.7 /d:0
+Var=BMMp_act_Q_Dischargedcapac_Ah unsigned 48,16 /u:Ah /f:0.1 /d:0
+
+[BMMp_SOH]
+ID=1E00E001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+CycleTime=500
+Var=BMMp_calc_SOHcapacity_pct unsigned 0,16 /u:% /f:0.1 /d:0 // Internal SoH (actual SoH capacity)
+Var=BMMp_calc_SOHimpedance_pct unsigned 16,16 /u:% /f:0.1 /d:0
+
+[BMMp_energy]
+ID=1E00F001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+CycleTime=100
+Var=BMMp_calc_SOCEnergyBased_pct unsigned 0,16 /u:% /f:0.0025 /d:0
+Var=BMMp_act_E_AvaiCapac_kWh unsigned 16,16 /u:kWh /f:0.1 /d:0
+Var=BMMp_act_E_RemainCapac_kWh signed 32,16 /u:kWh /f:0.1 /max:3276.7 /d:0
+Var=BMMp_act_E_DischargedCapac_kWh unsigned 48,16 /u:kWh /f:0.5 /d:0
+
+[BMMp_thermal_management]
+ID=1E010001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=BMMp_req_T_InletTemp_C signed 0,16 /u:°C /f:0.1 /max:3276.7 /d:0 // Requested Inlet Temperature
+Var=BMMp_req_Mode unsigned 16,8 /u:1/Bit // Signal for TCU that determines the mode, the TCU should work with
+Var=BMMp_avg_T_BatteryTemp_C signed 32,16 /u:°C /f:0.1 /max:3276.7 /d:0 // Average Cell Temperature
+Var=BMMp_req_Heater_pct unsigned 48,8 /u:% // desired heater power in percent
+Var=BMMp_req_Chiller_pct unsigned 56,8 /u:% // desired chiller power in percent
+
+[BMMp_info_thermal]
+ID=1E011001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=BMMp_act_T_CoolantTempIn_C signed 16,16 /u:°C /f:0.1 /max:3276.7 /d:0
+Var=BMMp_act_T_CoolantTempOut_C signed 32,16 /u:°C /f:0.1 /max:3276.7 /d:0
+
+[BMMp_info]
+ID=1E012001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=BMMp_inf_SWVersion unsigned 0,16
+Var=BMMp_inf_Q_BatteryCapNom_Ah unsigned 16,16 /u:Ah /f:0.1 /d:0
+Var=BMMp_inf_U_BatteryVoltNom_V unsigned 32,16 /u:V /f:0.1 /d:0
+Var=BMMp_inf_NumberOfModules unsigned 48,8 /u:-
+Var=BMMp_inf_NumberOfCells unsigned 56,8 /u:-
+
+[BMM_Diag0]
+ID=1E013001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=BMM_inf_WDErrorCode unsigned 0,16
+Var=BMM_inf_CPUloadRemain unsigned 16,16
+Var=BMM_act_I_eStopCurr_A unsigned 32,16
+Var=BMM_act_I_ILCurr_A unsigned 48,16
+
+[BMM_Diag1]
+ID=1E014001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=BMM_act_I_ISysOffsetLow_A unsigned 0,16 /f:0.1 /d:0
+Var=BMM_act_I_ISysOffsetHigh_A unsigned 16,16 /f:0.1 /d:0
+Var=BMM_calc_I_IDeltaSq_A unsigned 32,16 /f:0.1 /d:0
+Var=BMM_lim_RMS_A unsigned 48,16 /f:0.1 /d:0
+
+[BMM_Diag2]
+ID=1E015001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=BMM_lim_I_TempSOCChrg_A unsigned 0,16 /f:0.1 /d:0
+Var=BMM_lim_I_TempSOCDisch_A unsigned 16,16 /f:0.1 /d:0
+Var=BMM_lim_I_OCVChrg_A unsigned 32,16 /f:0.1 /d:0
+Var=BMM_lim_I_OCVDisch_A unsigned 48,16 /f:0.1 /d:0
+
+[BMM_Diag3]
+ID=1E016001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=BMM_act_U_SupplyVoltage_V unsigned 0,16
+Var=BMMp_wf_FanError bit 16,1 /e:VtSig_M001_flag_CalibrationDone
+Var=BMM_act_I_DeltaIRatEffChrg_A unsigned 32,16
+Var=BMM_act_I_DeltaIRatEffDisch_A unsigned 48,16
+
+[BMM_Diag4]
+ID=1E017001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=BMM_act_Pressure_raw_mV unsigned 0,16 /u:mV /f:0.1 /d:0
+Var=BMM_act_PressSensSuppV_raw_mV unsigned 16,16 /u:mV /f:0.1 /d:0
+Var=BMM_act_Pressure_mbar unsigned 32,16 /u:mbar
+Var=BMM_filt_PressureDiff_DuVDms signed 48,16 /u:uV/ms
+
+[BMM_Diag5]
+ID=1E018001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+CycleTime=100
+Var=BMM_act_U_KL30SafeVolt_V unsigned 0,16 /u:V /f:0.1 /d:0
+
+[BMM_Diag6]
+ID=1E019001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=BMM_act_U_SysNrVolt1_V unsigned 0,16 /u:V /f:0.1 /d:0
+Var=BMM_act_U_SysNrVolt2_V unsigned 16,16 /u:V /f:0.1 /d:0
+Var=BMM_act_U_SysNrVolt3_V unsigned 32,16 /u:V /f:0.1 /d:0
+Var=BMM_act_U_SysNrVolt4_V unsigned 48,16 /u:V /f:0.1 /d:0
+
+[BMM_Diag7]
+ID=1E01A001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+CycleTime=1000
+Var=BMM_inf_Average_Core_Load unsigned 0,16 /u:% /f:0.1 /d:0
+Var=BMM_inf_Max_Core_Load unsigned 16,16 /u:% /f:0.1 /d:0
+
+[BMM_Diag8]
+ID=1E01C001h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=BMM_inf_TRDErrorCode unsigned 0,16
+Var=BMM_act_FiltPressureLow_mBar signed 16,16 /u:mbar /f:0.1 /max:3276.7 /d:0
+Var=BMM_act_FiltPressureHigh_mBar signed 32,16 /u:mbar /f:0.1 /max:3276.7 /d:0
+Var=BMM_act_FiltPressure_mBar signed 48,16 /u:mbar /f:0.1 /max:3276.7 /d:0
+
+[SCU1_BMSM_Values1]
+ID=1E058401h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=SCU1_BMM_LEM_High signed 0,16 /u:A /f:0.1 /max:3276.7 /d:0
+Var=SCU1_BMM_pos5V_LEM2A unsigned 16,16 /u:mV
+Var=SCU1_BMM_LEM_Low signed 32,16 /u:A /f:0.1 /max:3276.7 /d:0
+Var=SCU1_BMM_pos5V_LEM2B unsigned 48,16 /u:mV
+
+[SCU1_BMSM_Values2]
+ID=1E059401h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=SCU1_BMM_Analog1 unsigned 0,16 /u:mV
+Var=SCU1_BMM_Analog2 unsigned 16,16 /u:mV
+Var=SCU1_BMM_HVIL_Current unsigned 32,16 /u:mA /f:0.1 /d:0
+Var=SCU1_BMM_eStop_Current unsigned 48,16 /u:mA /f:0.1 /d:0
+
+[SCU1_BMSM_Values3]
+ID=1E05A401h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=SCU1_BMM_KL30SafeIn unsigned 0,16 /u:V /f:0.001 /d:0
+Var=SCU1_BMM_KL30SafeWDG unsigned 16,16 /u:V /f:0.001 /d:0
+Var=SCU1_BMM_BMMSafePower unsigned 32,16 /u:V /f:0.001 /d:0
+Var=SCU1_BMM_KL30 unsigned 48,16 /u:V /f:0.001 /d:0
+
+[SCU1_BMSM_Values4]
+ID=1E05B401h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=SCU1_BMM_IS_BTS6163 unsigned 0,16 /u:mV
+
+[BMU_Diag_Command]
+ID=1E05D401h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=Diag_Cmd unsigned 0,16
+Var=Param1 unsigned 16,16
+Var=Param2 float 32,32
+
+[BMU_Simu_AD]
+ID=1E05E401h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=Simu_AD_Cmd unsigned 0,16
+Var=AD_Channel unsigned 16,16
+Var=Simu_Value float 32,32
+
+[BMU_Simu_DIO]
+ID=1E05F401h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=Simu_DIO_Cmd unsigned 0,16
+Var=DIO_Channel unsigned 16,16
+Var=Simu_Value unsigned 32,16
+
+[SCU1_Board_Supply_Vtg1]
+ID=1201B401h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=SCU1_pos5V_LEM1A signed 0,16 /u:mV
+Var=SCU1_pos5V_LEM1B signed 16,16 /u:mV
+Var=SCU1_6Vpos signed 32,16 /u:mV
+Var=SCU1_6Vneg signed 48,16 /u:mV
+
+[SCU1_Board_Supply_Vtg2]
+ID=1201C401h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=SCU1_pos5V signed 0,16 /u:mV
+
+[SCU1_HwConf_Adr_Vtg]
+ID=1201D401h // Byte 0   Byte 1   Byte 2   Byte 3   Byte 4   Byte 5   Byte 6   Byte 7
+Type=Extended
+DLC=8
+Var=SCU1_Adr4 unsigned 0,16 /u:mV
+Var=SCU1_Adr5 unsigned 16,16 /u:mV
+Var=SCU1_HWConf0 unsigned 32,16 /u:mV
+Var=SCU1_HWConf1 unsigned 48,16 /u:mV
+
+[C001_SetCellMessage]
+ID=1E081C01h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V001_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T001_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V001_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C002_SetCellMessage]
+ID=1E081C02h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V002_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T002_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V002_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C003_SetCellMessage]
+ID=1E081C03h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V003_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T003_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V003_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C004_SetCellMessage]
+ID=1E081C04h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V004_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T004_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V004_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C005_SetCellMessage]
+ID=1E081C05h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V005_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T005_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V005_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C006_SetCellMessage]
+ID=1E081C06h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V006_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T006_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V006_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C007_SetCellMessage]
+ID=1E081C07h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V007_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T007_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V007_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C008_SetCellMessage]
+ID=1E081C08h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V008_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T008_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V008_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C009_SetCellMessage]
+ID=1E081C09h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V009_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T009_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V009_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C010_SetCellMessage]
+ID=1E081C0Ah // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V010_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T010_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V010_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C011_SetCellMessage]
+ID=1E081C0Bh // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V011_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T011_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V011_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C012_SetCellMessage]
+ID=1E081C0Ch // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V012_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T012_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V012_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C013_SetCellMessage]
+ID=1E081C0Dh // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V013_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T013_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V013_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C014_SetCellMessage]
+ID=1E081C0Eh // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V014_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T014_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V014_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C015_SetCellMessage]
+ID=1E081C0Fh // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V015_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T015_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V015_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C016_SetCellMessage]
+ID=1E081C10h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V016_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T016_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V016_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C017_SetCellMessage]
+ID=1E081C11h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V017_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T017_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V017_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C018_SetCellMessage]
+ID=1E081C12h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V018_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T018_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V018_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C019_SetCellMessage]
+ID=1E081C13h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V019_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T019_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V019_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[C020_SetCellMessage]
+ID=1E081C14h // Information about cell voltages an temperature (Information about cell voltages an temperature)
+Type=Extended
+DLC=8
+Var=V020_set_U_CellVoltage_mV unsigned 0,16 /u:mV /f:0.1 /d:0 // set cell voltage
+Var=T020_set_T_CellTemp_C signed 16,16 /u:°C /f:0.01 /d:0 // set cell temperature
+Var=V020_set_U_GPIOVoltage_mV unsigned 32,16 /u:mV /f:0.1 /d:0 // only EOL: set GPIO voltage to corresponding cell temperature
+
+[M001_WriteEEPROMData_LTC]
+ID=1E093801h // Write Data to the emulated EEPROM (Write Data to the emulated EEPROM)
+Type=Extended
+DLC=8
+Var=M001_val_EEPROMWriteLength unsigned 0,8 // Length of EEPROM Data
+Var=M001_val_EEPROMWriteIndex unsigned 8,8 // Index of EEPROM Data
+Var=M001_val_EEPROMWriteAdress unsigned 16,16 // Adress of EEPROM Data
+Var=M001_val_EEPROMWriteData unsigned 32,32 // EEPROM write data
+
+[M001_ReadEEPROMData_LTC]
+ID=1E093901h // Read Data from the emulated EEPROM (Read Data from the emulated EEPROM)
+Type=Extended
+DLC=8
+Mux=M001_val_EEPROMDataIndex 0,8 FFh // Bit[6:4] Area, Bit[3:0] Index
+Var=M001_val_EEPROMWriteArea unsigned 8,8 // Area of EEPROM Data:  0: Id Area, 1 Static, 2: Dynamic, 4: ID Copy, 5, Static Copy:6:Dynamic Copy
+Var=M001_val_EEPROMWriteAdress unsigned 24,8 // Index of EEPROM Data
+Var=M001_val_EEPROMWriteData unsigned 32,32 // EEPROM read data
