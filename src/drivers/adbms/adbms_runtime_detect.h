@@ -58,10 +58,15 @@ typedef struct
 typedef enum
 {
     ADBMS_RUNTIME_EEPROM_REQ_NONE = 0,
-    ADBMS_RUNTIME_EEPROM_REQ_WRITE,
-    ADBMS_RUNTIME_EEPROM_REQ_CONFIG,
+    ADBMS_RUNTIME_EEPROM_REQ_MIRROR_WRITE,
+    ADBMS_RUNTIME_EEPROM_REQ_MIRROR_CONFIG,
     ADBMS_RUNTIME_EEPROM_REQ_READ,
-    ADBMS_RUNTIME_EEPROM_REQ_LOCK
+    ADBMS_RUNTIME_EEPROM_REQ_LOCK,
+    ADBMS_RUNTIME_EEPROM_REQ_REFRESH_CACHE,
+    ADBMS_RUNTIME_EEPROM_REQ_COMMIT_SAFETY,
+    ADBMS_RUNTIME_EEPROM_REQ_COMMIT_STATIC,
+    ADBMS_RUNTIME_EEPROM_REQ_COMMIT_DYNAMIC,
+    ADBMS_RUNTIME_EEPROM_REQ_INIT_DYNAMIC
 } AdbmsRuntime_EepromRequestKind_t;
 
 typedef struct
@@ -76,6 +81,18 @@ typedef struct
 {
     bool     valid;
     bool     locking_locked;
+    bool     eeprom_read_fail;
+    bool     id_page_status_read_fail;
+    bool     i2c_communication_fail;
+    bool     complete_safety_crc_error;
+    bool     complete_static_crc_error;
+    bool     complete_dynamic_crc_error;
+    bool     single_safety_crc_error;
+    bool     single_static_crc_error;
+    bool     single_dynamic_crc_error;
+    bool     safety_area_mismatch;
+    bool     static_area_mismatch;
+    bool     dynamic_area_a_next;
     uint8_t  cell_type_major;
     uint8_t  cell_type_minor;
     uint8_t  module_type_major;
@@ -130,6 +147,8 @@ ECU8TR_ADBMS6830_State_t AdbmsRuntime_GetState(void);
 uint16_t AdbmsRuntime_GetDetectedDevice(void);
 bool AdbmsRuntime_RequestLtcModuleSerialWrite(bool isHi, const uint8_t *bytes4);
 bool AdbmsRuntime_RequestIdPageLock(void);
+bool AdbmsRuntime_RequestEepromRefresh(void);
+bool AdbmsRuntime_RequestEepromCommit(AdbmsRuntime_EepromRequestKind_t kind);
 void AdbmsRuntime_SetDynAreaA(bool useAreaA);
 bool AdbmsRuntime_GetDynAreaA(void);
 

@@ -93,8 +93,9 @@ static AdbmsSharedSnapshot_t g_lastSnapshot;
 void Bmu_CscAcq_Init(void)
 {
     g_lastSampleCounter = 0u;
-    g_measurementActive = false;
+    g_measurementActive = true;
     (void)memset(&g_lastSnapshot, 0, sizeof(g_lastSnapshot));
+    ADBMS_REQUEST_START_FN();
 }
 
 void Bmu_CscAcq_StartMeasurement(void)

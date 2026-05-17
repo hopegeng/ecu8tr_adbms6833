@@ -578,6 +578,7 @@ static Bmu_ReturnType Bmu_CellCan_SendBmsInfo(void)
 {
     CanIf_MsgType msg;
     AdbmsSharedSnapshot_t snapshot;
+    AdbmsRuntime_EepromCache_t cache;
 
     Bmu_CellCan_InitExt8(&msg, BMU_CAN_ID_M001_BMS_INFO);
     msg.data[0] = 0x01u;  /* CalibrationDone = 1 */
@@ -591,6 +592,35 @@ static Bmu_ReturnType Bmu_CellCan_SendBmsInfo(void)
         if (snapshot.ic_status_valid[1] == 0u)
         {
             msg.data[4] |= 0x02u;  /* BadCRC_IC2 at bit 33 */
+        }
+    }
+
+    if (AdbmsRuntime_GetEepromCache(&cache) == true)
+    {
+        if (cache.complete_safety_crc_error) { msg.data[4] |= 0x20u; } /* bit37 */
+        if (cache.complete_static_crc_error) { msg.data[4] |= 0x40u; } /* bit38 */
+        if (cache.complete_dynamic_crc_error) { msg.data[4] |= 0x80u; } /* bit39 */
+        if (cache.single_safety_crc_error) { msg.data[5] |= 0x02u; } /* bit41 */
+        if (cache.single_static_crc_error) { msg.data[5] |= 0x04u; } /* bit42 */
+        if (cache.single_dynamic_crc_error) { msg.data[5] |= 0x08u; } /* bit43 */
+        if (cache.safety_area_mismatch) { msg.data[5] |= 0x10u; } /* bit44 */
+        if (cache.static_area_mismatch) { msg.data[5] |= 0x20u; } /* bit45 */
+        if ((cache.id_page_status_read_fail == false) && (!cache.locking_locked)) { msg.data[5] |= 0x40u; } /* bit46 */
+        if (cache.i2c_communication_fail) { msg.data[5] |= 0x80u; } /* bit47 */
+        if (cache.eeprom_read_fail) { msg.data[6] |= 0x01u; } /* bit48 */
+        if (cache.id_page_status_read_fail) { msg.data[6] |= 0x02u; } /* bit49 */
+        if (cache.eeprom_read_fail ||
+            cache.i2c_communication_fail ||
+            cache.complete_safety_crc_error ||
+            cache.complete_static_crc_error ||
+            cache.complete_dynamic_crc_error ||
+            cache.single_safety_crc_error ||
+            cache.single_static_crc_error ||
+            cache.single_dynamic_crc_error ||
+            cache.safety_area_mismatch ||
+            cache.static_area_mismatch)
+        {
+            msg.data[0] |= 0x10u; /* EEPROMError bit4 */
         }
     }
 
@@ -644,7 +674,7 @@ static Bmu_ReturnType Bmu_CellCan_SendModuleSafetyMechanisms(void)
     /* Reflect locking status in bit46 (byte5 bit6) */
     if (AdbmsRuntime_GetEepromCache(&cache) == true)
     {
-        idPageNotLocked = !cache.locking_locked;
+        idPageNotLocked = ((cache.id_page_status_read_fail == false) && (!cache.locking_locked));
     }
     else
     {

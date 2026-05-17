@@ -1126,6 +1126,59 @@ Ltc6812_Status_t Ltc6812_EepromWriteOdp(Ltc6812_Context_t *ctx,
     return LTC6812_OK;
 }
 
+Ltc6812_Status_t Ltc6812_EepromReadOdp(Ltc6812_Context_t *ctx,
+                                        const Ltc6812_Hal_t *hal,
+                                        const Ltc6812_CommandSet_t *cmds,
+                                        uint8_t address,
+                                        uint8_t *data,
+                                        uint8_t len)
+{
+    uint8_t pos;
+    uint8_t txComm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC];
+    uint8_t rxComm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC];
+    const uint8_t odp_dev_write = (uint8_t)((LTC6812_EEPROM_ODP_I2C_ADDR_BASE << 1u) & 0xFEu);
+    const uint8_t odp_dev_read = (uint8_t)(odp_dev_write | 0x01u);
+
+    if ((ctx == 0) || (hal == 0) || (cmds == 0) || (data == 0) ||
+        (len == 0u) || (((uint16_t)address + (uint16_t)len) > 0x10u) ||
+        (ctx->icCount == 0u))
+    {
+        return LTC6812_ERR_PARAM;
+    }
+
+    for (pos = 0u; pos < len; pos++)
+    {
+        Ltc6812_Status_t st;
+        uint8_t odp_addr = (uint8_t)(address + pos);
+
+        Ltc6812_PrepareCommForIc(txComm, ctx->icCount, 0u);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_START, odp_dev_write, LTC6812_COMM_FCOM_ACK, &txComm[0][0], &txComm[0][1]);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_BLANK, odp_addr,       LTC6812_COMM_FCOM_ACK, &txComm[0][2], &txComm[0][3]);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_START, odp_dev_read,  LTC6812_COMM_FCOM_ACK, &txComm[0][4], &txComm[0][5]);
+
+        st = Ltc6812_RunComm(ctx, hal, cmds, txComm, rxComm);
+        if (st != LTC6812_OK)
+        {
+            return st;
+        }
+
+        Ltc6812_PrepareCommForIc(txComm, ctx->icCount, 0u);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_BLANK, 0xFFu, LTC6812_COMM_FCOM_NACK_STOP, &txComm[0][0], &txComm[0][1]);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_NO_TX, 0xFFu, LTC6812_COMM_FCOM_NACK_STOP, &txComm[0][2], &txComm[0][3]);
+        Ltc6812_PackCommByte(LTC6812_COMM_ICOM_NO_TX, 0xFFu, LTC6812_COMM_FCOM_NACK_STOP, &txComm[0][4], &txComm[0][5]);
+
+        st = Ltc6812_RunComm(ctx, hal, cmds, txComm, rxComm);
+        if (st != LTC6812_OK)
+        {
+            return st;
+        }
+
+        data[pos] = Ltc6812_UnpackCommData(rxComm[0], 0u);
+    }
+
+    return LTC6812_OK;
+}
+
 Ltc6812_Status_t Ltc6812_EepromLockOdp(Ltc6812_Context_t *ctx,
                                         const Ltc6812_Hal_t *hal,
                                         const Ltc6812_CommandSet_t *cmds)
@@ -1164,26 +1217,30 @@ Ltc6812_Status_t Ltc6812_EepromLockOdp(Ltc6812_Context_t *ctx,
     return LTC6812_OK;
 }
 
-bool Ltc6812_EepromIsOdpLocked(Ltc6812_Context_t *ctx,
-                                const Ltc6812_Hal_t *hal,
-                                const Ltc6812_CommandSet_t *cmds)
+Ltc6812_Status_t Ltc6812_EepromGetOdpLockStatus(Ltc6812_Context_t *ctx,
+                                                 const Ltc6812_Hal_t *hal,
+                                                 const Ltc6812_CommandSet_t *cmds,
+                                                 bool *locked)
 {
     uint8_t txComm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC];
     uint8_t rxComm[LTC6812_MAX_ICS][LTC6812_COMM_BYTES_PER_IC];
     Ltc6812_Status_t st;
+    Ltc6812_Status_t abortSt;
     uint8_t fcom2;
     /* ODP write device address: 0xB0 */
     const uint8_t odp_dev_write = (uint8_t)((LTC6812_EEPROM_ODP_I2C_ADDR_BASE << 1u) & 0xFEu);
 
-    if ((ctx == 0) || (hal == 0) || (cmds == 0) || (ctx->icCount == 0u))
+    if ((ctx == 0) || (hal == 0) || (cmds == 0) || (locked == 0) || (ctx->icCount == 0u))
     {
-        return false;
+        return LTC6812_ERR_PARAM;
     }
 
-    /* STCOMM1: probe the lock-address sequence WITHOUT STOP (FCOM_ACK on last slot).
-     * The M24C08 only commits the lock on STOP; omitting STOP keeps it safe.
-     * ACK from slave (FCOM=0x0) on slot 2 → ODP not yet locked.
-     * NACK from slave (FCOM=0x8) on slot 2 → ODP is locked. */
+    *locked = false;
+
+    /* M24C08-A125 DS10156 section 4.2.5 defines the ID-page lock status read
+     * as a truncated ID-page write plus one data byte. ACK on that data byte
+     * means unlocked; NO ACK means locked. No STOP is sent for this truncated
+     * command, so it cannot execute the irreversible lock command. */
     Ltc6812_PrepareCommForIc(txComm, ctx->icCount, 0u);
     Ltc6812_PackCommByte(LTC6812_COMM_ICOM_START, odp_dev_write, LTC6812_COMM_FCOM_ACK, &txComm[0][0], &txComm[0][1]);
     Ltc6812_PackCommByte(LTC6812_COMM_ICOM_BLANK, 0x80u,          LTC6812_COMM_FCOM_ACK, &txComm[0][2], &txComm[0][3]);
@@ -1191,23 +1248,56 @@ bool Ltc6812_EepromIsOdpLocked(Ltc6812_Context_t *ctx,
 
     st = Ltc6812_RunComm(ctx, hal, cmds, txComm, rxComm);
 
-    /* STCOMM2: abort the hanging transaction with a repeated START + dummy address + STOP.
-     * This resets the I2C bus without triggering the ODP lock. */
+    /* Abort the truncated command as required by DS10156 section 4.2.5:
+     * a following START resets the EEPROM internal logic and a STOP returns
+     * it to standby. The dummy 0xFF byte is not a valid EEPROM device select. */
     Ltc6812_PrepareCommForIc(txComm, ctx->icCount, 0u);
     Ltc6812_PackCommByte(LTC6812_COMM_ICOM_START, 0xFFu, LTC6812_COMM_FCOM_NACK_STOP, &txComm[0][0], &txComm[0][1]);
     Ltc6812_PackCommByte(LTC6812_COMM_ICOM_NO_TX, 0xFFu, LTC6812_COMM_FCOM_NACK_STOP, &txComm[0][2], &txComm[0][3]);
     Ltc6812_PackCommByte(LTC6812_COMM_ICOM_NO_TX, 0xFFu, LTC6812_COMM_FCOM_NACK_STOP, &txComm[0][4], &txComm[0][5]);
-    (void)Ltc6812_RunComm(ctx, hal, cmds, txComm, rxComm);
+    abortSt = Ltc6812_RunComm(ctx, hal, cmds, txComm, rxComm);
 
     if (st != LTC6812_OK)
     {
-        return false;  /* Communication error — report unlocked to avoid false lock indication */
+        return st;
     }
 
-    /* FCOM of slot 2 is in rxComm[0][5] & 0x0F.
-     * 0x0 = slave ACK (unlocked), 0x8 = slave NACK (locked). */
+    if (abortSt != LTC6812_OK)
+    {
+        return abortSt;
+    }
+
+    /* FCOM of slot 2 is in rxComm[0][5] & 0x0F. Only the ACK and NO ACK
+     * outcomes defined by the EEPROM datasheet are accepted as valid status. */
     fcom2 = rxComm[0][5] & 0x0Fu;
-    return (fcom2 != LTC6812_COMM_FCOM_ACK);
+    if (fcom2 == LTC6812_COMM_FCOM_ACK)
+    {
+        *locked = false;
+    }
+    else if (fcom2 == LTC6812_COMM_FCOM_NACK)
+    {
+        *locked = true;
+    }
+    else
+    {
+        return LTC6812_ERR_COMM;
+    }
+
+    return LTC6812_OK;
+}
+
+bool Ltc6812_EepromIsOdpLocked(Ltc6812_Context_t *ctx,
+                                const Ltc6812_Hal_t *hal,
+                                const Ltc6812_CommandSet_t *cmds)
+{
+    bool locked;
+
+    if (Ltc6812_EepromGetOdpLockStatus(ctx, hal, cmds, &locked) != LTC6812_OK)
+    {
+        return false;
+    }
+
+    return locked;
 }
 
 Ltc6812_Status_t Ltc6812_SetGpioPullDown(Ltc6812_Context_t *ctx,
@@ -1390,6 +1480,17 @@ Ltc6812_Status_t Ltc6812_Task(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, 
 
             ctx->lastDiagStep = LTC6812_DIAG_ADCV;
             ctx->lastDiagCmd = cmds->ADCV;
+            if (Ltc6812_SendMute(hal, cmds) != LTC6812_OK)
+            {
+                ctx->commErrorCount++;
+                ctx->linkState = LTC6812_LINK_ERROR;
+                ctx->svcState = LTC6812_SVC_FAULT;
+                return LTC6812_ERR_COMM;
+            }
+            if (hal->delayMs != 0)
+            {
+                hal->delayMs(1u);
+            }
             if (Ltc6812_StartCellConversion(hal, cmds) != LTC6812_OK)
             {
                 ctx->commErrorCount++;
@@ -1428,6 +1529,13 @@ Ltc6812_Status_t Ltc6812_Task(Ltc6812_Context_t *ctx, const Ltc6812_Hal_t *hal, 
 
         case LTC6812_SVC_READ_RESULTS:
             if (Ltc6812_ReadCellVoltagesByGroup(ctx, hal, cmds) != LTC6812_OK)
+            {
+                ctx->commErrorCount++;
+                ctx->linkState = LTC6812_LINK_ERROR;
+                ctx->svcState = LTC6812_SVC_FAULT;
+                return LTC6812_ERR_COMM;
+            }
+            if (Ltc6812_SendUnmute(hal, cmds) != LTC6812_OK)
             {
                 ctx->commErrorCount++;
                 ctx->linkState = LTC6812_LINK_ERROR;

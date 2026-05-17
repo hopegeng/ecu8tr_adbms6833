@@ -32,6 +32,13 @@
 #define CANIF_M001_CONFIG_PCB_TYPE_MUX          DBC_M001_EOL_MUX_PCB_TYPE
 #define CANIF_M001_CONFIG_MODULE_SERIAL_LO_MUX  DBC_M001_EOL_MUX_MODULE_SERIAL_LO
 #define CANIF_M001_CONFIG_MODULE_SERIAL_HI_MUX  DBC_M001_EOL_MUX_MODULE_SERIAL_HI
+#define CANIF_M001_START_ACTION_REREAD_EEPROM   (3u)
+#define CANIF_M001_START_ACTION_READ_ID_STATUS   (4u)
+#define CANIF_M001_START_ACTION_LOCK_ID_PAGE     (5u)
+#define CANIF_M001_START_ACTION_WRITE_SAFETY     (0u)
+#define CANIF_M001_START_ACTION_WRITE_STATIC     (1u)
+#define CANIF_M001_START_ACTION_WRITE_DYNAMIC    (2u)
+#define CANIF_M001_START_ACTION_INIT_DYNAMIC     (6u)
 
 SemaphoreHandle_t canTxSemaphore = NULL;
 static QueueHandle_t g_canIfTxQueue = NULL;
@@ -172,7 +179,59 @@ static void CanIf_HandleM001StartLtcTransmission(const Dbc_M001StartLtcTransmiss
     g_canIfTesterCommandState.last_start_ltc = *cmd;
     g_canIfTesterCommandState.start_ltc_count++;
 
-    Bmu_CscAcq_StartMeasurement();
+    if (cmd->magic != DBC_M001_START_LTC_MAGIC)
+    {
+        g_canIfTesterCommandState.eeprom_request_rejected_count++;
+        return;
+    }
+
+    if (cmd->action_index == CANIF_M001_START_ACTION_WRITE_SAFETY)
+    {
+        if (AdbmsRuntime_RequestEepromCommit(ADBMS_RUNTIME_EEPROM_REQ_COMMIT_SAFETY) == false)
+        {
+            g_canIfTesterCommandState.eeprom_request_rejected_count++;
+        }
+    }
+    else if (cmd->action_index == CANIF_M001_START_ACTION_WRITE_STATIC)
+    {
+        if (AdbmsRuntime_RequestEepromCommit(ADBMS_RUNTIME_EEPROM_REQ_COMMIT_STATIC) == false)
+        {
+            g_canIfTesterCommandState.eeprom_request_rejected_count++;
+        }
+    }
+    else if (cmd->action_index == CANIF_M001_START_ACTION_WRITE_DYNAMIC)
+    {
+        if (AdbmsRuntime_RequestEepromCommit(ADBMS_RUNTIME_EEPROM_REQ_COMMIT_DYNAMIC) == false)
+        {
+            g_canIfTesterCommandState.eeprom_request_rejected_count++;
+        }
+    }
+    else if ((cmd->action_index == CANIF_M001_START_ACTION_REREAD_EEPROM) ||
+        (cmd->action_index == CANIF_M001_START_ACTION_READ_ID_STATUS))
+    {
+        if (AdbmsRuntime_RequestEepromRefresh() == false)
+        {
+            g_canIfTesterCommandState.eeprom_request_rejected_count++;
+        }
+    }
+    else if (cmd->action_index == CANIF_M001_START_ACTION_LOCK_ID_PAGE)
+    {
+        if (AdbmsRuntime_RequestIdPageLock() == false)
+        {
+            g_canIfTesterCommandState.eeprom_request_rejected_count++;
+        }
+    }
+    else if (cmd->action_index == CANIF_M001_START_ACTION_INIT_DYNAMIC)
+    {
+        if (AdbmsRuntime_RequestEepromCommit(ADBMS_RUNTIME_EEPROM_REQ_INIT_DYNAMIC) == false)
+        {
+            g_canIfTesterCommandState.eeprom_request_rejected_count++;
+        }
+    }
+    else
+    {
+        g_canIfTesterCommandState.eeprom_request_rejected_count++;
+    }
 }
 
 static void CanIf_HandleM001BalanceCells(const Dbc_M001BalanceCellsType *cmd)
@@ -306,8 +365,7 @@ static void CanIf_HandleM001WriteStartLtcTransmission(const Dbc_M001WriteStartLt
 
     g_canIfTesterCommandState.write_start_ltc_count++;
 
-    /* Trigger measurement start, then lock the ID page */
-    Bmu_CscAcq_StartMeasurement();
+    /* Legacy tester shortcut: lock the ID page. */
     if (AdbmsRuntime_RequestIdPageLock() == false)
     {
         g_canIfTesterCommandState.eeprom_request_rejected_count++;
@@ -536,4 +594,3 @@ void CanIf_RxIndication(const CanIf_MsgType *msg)
 
     g_canIfTesterCommandState.unknown_count++;
 }
-

@@ -24,6 +24,7 @@
 #define LTC6812_EEPROM_TEST_ADDRESS     (0x03F0u)
 #define LTC6812_EEPROM_TEST_LEN         (8u)
 #define LTC6812_EEPROM_SIZE_BYTES       (1024u)
+#define LTC6812_EEPROM_ID_PAGE_BYTES    (16u)
 /* --- GEN 3.0 CSC EEPROM layout (M24C08) ---
  *
  * ID Identification Page (M24C08 hardware ODP, I2C 0xB0, 16 B):
@@ -77,6 +78,12 @@
 /* Main array: Dynamic areas */
 #define LTC6812_EEPROM_DYNAMIC1_BASE_ADDR          (0x0150u)
 #define LTC6812_EEPROM_DYNAMIC2_BASE_ADDR          (0x02A0u)
+#define LTC6812_EEPROM_STATIC_AREA_BYTES           (160u)
+#define LTC6812_EEPROM_DYNAMIC_AREA_BYTES          (336u)
+#define LTC6812_EEPROM_AREA_CRC32_BYTES            (4u)
+#define LTC6812_CFG_VUV_2P5V_CODE                  (1563u)
+#define LTC6812_CFG_VOV_4P3V_CODE                  (2688u)
+#define LTC6812_BALANCE_MUTE_SETTLE_MS             (1u)
 
 #ifndef LTC6812_BALANCE_FORCE_CHARGING_ACTIVE
 /* DC3036A bench test hook. Set to 0 for application-controlled charging state. */
@@ -119,6 +126,8 @@ static uint32_t g_ltc6812LastDebugPrintMs = 0u;
 static uint32_t g_ltc6812LastBalanceDebugMeasureMs = 0u;
 static uint32_t g_ltc6812QspiTimeoutCount = 0u;
 static uint8_t g_ltc6812LedOn = 0u;
+static uint8_t g_ltc6812EepromMirror[LTC6812_EEPROM_SIZE_BYTES];
+static uint8_t g_ltc6812IdPageMirror[LTC6812_EEPROM_ID_PAGE_BYTES];
 
 static Ltc6812_Status_t Ltc6812_QspiTransfer(const uint8_t *tx, uint8_t *rx, uint16_t len);
 static void Ltc6812_DelayUs(uint32_t us);
@@ -135,9 +144,25 @@ static uint16_t Ltc6812_GetDewSensor_mV(void);
 static Ltc6812_Status_t Ltc6812_SetSystemLed(bool on);
 static void Ltc6812_ApplyManualBalanceCommand(void);
 static bool Ltc6812_WriteEepromVerified(uint16_t address, const uint8_t *data, uint8_t length);
+static bool Ltc6812_WriteEepromBlockVerified(uint16_t address, const uint8_t *data, uint16_t length);
 static bool Ltc6812_WriteEepromOdpVerified(uint8_t address, const uint8_t *data, uint8_t length);
 static void Ltc6812_ReadAndPublishEepromCache(void);
 static void Ltc6812_ProcessEepromRequests(void);
+static bool Ltc6812_EepromWritesAllowed(void);
+static bool Ltc6812_EepromInitWritesAllowed(void);
+static void Ltc6812_EepromMirrorWrite(uint16_t address, const uint8_t *data, uint8_t length);
+static void Ltc6812_EepromMirrorConfigWrite(const AdbmsRuntime_EepromRequest_t *request);
+static bool Ltc6812_EepromCommitSafetyArea(void);
+static bool Ltc6812_EepromCommitStaticArea(void);
+static bool Ltc6812_EepromCommitDynamicArea(void);
+static bool Ltc6812_EepromInitDynamicArea(void);
+static uint16_t Ltc6812_EepromNextDynamicBase(void);
+static uint16_t Ltc6812_EepromCrc16Safety(const uint8_t *data, uint16_t length);
+static void Ltc6812_EepromStoreCrc16Safety(uint8_t *area);
+static void Ltc6812_EepromStoreCrc32(uint8_t *area, uint16_t areaSize);
+static uint32_t Ltc6812_ReadLe32Local(const uint8_t *data);
+static void Ltc6812_WriteLe32Local(uint8_t *data, uint32_t value);
+static bool Ltc6812_EepromCheckCrc32(const uint8_t *area, uint16_t areaSize);
 #if LTC6812_CORE2_DEMO_MODE
 static void Ltc6812_PublishDemoSnapshot(void);
 #endif
@@ -381,6 +406,31 @@ static bool Ltc6812_WriteEepromVerified(uint16_t address, const uint8_t *data, u
     return true;
 }
 
+static bool Ltc6812_WriteEepromBlockVerified(uint16_t address, const uint8_t *data, uint16_t length)
+{
+    uint16_t offset = 0u;
+
+    if ((data == 0) || (length == 0u) ||
+        (((uint32_t)address + (uint32_t)length) > LTC6812_EEPROM_SIZE_BYTES))
+    {
+        return false;
+    }
+
+    while (offset < length)
+    {
+        uint16_t remaining = (uint16_t)(length - offset);
+        uint8_t chunk = (remaining > 4u) ? 4u : (uint8_t)remaining;
+
+        if (Ltc6812_WriteEepromVerified((uint16_t)(address + offset), &data[offset], chunk) == false)
+        {
+            return false;
+        }
+        offset = (uint16_t)(offset + chunk);
+    }
+
+    return true;
+}
+
 /* Write to M24C08 ODP Identification Page (I2C 0xB0).
  * address is the byte offset within the 16-byte ODP page (0x00-0x0F).
  * No read-back verification (ODP is one-time programmable). */
@@ -413,7 +463,6 @@ static bool Ltc6812_WriteEepromOdpVerified(uint8_t address, const uint8_t *data,
 static void Ltc6812_ProcessEepromRequests(void)
 {
     AdbmsRuntime_EepromRequest_t request;
-    uint8_t data[2];
     bool ok = false;
 
     if (AdbmsRuntime_TakeEepromRequest(&request) == false)
@@ -421,86 +470,15 @@ static void Ltc6812_ProcessEepromRequests(void)
         return;
     }
 
-    if (request.kind == ADBMS_RUNTIME_EEPROM_REQ_WRITE)
+    if (request.kind == ADBMS_RUNTIME_EEPROM_REQ_MIRROR_WRITE)
     {
-        ok = Ltc6812_WriteEepromVerified(request.address, request.data, request.length);
+        Ltc6812_EepromMirrorWrite(request.address, request.data, request.length);
+        ok = true;
     }
-    else if (request.kind == ADBMS_RUNTIME_EEPROM_REQ_CONFIG)
+    else if (request.kind == ADBMS_RUNTIME_EEPROM_REQ_MIRROR_CONFIG)
     {
-        data[0] = request.major;
-        data[1] = request.minor;
-
-        switch (request.config_kind)
-        {
-            case ADBMS_RUNTIME_LTC_CONFIG_CELL_TYPE:
-                /* Write to ODP Identification Page (I2C 0xB0) at field offset */
-                ok = Ltc6812_WriteEepromOdpVerified(LTC6812_EEPROM_ID_CELL_TYPE_MAJOR_ADDR, data, 2u);
-                if (ok == true)
-                {
-                    /* Mirror into main-array ID Backup at same offset (I2C 0xA0, 0x0000+offset) */
-                    ok = Ltc6812_WriteEepromVerified(
-                        LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_CELL_TYPE_MAJOR_ADDR,
-                        data, 2u);
-                }
-                break;
-
-            case ADBMS_RUNTIME_LTC_CONFIG_MODULE_TYPE:
-                ok = Ltc6812_WriteEepromOdpVerified(LTC6812_EEPROM_ID_MODULE_TYPE_MAJOR_ADDR, data, 2u);
-                if (ok == true)
-                {
-                    ok = Ltc6812_WriteEepromVerified(
-                        LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_MODULE_TYPE_MAJOR_ADDR,
-                        data, 2u);
-                }
-                break;
-
-            case ADBMS_RUNTIME_LTC_CONFIG_PCB_TYPE:
-                ok = Ltc6812_WriteEepromOdpVerified(LTC6812_EEPROM_ID_PCB_TYPE_MAJOR_ADDR, data, 2u);
-                if (ok == true)
-                {
-                    ok = Ltc6812_WriteEepromVerified(
-                        LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_PCB_TYPE_MAJOR_ADDR,
-                        data, 2u);
-                }
-                break;
-
-            case ADBMS_RUNTIME_LTC_CONFIG_IC_TYPE:
-                /* IC type lives in Static Area 1 and Static Area 2 only (no ID page entry) */
-                ok = Ltc6812_WriteEepromVerified(LTC6812_EEPROM_STATIC1_IC_TYPE_MAJOR_ADDR, data, 2u);
-                if (ok == true)
-                {
-                    ok = Ltc6812_WriteEepromVerified(LTC6812_EEPROM_STATIC2_IC_TYPE_MAJOR_ADDR, data, 2u);
-                }
-                break;
-
-            case ADBMS_RUNTIME_LTC_CONFIG_MODULE_SERIAL_LO:
-                /* Bytes 0-3 of 8-byte module serial: ODP offset 0x06, backup at 0x0000+0x06 */
-                ok = Ltc6812_WriteEepromOdpVerified(LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR,
-                                                    request.data, 4u);
-                if (ok == true)
-                {
-                    ok = Ltc6812_WriteEepromVerified(
-                        LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR,
-                        request.data, 4u);
-                }
-                break;
-
-            case ADBMS_RUNTIME_LTC_CONFIG_MODULE_SERIAL_HI:
-                /* Bytes 4-7 of 8-byte module serial: ODP offset 0x0A, backup at 0x0000+0x0A */
-                ok = Ltc6812_WriteEepromOdpVerified(LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR + 4u,
-                                                    request.data, 4u);
-                if (ok == true)
-                {
-                    ok = Ltc6812_WriteEepromVerified(
-                        LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR + 4u,
-                        request.data, 4u);
-                }
-                break;
-
-            default:
-                ok = false;
-                break;
-        }
+        Ltc6812_EepromMirrorConfigWrite(&request);
+        ok = true;
     }
     else if (request.kind == ADBMS_RUNTIME_EEPROM_REQ_LOCK)
     {
@@ -517,6 +495,27 @@ static void Ltc6812_ProcessEepromRequests(void)
             /* Refresh cache immediately so IDPageNotLocked bit reflects the new state */
             Ltc6812_ReadAndPublishEepromCache();
         }
+    }
+    else if (request.kind == ADBMS_RUNTIME_EEPROM_REQ_REFRESH_CACHE)
+    {
+        Ltc6812_ReadAndPublishEepromCache();
+        ok = true;
+    }
+    else if (request.kind == ADBMS_RUNTIME_EEPROM_REQ_COMMIT_SAFETY)
+    {
+        ok = Ltc6812_EepromCommitSafetyArea();
+    }
+    else if (request.kind == ADBMS_RUNTIME_EEPROM_REQ_COMMIT_STATIC)
+    {
+        ok = Ltc6812_EepromCommitStaticArea();
+    }
+    else if (request.kind == ADBMS_RUNTIME_EEPROM_REQ_COMMIT_DYNAMIC)
+    {
+        ok = Ltc6812_EepromCommitDynamicArea();
+    }
+    else if (request.kind == ADBMS_RUNTIME_EEPROM_REQ_INIT_DYNAMIC)
+    {
+        ok = Ltc6812_EepromInitDynamicArea();
     }
     else if (request.kind == ADBMS_RUNTIME_EEPROM_REQ_READ)
     {
@@ -922,10 +921,11 @@ static void Ltc6812_FillDefaultCfga(Ltc6812_Context_t *ctx)
     for (ic = 0u; ic < ctx->icCount; ic++)
     {
         (void)memset(ctx->cfga[ic].data, 0, LTC6812_BYTES_PER_CFGR);
-        ctx->cfga[ic].data[0] = 0xFE;
-        ctx->cfga[ic].data[1] = 0x00u;
-        ctx->cfga[ic].data[2] = 0x00u;
-        ctx->cfga[ic].data[3] = 0x00u;
+        ctx->cfga[ic].data[0] = 0xFEu;
+        ctx->cfga[ic].data[1] = (uint8_t)(LTC6812_CFG_VUV_2P5V_CODE & 0xFFu);
+        ctx->cfga[ic].data[2] = (uint8_t)(((LTC6812_CFG_VUV_2P5V_CODE >> 8u) & 0x0Fu) |
+                                          ((LTC6812_CFG_VOV_4P3V_CODE & 0x0Fu) << 4u));
+        ctx->cfga[ic].data[3] = (uint8_t)((LTC6812_CFG_VOV_4P3V_CODE >> 4u) & 0xFFu);
         ctx->cfga[ic].data[4] = 0x00u;
         ctx->cfga[ic].data[5] = 0x00u;	//(uint8_t)((LTC6812_BALANCE_DCTO_MINUTES_CODE & 0x0Fu) << 4u);
     }
@@ -1083,7 +1083,421 @@ static void Ltc6812_PublishDemoSnapshot(void)
 
 
 
+static bool Ltc6812_EepromWritesAllowed(void)
+{
+    AdbmsRuntime_EepromCache_t cache;
+
+    if (AdbmsRuntime_GetEepromCache(&cache) == false)
+    {
+        return false;
+    }
+
+    return ((cache.eeprom_read_fail == false) &&
+            (cache.i2c_communication_fail == false) &&
+            (cache.complete_safety_crc_error == false) &&
+            (cache.complete_static_crc_error == false) &&
+            (cache.complete_dynamic_crc_error == false));
+}
+
+static bool Ltc6812_EepromInitWritesAllowed(void)
+{
+    AdbmsRuntime_EepromCache_t cache;
+
+    if (AdbmsRuntime_GetEepromCache(&cache) == false)
+    {
+        return false;
+    }
+
+    return ((cache.eeprom_read_fail == false) &&
+            (cache.i2c_communication_fail == false) &&
+            (cache.complete_safety_crc_error == false) &&
+            (cache.complete_static_crc_error == false));
+}
+
+static void Ltc6812_EepromMirrorWrite(uint16_t address, const uint8_t *data, uint8_t length)
+{
+    if ((data == 0) || (length == 0u) ||
+        (((uint32_t)address + (uint32_t)length) > LTC6812_EEPROM_SIZE_BYTES))
+    {
+        return;
+    }
+
+    (void)memcpy(&g_ltc6812EepromMirror[address], data, length);
+}
+
+static void Ltc6812_EepromMirrorConfigWrite(const AdbmsRuntime_EepromRequest_t *request)
+{
+    uint8_t data[2];
+
+    if (request == 0)
+    {
+        return;
+    }
+
+    data[0] = request->major;
+    data[1] = request->minor;
+
+    switch (request->config_kind)
+    {
+        case ADBMS_RUNTIME_LTC_CONFIG_CELL_TYPE:
+            Ltc6812_EepromMirrorWrite(LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_CELL_TYPE_MAJOR_ADDR, data, 2u);
+            (void)memcpy(&g_ltc6812IdPageMirror[LTC6812_EEPROM_ID_CELL_TYPE_MAJOR_ADDR], data, 2u);
+            break;
+
+        case ADBMS_RUNTIME_LTC_CONFIG_MODULE_TYPE:
+            Ltc6812_EepromMirrorWrite(LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_MODULE_TYPE_MAJOR_ADDR, data, 2u);
+            (void)memcpy(&g_ltc6812IdPageMirror[LTC6812_EEPROM_ID_MODULE_TYPE_MAJOR_ADDR], data, 2u);
+            break;
+
+        case ADBMS_RUNTIME_LTC_CONFIG_PCB_TYPE:
+            Ltc6812_EepromMirrorWrite(LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_PCB_TYPE_MAJOR_ADDR, data, 2u);
+            (void)memcpy(&g_ltc6812IdPageMirror[LTC6812_EEPROM_ID_PCB_TYPE_MAJOR_ADDR], data, 2u);
+            break;
+
+        case ADBMS_RUNTIME_LTC_CONFIG_IC_TYPE:
+            Ltc6812_EepromMirrorWrite(LTC6812_EEPROM_STATIC1_IC_TYPE_MAJOR_ADDR, data, 2u);
+            Ltc6812_EepromMirrorWrite(LTC6812_EEPROM_STATIC2_IC_TYPE_MAJOR_ADDR, data, 2u);
+            break;
+
+        case ADBMS_RUNTIME_LTC_CONFIG_MODULE_SERIAL_LO:
+            Ltc6812_EepromMirrorWrite(LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR,
+                                      request->data, 4u);
+            (void)memcpy(&g_ltc6812IdPageMirror[LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR], request->data, 4u);
+            break;
+
+        case ADBMS_RUNTIME_LTC_CONFIG_MODULE_SERIAL_HI:
+            Ltc6812_EepromMirrorWrite(LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR + 4u,
+                                      request->data, 4u);
+            (void)memcpy(&g_ltc6812IdPageMirror[LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR + 4u], request->data, 4u);
+            break;
+
+        default:
+            break;
+    }
+}
+
+static bool Ltc6812_EepromCommitSafetyArea(void)
+{
+    if (Ltc6812_EepromWritesAllowed() == false)
+    {
+        return false;
+    }
+
+    Ltc6812_EepromStoreCrc16Safety(g_ltc6812IdPageMirror);
+    (void)memcpy(&g_ltc6812EepromMirror[LTC6812_EEPROM_ID_BACKUP_BASE_ADDR],
+                 g_ltc6812IdPageMirror,
+                 LTC6812_EEPROM_ID_PAGE_BYTES);
+
+    if (Ltc6812_WriteEepromOdpVerified(0u, g_ltc6812IdPageMirror, LTC6812_EEPROM_ID_PAGE_BYTES) == false)
+    {
+        return false;
+    }
+
+    return Ltc6812_WriteEepromBlockVerified(LTC6812_EEPROM_ID_BACKUP_BASE_ADDR,
+                                            &g_ltc6812EepromMirror[LTC6812_EEPROM_ID_BACKUP_BASE_ADDR],
+                                            LTC6812_EEPROM_ID_PAGE_BYTES);
+}
+
+static bool Ltc6812_EepromCommitStaticArea(void)
+{
+    if (Ltc6812_EepromWritesAllowed() == false)
+    {
+        return false;
+    }
+
+    Ltc6812_EepromStoreCrc32(&g_ltc6812EepromMirror[LTC6812_EEPROM_STATIC1_CRC32_ADDR],
+                             LTC6812_EEPROM_STATIC_AREA_BYTES);
+    Ltc6812_EepromStoreCrc32(&g_ltc6812EepromMirror[LTC6812_EEPROM_STATIC2_CRC32_ADDR],
+                             LTC6812_EEPROM_STATIC_AREA_BYTES);
+
+    if (Ltc6812_WriteEepromBlockVerified(LTC6812_EEPROM_STATIC1_CRC32_ADDR,
+                                    &g_ltc6812EepromMirror[LTC6812_EEPROM_STATIC1_CRC32_ADDR],
+                                    LTC6812_EEPROM_STATIC_AREA_BYTES) == false)
+    {
+        return false;
+    }
+
+    return Ltc6812_WriteEepromBlockVerified(LTC6812_EEPROM_STATIC2_CRC32_ADDR,
+                                       &g_ltc6812EepromMirror[LTC6812_EEPROM_STATIC2_CRC32_ADDR],
+                                       LTC6812_EEPROM_STATIC_AREA_BYTES);
+}
+
+static bool Ltc6812_EepromCommitDynamicArea(void)
+{
+    uint16_t base;
+
+    if (Ltc6812_EepromWritesAllowed() == false)
+    {
+        return false;
+    }
+
+    base = Ltc6812_EepromNextDynamicBase();
+    Ltc6812_EepromStoreCrc32(&g_ltc6812EepromMirror[base], LTC6812_EEPROM_DYNAMIC_AREA_BYTES);
+
+    return Ltc6812_WriteEepromBlockVerified(base,
+                                       &g_ltc6812EepromMirror[base],
+                                       LTC6812_EEPROM_DYNAMIC_AREA_BYTES);
+}
+
+static bool Ltc6812_EepromInitDynamicArea(void)
+{
+    if (Ltc6812_EepromInitWritesAllowed() == false)
+    {
+        return false;
+    }
+
+    (void)memset(&g_ltc6812EepromMirror[LTC6812_EEPROM_DYNAMIC1_BASE_ADDR], 0,
+                 LTC6812_EEPROM_DYNAMIC_AREA_BYTES);
+    (void)memset(&g_ltc6812EepromMirror[LTC6812_EEPROM_DYNAMIC2_BASE_ADDR], 0,
+                 LTC6812_EEPROM_DYNAMIC_AREA_BYTES);
+    Ltc6812_EepromStoreCrc32(&g_ltc6812EepromMirror[LTC6812_EEPROM_DYNAMIC1_BASE_ADDR],
+                             LTC6812_EEPROM_DYNAMIC_AREA_BYTES);
+    Ltc6812_EepromStoreCrc32(&g_ltc6812EepromMirror[LTC6812_EEPROM_DYNAMIC2_BASE_ADDR],
+                             LTC6812_EEPROM_DYNAMIC_AREA_BYTES);
+
+    if (Ltc6812_WriteEepromBlockVerified(LTC6812_EEPROM_DYNAMIC1_BASE_ADDR,
+                                    &g_ltc6812EepromMirror[LTC6812_EEPROM_DYNAMIC1_BASE_ADDR],
+                                    LTC6812_EEPROM_DYNAMIC_AREA_BYTES) == false)
+    {
+        return false;
+    }
+
+    return Ltc6812_WriteEepromBlockVerified(LTC6812_EEPROM_DYNAMIC2_BASE_ADDR,
+                                       &g_ltc6812EepromMirror[LTC6812_EEPROM_DYNAMIC2_BASE_ADDR],
+                                       LTC6812_EEPROM_DYNAMIC_AREA_BYTES);
+}
+
+static uint16_t Ltc6812_EepromNextDynamicBase(void)
+{
+    bool dynamic1CrcOk = Ltc6812_EepromCheckCrc32(&g_ltc6812EepromMirror[LTC6812_EEPROM_DYNAMIC1_BASE_ADDR],
+                                                  LTC6812_EEPROM_DYNAMIC_AREA_BYTES);
+    bool dynamic2CrcOk = Ltc6812_EepromCheckCrc32(&g_ltc6812EepromMirror[LTC6812_EEPROM_DYNAMIC2_BASE_ADDR],
+                                                  LTC6812_EEPROM_DYNAMIC_AREA_BYTES);
+
+    if ((dynamic1CrcOk == false) && (dynamic2CrcOk == true))
+    {
+        return LTC6812_EEPROM_DYNAMIC1_BASE_ADDR;
+    }
+
+    if ((dynamic1CrcOk == true) && (dynamic2CrcOk == false))
+    {
+        return LTC6812_EEPROM_DYNAMIC2_BASE_ADDR;
+    }
+
+    return AdbmsRuntime_GetDynAreaA() ? LTC6812_EEPROM_DYNAMIC1_BASE_ADDR : LTC6812_EEPROM_DYNAMIC2_BASE_ADDR;
+}
+
+static uint16_t Ltc6812_EepromCrc16Safety(const uint8_t *data, uint16_t length)
+{
+    uint16_t crc = 0u;
+    uint16_t i;
+    uint8_t bit;
+
+    if (data == 0)
+    {
+        return 0u;
+    }
+
+    for (i = 0u; i < length; i++)
+    {
+        crc ^= (uint16_t)((uint16_t)data[i] << 8u);
+        for (bit = 0u; bit < 8u; bit++)
+        {
+            if ((crc & 0x8000u) != 0u)
+            {
+                crc = (uint16_t)((crc << 1u) ^ 0xAC9Au);
+            }
+            else
+            {
+                crc = (uint16_t)(crc << 1u);
+            }
+        }
+    }
+
+    return crc;
+}
+
+static uint32_t Ltc6812_ReadLe32Local(const uint8_t *data)
+{
+    return ((uint32_t)data[0]) |
+           ((uint32_t)data[1] << 8u) |
+           ((uint32_t)data[2] << 16u) |
+           ((uint32_t)data[3] << 24u);
+}
+
+static void Ltc6812_WriteLe32Local(uint8_t *data, uint32_t value)
+{
+    if (data == 0)
+    {
+        return;
+    }
+
+    data[0] = (uint8_t)(value & 0xFFu);
+    data[1] = (uint8_t)((value >> 8u) & 0xFFu);
+    data[2] = (uint8_t)((value >> 16u) & 0xFFu);
+    data[3] = (uint8_t)((value >> 24u) & 0xFFu);
+}
+
+static void Ltc6812_EepromStoreCrc16Safety(uint8_t *area)
+{
+    uint16_t crc;
+
+    if (area == 0)
+    {
+        return;
+    }
+
+    crc = Ltc6812_EepromCrc16Safety(&area[2], 14u);
+    area[0] = (uint8_t)(crc & 0xFFu);
+    area[1] = (uint8_t)((crc >> 8u) & 0xFFu);
+}
+
+static void Ltc6812_EepromStoreCrc32(uint8_t *area, uint16_t areaSize)
+{
+    uint32_t crc;
+
+    if ((area == 0) || (areaSize <= LTC6812_EEPROM_AREA_CRC32_BYTES))
+    {
+        return;
+    }
+
+    crc = crc32(&area[LTC6812_EEPROM_AREA_CRC32_BYTES],
+                (size_t)(areaSize - LTC6812_EEPROM_AREA_CRC32_BYTES));
+    Ltc6812_WriteLe32Local(area, crc);
+}
+
+static bool Ltc6812_EepromCheckCrc32(const uint8_t *area, uint16_t areaSize)
+{
+    if ((area == 0) || (areaSize <= LTC6812_EEPROM_AREA_CRC32_BYTES))
+    {
+        return false;
+    }
+
+    return (Ltc6812_ReadLe32Local(area) ==
+            crc32(&area[LTC6812_EEPROM_AREA_CRC32_BYTES],
+                  (size_t)(areaSize - LTC6812_EEPROM_AREA_CRC32_BYTES)));
+}
+
 static void Ltc6812_ReadAndPublishEepromCache(void)
+{
+    AdbmsRuntime_EepromCache_t cache;
+    Ltc6812_Status_t st;
+    bool idPageCrcOk;
+    bool idBackupCrcOk;
+    bool static1CrcOk;
+    bool static2CrcOk;
+    bool dynamic1CrcOk;
+    bool dynamic2CrcOk;
+    bool odpLocked;
+    uint16_t storedCrc16;
+    uint16_t calcCrc16;
+
+    (void)memset(&cache, 0, sizeof(cache));
+
+    st = Ltc6812_WakeUp(&g_ltc6812Drv, &g_ltc6812Hal);
+    if (st != LTC6812_OK)
+    {
+        cache.eeprom_read_fail = true;
+        cache.i2c_communication_fail = true;
+        AdbmsRuntime_PublishEepromCache(&cache);
+        LTC6812_DEBUG_PRINTF("LTC6812 EEPROM cache: wake failed\r\n");
+        return;
+    }
+
+    st = Ltc6812_EepromRead(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds,
+                            0u, g_ltc6812EepromMirror, LTC6812_EEPROM_SIZE_BYTES);
+    if (st != LTC6812_OK)
+    {
+        cache.eeprom_read_fail = true;
+        cache.i2c_communication_fail = true;
+        LTC6812_PRINT_DEBUG_STATUS(st);
+    }
+
+    st = Ltc6812_EepromReadOdp(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds,
+                               0u, g_ltc6812IdPageMirror, LTC6812_EEPROM_ID_PAGE_BYTES);
+    if (st != LTC6812_OK)
+    {
+        cache.eeprom_read_fail = true;
+        cache.i2c_communication_fail = true;
+        LTC6812_PRINT_DEBUG_STATUS(st);
+    }
+
+    storedCrc16 = (uint16_t)(((uint16_t)g_ltc6812IdPageMirror[1] << 8u) | g_ltc6812IdPageMirror[0]);
+    calcCrc16 = Ltc6812_EepromCrc16Safety(&g_ltc6812IdPageMirror[2], 14u);
+    idPageCrcOk = (storedCrc16 == calcCrc16);
+
+    storedCrc16 = (uint16_t)(((uint16_t)g_ltc6812EepromMirror[1] << 8u) | g_ltc6812EepromMirror[0]);
+    calcCrc16 = Ltc6812_EepromCrc16Safety(&g_ltc6812EepromMirror[2], 14u);
+    idBackupCrcOk = (storedCrc16 == calcCrc16);
+
+    static1CrcOk = Ltc6812_EepromCheckCrc32(&g_ltc6812EepromMirror[LTC6812_EEPROM_STATIC1_CRC32_ADDR],
+                                            LTC6812_EEPROM_STATIC_AREA_BYTES);
+    static2CrcOk = Ltc6812_EepromCheckCrc32(&g_ltc6812EepromMirror[LTC6812_EEPROM_STATIC2_CRC32_ADDR],
+                                            LTC6812_EEPROM_STATIC_AREA_BYTES);
+    dynamic1CrcOk = Ltc6812_EepromCheckCrc32(&g_ltc6812EepromMirror[LTC6812_EEPROM_DYNAMIC1_BASE_ADDR],
+                                             LTC6812_EEPROM_DYNAMIC_AREA_BYTES);
+    dynamic2CrcOk = Ltc6812_EepromCheckCrc32(&g_ltc6812EepromMirror[LTC6812_EEPROM_DYNAMIC2_BASE_ADDR],
+                                             LTC6812_EEPROM_DYNAMIC_AREA_BYTES);
+
+    cache.complete_safety_crc_error = ((idPageCrcOk == false) && (idBackupCrcOk == false));
+    cache.single_safety_crc_error = (idPageCrcOk != idBackupCrcOk);
+    cache.complete_static_crc_error = ((static1CrcOk == false) && (static2CrcOk == false));
+    cache.single_static_crc_error = (static1CrcOk != static2CrcOk);
+    cache.complete_dynamic_crc_error = ((dynamic1CrcOk == false) && (dynamic2CrcOk == false));
+    cache.single_dynamic_crc_error = (dynamic1CrcOk != dynamic2CrcOk);
+    cache.safety_area_mismatch = ((idPageCrcOk == true) && (idBackupCrcOk == true) &&
+                                  (memcmp(g_ltc6812IdPageMirror, g_ltc6812EepromMirror, LTC6812_EEPROM_ID_PAGE_BYTES) != 0));
+    cache.static_area_mismatch = ((static1CrcOk == true) && (static2CrcOk == true) &&
+                                  (memcmp(&g_ltc6812EepromMirror[LTC6812_EEPROM_STATIC1_CRC32_ADDR],
+                                          &g_ltc6812EepromMirror[LTC6812_EEPROM_STATIC2_CRC32_ADDR],
+                                          LTC6812_EEPROM_STATIC_AREA_BYTES) != 0));
+    cache.dynamic_area_a_next = AdbmsRuntime_GetDynAreaA();
+
+    cache.cell_type_major = g_ltc6812EepromMirror[LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_CELL_TYPE_MAJOR_ADDR];
+    cache.cell_type_minor = g_ltc6812EepromMirror[LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_CELL_TYPE_MINOR_ADDR];
+    cache.module_type_major = g_ltc6812EepromMirror[LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_MODULE_TYPE_MAJOR_ADDR];
+    cache.module_type_minor = g_ltc6812EepromMirror[LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_MODULE_TYPE_MINOR_ADDR];
+    (void)memcpy(cache.module_serial,
+                 &g_ltc6812EepromMirror[LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_MODULE_SERIAL_ADDR],
+                 sizeof(cache.module_serial));
+    cache.pcb_type_major = g_ltc6812EepromMirror[LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_PCB_TYPE_MAJOR_ADDR];
+    cache.pcb_type_minor = g_ltc6812EepromMirror[LTC6812_EEPROM_ID_BACKUP_BASE_ADDR + LTC6812_EEPROM_ID_PCB_TYPE_MINOR_ADDR];
+    cache.serial_cells = g_ltc6812EepromMirror[LTC6812_EEPROM_STATIC1_SERIAL_CELLS_ADDR];
+    cache.parallel_cells = g_ltc6812EepromMirror[LTC6812_EEPROM_STATIC1_PARALLEL_CELLS_ADDR];
+    (void)memcpy(cache.pcb_serial,
+                 &g_ltc6812EepromMirror[LTC6812_EEPROM_STATIC1_PCB_SERIAL_ADDR],
+                 sizeof(cache.pcb_serial));
+    cache.ic_type_major = g_ltc6812EepromMirror[LTC6812_EEPROM_STATIC1_IC_TYPE_MAJOR_ADDR];
+    cache.ic_type_minor = g_ltc6812EepromMirror[LTC6812_EEPROM_STATIC1_IC_TYPE_MINOR_ADDR];
+    st = Ltc6812_EepromGetOdpLockStatus(&g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds, &odpLocked);
+    if (st == LTC6812_OK)
+    {
+        cache.locking_locked = odpLocked;
+    }
+    else
+    {
+        cache.id_page_status_read_fail = true;
+        cache.i2c_communication_fail = true;
+        LTC6812_PRINT_DEBUG_STATUS(st);
+    }
+
+    cache.valid = true;
+    AdbmsRuntime_PublishEepromCache(&cache);
+
+    LTC6812_DEBUG_PRINTF("LTC6812 EEPROM cache: cell=%u.%u module=%u.%u pcb=%u.%u ic=%u.%u cells=%u par=%u locked=%u crc saf=%u/%u stat=%u/%u dyn=%u/%u\r\n",
+                          (uint32_t)cache.cell_type_major, (uint32_t)cache.cell_type_minor,
+                          (uint32_t)cache.module_type_major, (uint32_t)cache.module_type_minor,
+                          (uint32_t)cache.pcb_type_major, (uint32_t)cache.pcb_type_minor,
+                          (uint32_t)cache.ic_type_major, (uint32_t)cache.ic_type_minor,
+                          (uint32_t)cache.serial_cells, (uint32_t)cache.parallel_cells,
+                          (uint32_t)cache.locking_locked,
+                          (uint32_t)idPageCrcOk, (uint32_t)idBackupCrcOk,
+                          (uint32_t)static1CrcOk, (uint32_t)static2CrcOk,
+                          (uint32_t)dynamic1CrcOk, (uint32_t)dynamic2CrcOk);
+}
+
+#if 0
+static void Ltc6812_ReadAndPublishEepromCache_Legacy(void)
 {
     AdbmsRuntime_EepromCache_t cache;
     Ltc6812_Status_t st;
@@ -1169,6 +1583,8 @@ static void Ltc6812_ReadAndPublishEepromCache(void)
                           (uint32_t)cache.serial_cells, (uint32_t)cache.parallel_cells,
                           (uint32_t)cache.locking_locked);
 }
+
+#endif
 
 void ltc6812_main_on_core2(void)
 {
@@ -1282,6 +1698,7 @@ void ltc6812_main_on_core2(void)
                 status = Ltc6812_SendMute(&g_ltc6812Hal, &g_ltc6812Cmds);
                 if (status == LTC6812_OK)
                 {
+                    Ltc6812_DelayMs(LTC6812_BALANCE_MUTE_SETTLE_MS);
                     status = Ltc6812_BalanceApplyDcc(&g_ltc6812Bal, &g_ltc6812Drv, &g_ltc6812Hal, &g_ltc6812Cmds);
                 }
                 if (status == LTC6812_OK)

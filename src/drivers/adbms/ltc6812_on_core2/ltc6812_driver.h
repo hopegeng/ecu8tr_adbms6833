@@ -221,9 +221,19 @@ Ltc6812_Status_t Ltc6812_EepromWriteOdp(Ltc6812_Context_t *ctx,
                                          uint8_t address,
                                          const uint8_t *data,
                                          uint8_t len);
+Ltc6812_Status_t Ltc6812_EepromReadOdp(Ltc6812_Context_t *ctx,
+                                        const Ltc6812_Hal_t *hal,
+                                        const Ltc6812_CommandSet_t *cmds,
+                                        uint8_t address,
+                                        uint8_t *data,
+                                        uint8_t len);
 Ltc6812_Status_t Ltc6812_EepromLockOdp(Ltc6812_Context_t *ctx,
                                         const Ltc6812_Hal_t *hal,
                                         const Ltc6812_CommandSet_t *cmds);
+Ltc6812_Status_t Ltc6812_EepromGetOdpLockStatus(Ltc6812_Context_t *ctx,
+                                                 const Ltc6812_Hal_t *hal,
+                                                 const Ltc6812_CommandSet_t *cmds,
+                                                 bool *locked);
 bool Ltc6812_EepromIsOdpLocked(Ltc6812_Context_t *ctx,
                                 const Ltc6812_Hal_t *hal,
                                 const Ltc6812_CommandSet_t *cmds);

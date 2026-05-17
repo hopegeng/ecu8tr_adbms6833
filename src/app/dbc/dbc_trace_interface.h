@@ -36,7 +36,7 @@ extern "C" {
 /* Mux value in M001_WriteEEPROMData that triggers an EEPROM read-back response */
 #define DBC_M001_EEPROM_READ_MUX                     (0xEE5200UL)
 
-/* Magic value in M001_StartLTCTransmission and M001_WriteStartLTCTransmission (bytes 0-2 LE) */
+/* Magic value in M001_StartLTCTransmission and M001_WriteStartLTCTransmission (Intel signal at bits 0..23) */
 #define DBC_M001_START_LTC_MAGIC                     (0x953CA8UL)
 
 /* Mux values for M001_SendEEPROMDataEOL (0x1000F801) — also used in M001_ConfigurationMessage RX */

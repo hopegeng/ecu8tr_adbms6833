@@ -41,9 +41,9 @@
 #define BMU_CELL_STALE_TIMEOUT_MS       ((BMU_SAMPLE_PERIOD_MS * 3u) + BMU_CELLMESSAGE_CYCLE_MS)
 
 /* DBC invalid fallback values if measurement is stale/invalid */
-#define BMU_INVALID_CELL_VOLTAGE_RAW    (0u)     /* 0.1 mV/bit */
-#define BMU_INVALID_CELL_TEMP_RAW       (0)      /* 0.01 C/bit */
-#define BMU_INVALID_GPIO_VOLTAGE_RAW    (0u)     /* 0.1 mV/bit */
+#define BMU_INVALID_CELL_VOLTAGE_RAW    (0xFFAFu) /* 0.1 mV/bit */
+#define BMU_INVALID_CELL_TEMP_RAW       ((int16_t)0xFFAFu) /* 0.01 C/bit */
+#define BMU_INVALID_GPIO_VOLTAGE_RAW    (0xFFAFu) /* 0.1 mV/bit */
 #define BMU_INVALID_BALANCING           (0u)
 
 /* Balance control selection.

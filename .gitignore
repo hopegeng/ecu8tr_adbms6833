@@ -15,3 +15,5 @@ canlib-1.15.483-py2.py3-none-any.whl
 env/
 ~$Complete_BorgWarner_Gen3_0_CAN_Communication_Matrix.xlsx
 .claude
+.~lock*
+

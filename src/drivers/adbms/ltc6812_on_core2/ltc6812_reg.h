@@ -18,9 +18,9 @@
 #define LTC6812_RDAUXC_REG        0x000Du
 #define LTC6812_RDAUXD_REG        0x000Fu
 
-#define LTC6812_ADCV_BASE_REG     0x0260u
-#define LTC6812_ADAX_BASE_REG     0x0460u
-#define LTC6812_ADSTAT_BASE_REG   0x0468u
+#define LTC6812_ADCV_BASE_REG     0x0360u  /* MD[1:0]=10, ADCOPT=0: 7 kHz normal mode */
+#define LTC6812_ADAX_BASE_REG     0x0560u  /* MD[1:0]=10, ADCOPT=0: 7 kHz normal mode */
+#define LTC6812_ADSTAT_BASE_REG   0x0568u  /* MD[1:0]=10, ADCOPT=0: 7 kHz normal mode */
 #define LTC6812_RDSTATA_REG       0x0010u
 #define LTC6812_RDSTATB_REG       0x0012u
 
